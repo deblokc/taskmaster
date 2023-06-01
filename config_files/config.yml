@@ -1,0 +1,10 @@
+programs:
+    exception:
+        name: Hi
+        retry: 3
+        umask: 0o022
+    better:
+        name: Bouh
+        retry: a
+server:
+    connection: Unix

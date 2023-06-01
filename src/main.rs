@@ -12,5 +12,16 @@ fn main() {
         Ok(ct) => ct,
     };
     println!("File content:\n{content}");
-    println!("Hello, world!");
+    let parsed = match parsing::load_yaml(&content) {
+        Err(msg) => {
+            eprintln!("{msg}");
+            return;
+        }
+        Ok(c) => c,
+    };
+    if parsed.contains_key("programs") {
+        println!("We have programs ladies and gents");
+    }
+    println!("Parsed: {:?}", parsed);
+    println!("End");
 }
