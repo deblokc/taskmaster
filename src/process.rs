@@ -8,7 +8,7 @@ enum Status {
     BACKOFF,  //The process was STARTING but exited to quickly to move to RUNNING
     STOPPING, //The process is stopping
     EXITED,   //The process exited from RUNNING (expected or unexpected)
-    FATAl,    //The process could not be started succesfully
+    FATAL,    //The process could not be started succesfully
 }
 
 pub struct Process {
