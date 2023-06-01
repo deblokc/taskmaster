@@ -11,46 +11,29 @@ enum Status {
     FATAl,    //The process could not be started succesfully
 }
 
-pub struct Process<'a> {
-    name: String,      //name of the process
-    cmd: &'a str,      //command to run
-    pid: u32,          //pid of the process
-    args: Vec<String>, //arguments of the command
-    umask: String,     //umask of the process
-    start: Instant,    //process's starting timestamp
-    status: Status,    //status of the process (refer to enum Status)
-    startretries: u32, //number of restart try before FATAL
-    startsecs: u32,    //time after which the process is considered running
-    priority: u32,
+pub struct Process {
+    name: String,   //name of the process
+    pid: u32,       //pid of the process
+    start: Instant, //process's starting timestamp
+    status: Status, //status of the process (refer to enum Status)
 }
 
-impl Process<'_> {
-    fn new(name: String, cmd: &str) -> Process {
+impl Process {
+    fn new(name: String) -> Process {
         let pid = 0;
-        let args: Vec<String> = Vec::new();
-        let umask = String::from("022");
         let start = Instant::now();
         let status = Status::STARTING;
-        let startretries = 3;
-        let startsecs = 1;
-        let priority = 999;
 
         Process {
             name,
-            cmd,
             pid,
-            args,
-            umask,
             start,
             status,
-            startretries,
-            startsecs,
-            priority,
         }
     }
 
-    fn start(&self) -> Child {
-        let command = &mut Command::new(self.cmd);
+    fn start(&self, cmd: &str) -> Child {
+        let command = &mut Command::new(cmd);
         let child = command.spawn().expect("Faut wrapper tout ca");
         child
     }
