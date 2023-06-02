@@ -1,5 +1,5 @@
-use std::env;
-use taskmaster::parsing;
+use std::{collections::HashMap, env};
+use taskmaster::parsing::{self, program::Program};
 
 fn main() {
     let mut args = env::args();
@@ -19,9 +19,13 @@ fn main() {
         }
         Ok(c) => c,
     };
-    if parsed.contains_key("programs") {
-        println!("We have programs ladies and gents");
+    let mut priorities: HashMap<u16, Vec<&Program>> = HashMap::new();
+    let (mut _priority_list, mut programs, err) = parsing::get_programs(&parsed, &mut priorities);
+    if let Some(msg) = err {
+        eprintln!("{msg}");
+        return;
     }
     println!("Parsed: {:?}", parsed);
+    eprintln!("Mapped: {:?}", programs);
     println!("End");
 }

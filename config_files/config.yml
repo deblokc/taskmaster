@@ -1,10 +1,12 @@
 programs:
     exception:
-        name: Hi
+        command: cat ls; sleep 5
+        numprocs: 2
         retry: 3
         umask: 0o022
-    better:
-        name: Bouh
-        retry: a
+    echoeing:
+        command: echo 1
+        retry: 3
+        umask: 0o022
 server:
     connection: Unix
