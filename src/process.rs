@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::process::{Child, Command};
+use std::thread;
 use std::time::Instant;
 
 enum Status {
@@ -47,6 +48,7 @@ pub fn infinity() {
     let mut programs: HashMap<i16, Vec<String>> = HashMap::new();
     let mut priorities: Vec<i16> = Vec::new();
     let mut process: HashMap<String, Process> = HashMap::new();
+    let mut thread: Vec<thread::JoinHandle<_>> = Vec::new();
 
     loop {
         //(programs, priorities) = parsing(file);
@@ -62,6 +64,7 @@ pub fn infinity() {
                     let current = Process::new(proc.name, proc);
                     process.insert(current.name, current);
                     // if only one process use the name given
+                    thread.push(thread::spawn(move || {}));
                 } else {
                     for i in 0..proc.numprocs {
                         let current = Process::new(proc.name + i, proc);
