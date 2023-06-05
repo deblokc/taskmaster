@@ -59,16 +59,9 @@ fn parse_program(name: &str, param: &Hash) -> Result<Program, String> {
     };
 
     let mut program = Program::new(name, command);
-    if let Some(numprocs_yaml) = param.get(&Yaml::String(String::from("numprocs"))) {
-        if let Some(msg) = program.set_numprocs(numprocs_yaml) {
-            return Err(msg);
-        }
-    }
-    if let Some(priority_yaml) = param.get(&Yaml::String(String::from("priority"))) {
-        if let Some(msg) = program.set_priority(priority_yaml) {
-            return Err(msg);
-        }
-    }
+    if let Some(msg) = program.parse_yaml(param) {
+        return Err(msg);
+    };
     Ok(program)
 }
 
