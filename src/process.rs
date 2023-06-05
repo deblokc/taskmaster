@@ -1,7 +1,7 @@
 use std::collections::HashMap;
-use std::process::{Child, Command};
+use std::process::{Child, Command, ExitStatus};
 use std::thread;
-use std::time::Instant;
+use std::time::{Instant, Duration};
 
 enum Status {
     STOPPED,  //The process has been stopped or was never started
@@ -42,6 +42,45 @@ impl Process {
         let child = command.spawn().expect("Faut wrapper tout ca");
         child
     }
+
+    fn need_restart(&self, exit_status: ExitStatus) -> bool {
+        if self.status == Status::STARTING {// if program wasnt running
+            self.status = Status::BACKOFF;
+            return true;
+        } else if ExitStatus in self.program.exit_status { // if exited properly
+            return false;
+        } else {
+            return true;
+        }
+    }
+}
+
+fn administrator(proc: Process) {
+    let mut process_handle = proc.start("ls");
+    proc.start = Instant::now();
+    proc.status = Status::STARTING;
+
+    process_handle.spawn();
+    loop {
+        match process_handle.try_wait() {
+            Ok(Some(exit_status)) => {
+                if !proc.need_restart(exit_status) {
+                    proc.status = Status::STOPPED;
+                    break;
+                } else {
+                    process_handle.spawn();
+                    //restart the process
+                }
+            }// if no restart exit, else try restart;
+            Ok(None) => continue;
+            Err(e) => {
+                println!("Error with child : {e}");
+                break;
+            }
+        }
+        if proc.status == Status::STARTING {
+        }
+    }
 }
 
 pub fn infinity() {
@@ -60,11 +99,11 @@ pub fn infinity() {
                 _ => todo!(),
             };
             for proc in tmp {
-                if (proc.numprocs == 1) {
+                if proc.numprocs == 1 {
                     let current = Process::new(proc.name, proc);
                     process.insert(current.name, current);
                     // if only one process use the name given
-                    thread.push(thread::spawn(move || {}));
+                    thread.push(thread::spawn(move || {administrator(current)}));
                 } else {
                     for i in 0..proc.numprocs {
                         let current = Process::new(proc.name + i, proc);
