@@ -19,6 +19,7 @@ pub struct Process {
     start: Instant,  //process's starting timestamp
     status: Status,  //status of the process (refer to enum Status)
     program: String, //associated program's fully parsed config
+    count_restart: u64,
 }
 
 impl Process {
@@ -26,6 +27,7 @@ impl Process {
         let pid = 0;
         let start = Instant::now();
         let status = Status::STARTING;
+        let count_restart = 0;
 
         Process {
             name,
@@ -33,52 +35,75 @@ impl Process {
             start,
             status,
             program,
+            count_restart,
         }
     }
 
     fn start(&self, cmd: &str) -> Child {
         let command = &mut Command::new(cmd);
 
+        self.status = Status::STARTING;
         let child = command.spawn().expect("Faut wrapper tout ca");
         child
     }
 
     fn need_restart(&self, exit_status: ExitStatus) -> bool {
-        if self.status == Status::STARTING {// if program wasnt running
-            self.status = Status::BACKOFF;
-            return true;
-        } else if ExitStatus in self.program.exit_status { // if exited properly
+        if self.status == Status::STOPPED {
             return false;
-        } else {
+        }
+        if self.status == Status::BACKOFF { // if failed while starting
+            if self.count_restart < self.program.startretries { // if can still retry restart
+                self.count_restart += 1;
+                return true;
+            } else { // if done trying goes to FATAL
+                self.status = Status::FATAL;
+                return false;
+            }
+        } else if (self.program.autorestart == Program::NEVER || (self.program.autorestart == Program::UNEXPECTED && ExitStatus.code() in self.program.exitcodes) {
+            // if no autorestart or expected exit dont restart
+            self.status = Status::EXITED;
+            return false;
+        } else { // else (autorestart always or unexpected exit) restart
+            self.status = Status::EXITED;
             return true;
         }
     }
 }
 
 fn administrator(proc: Process) {
-    let mut process_handle = proc.start("ls");
+    let mut process_handle = proc.start(proc.program.command);
     proc.start = Instant::now();
-    proc.status = Status::STARTING;
 
-    process_handle.spawn();
     loop {
         match process_handle.try_wait() {
             Ok(Some(exit_status)) => {
-                if !proc.need_restart(exit_status) {
-                    proc.status = Status::STOPPED;
-                    break;
-                } else {
-                    process_handle.spawn();
-                    //restart the process
+                if proc.status != Status::STOPPED && proc.status != Status::EXITED {
+                    if proc.status == Status::STOPPING {
+                        // if process was stopped manually
+                        proc.status = Status::STOPPED;
+                    }
+                    if proc.status == Status::STARTING {
+                        // if process could not start 
+                        proc.status = Status::BACKOFF;
+                    }
+                    if proc.need_restart(exit_status) {
+                        let mut process_handle = proc.start(proc.program.command);
+                        //restart the process
+                    }
                 }
-            }// if no restart exit, else try restart;
+            }
             Ok(None) => continue;
             Err(e) => {
                 println!("Error with child : {e}");
-                break;
             }
         }
         if proc.status == Status::STARTING {
+            if proc.start.elapsed() >= Duration::from_secs(proc.program.startsecs) {
+                proc.status = Status::RUNNING;
+            }
+        } else if proc.status == Status::STOPPING {
+            /* if start_of_stop > proc.program.stopwaitsecs */
+            proc.kill();
         }
     }
 }
