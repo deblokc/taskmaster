@@ -19,13 +19,22 @@ fn main() {
         }
         Ok(c) => c,
     };
-    let mut priorities: HashMap<u16, Vec<&Program>> = HashMap::new();
-    let (mut _priority_list, mut programs, err) = parsing::get_programs(&parsed, &mut priorities);
-    if let Some(msg) = err {
-        eprintln!("{msg}");
-        return;
-    }
-    println!("Parsed: {:?}", parsed);
-    eprintln!("Mapped: {:?}", programs);
+    let programs = match parsing::get_programs(&parsed) {
+        Ok(p) => p,
+        Err(msg) => {
+            eprintln!("{msg}");
+            return;
+        }
+    };
+    let priorities = parsing::order_priorities(&programs);
+    print_programs(&programs);
+    println!("\n\nPriorities\n{priorities:?}");
     println!("End");
+}
+
+fn print_programs(programs: &HashMap<String, Program>) {
+    eprintln!("\n\n\t\t*********   PROGRAMS   *********\n");
+    for (name, program) in programs.iter() {
+        eprintln!("program {name}:\n\t{program:?}");
+    }
 }

@@ -65,56 +65,47 @@ fn parse_program(name: &str, param: &Hash) -> Result<Program, String> {
     Ok(program)
 }
 
-pub fn get_programs(
-    map: &Hash,
-    priorities: &mut HashMap<u16, Vec<&Program>>,
-) -> (Vec<u16>, HashMap<String, Program>, Option<String>) {
+pub fn get_programs(map: &Hash) -> Result<HashMap<String, Program>, String> {
     let programs = match map.get(&Yaml::String(String::from("programs"))) {
-        None => return (Vec::new(), HashMap::new(), None),
+        None => return Ok(HashMap::new()),
         Some(progs) => progs,
     };
     let programs_map = match programs.as_hash() {
         None => {
-            return (
-                Vec::new(),
-                HashMap::new(),
-                Some(format!(
-                    "Programs must be provided as a map, please see configuration examples"
-                )),
-            )
+            return Err(format!(
+                "Programs must be provided as a map, please see configuration examples"
+            ))
         }
         Some(m) => m,
     };
-    eprintln!("{:?}", programs_map);
     let mut ret_map: HashMap<String, Program> = HashMap::new();
     for (name, param) in programs_map.iter() {
-        let mut namep = match name.as_str() {
-            None => {
-                return (
-                    Vec::new(),
-                    HashMap::new(),
-                    Some(format!("Invalid program name detected")),
-                )
-            }
+        let namep = match name.as_str() {
+            None => return Err(format!("Invalid program name detected")),
             Some(n) => String::from(n),
         };
         let param_unwrapped = match param.as_hash() {
             None => {
-                return (
-                    Vec::new(),
-                    HashMap::new(),
-                    Some(format!(
-                        "Program parameters in program {namep} incorrectly formatted, map expected"
-                    )),
-                )
+                return Err(format!(
+                    "Program parameters in program {namep} incorrectly formatted, map expected"
+                ))
             }
             Some(n) => n,
         };
-        let mut program = match parse_program(&namep, param_unwrapped) {
-            Ok(p) => p,
-            Err(msg) => return (Vec::new(), HashMap::new(), Some(msg)),
-        };
+        let mut program = parse_program(&namep, param_unwrapped)?;
         ret_map.insert(namep, program);
     }
-    (Vec::new(), ret_map, None)
+    Ok(ret_map)
+}
+
+pub fn order_priorities(program_list: &HashMap<String, Program>) -> HashMap<u16, Vec<&Program>> {
+    let mut priorities: HashMap<u16, Vec<&Program>> = HashMap::new();
+    for (_program_name, program) in program_list.iter() {
+        if let Some(val) = priorities.get_mut(&program.priority) {
+            val.push(program);
+        } else {
+            priorities.insert(program.priority, vec![program]);
+        }
+    }
+    priorities
 }

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use nix::libc;
 use yaml_rust::{yaml::Hash, Yaml};
 
@@ -26,10 +28,9 @@ pub struct Program {
     pub stdoutlogpath: Option<String>,
     pub stderrlog: bool,
     pub stderrlogpath: Option<String>,
-    pub env: Option<Vec<(String, String)>>,
+    pub env: Option<HashMap<String, String>>,
     pub workingdir: Option<String>,
     pub umask: Option<u16>,
-    pub group: Option<String>,
     pub user: Option<String>,
 }
 
@@ -55,7 +56,6 @@ impl Program {
             env: None,
             workingdir: None,
             umask: None,
-            group: None,
             user: None,
         }
     }
@@ -86,6 +86,30 @@ impl Program {
             return Some(msg);
         };
         if let Some(msg) = self.set_stopwaitsecs(param) {
+            return Some(msg);
+        };
+        if let Some(msg) = self.set_stdoutlog(param) {
+            return Some(msg);
+        };
+        if let Some(msg) = self.set_stdoutlogpath(param) {
+            return Some(msg);
+        };
+        if let Some(msg) = self.set_stderrlog(param) {
+            return Some(msg);
+        };
+        if let Some(msg) = self.set_stderrlogpath(param) {
+            return Some(msg);
+        };
+        if let Some(msg) = self.set_env(param) {
+            return Some(msg);
+        };
+        if let Some(msg) = self.set_workingdir(param) {
+            return Some(msg);
+        };
+        if let Some(msg) = self.set_umask(param) {
+            return Some(msg);
+        };
+        if let Some(msg) = self.set_user(param) {
             return Some(msg);
         };
         None
@@ -334,6 +358,177 @@ impl Program {
                 }
             },
             None =>  Some(format!("Value provided for number of stopwaitsecs in program {} not a valid signed 64 bits number", self.name))
+        }
+    }
+
+    fn set_stdoutlog(&mut self, param: &Hash) -> Option<String> {
+        let stdoutlog_yaml = match param.get(&Yaml::String(String::from("stdoutlog"))) {
+            Some(val) => val,
+            None => return None,
+        };
+        match stdoutlog_yaml.as_bool() {
+            Some(val) => {
+                self.stdoutlog = val;
+                None
+            }
+            None => Some(format!(
+                "Bad value for stdoutlog in program {} detected, expecting boolean value",
+                self.name
+            )),
+        }
+    }
+
+    fn set_stdoutlogpath(&mut self, param: &Hash) -> Option<String> {
+        let stdoutlogpath_yaml = match param.get(&Yaml::String(String::from("stdoutlogpath"))) {
+            Some(val) => val,
+            None => return None,
+        };
+        match stdoutlogpath_yaml.as_str() {
+            Some(val) => {
+                self.stdoutlogpath = Some(String::from(val));
+                None
+            }
+            None => Some(format!(
+                "Bad value for stdoutlogpath in program {} detected, expecting a string",
+                self.name
+            )),
+        }
+    }
+
+    fn set_stderrlog(&mut self, param: &Hash) -> Option<String> {
+        let stderrlog_yaml = match param.get(&Yaml::String(String::from("stderrlog"))) {
+            Some(val) => val,
+            None => return None,
+        };
+        match stderrlog_yaml.as_bool() {
+            Some(val) => {
+                self.stderrlog = val;
+                None
+            }
+            None => Some(format!(
+                "Bad value for stderrlog in program {} detected, expecting boolean value",
+                self.name
+            )),
+        }
+    }
+
+    fn set_stderrlogpath(&mut self, param: &Hash) -> Option<String> {
+        let stderrlogpath_yaml = match param.get(&Yaml::String(String::from("stderrlogpath"))) {
+            Some(val) => val,
+            None => return None,
+        };
+        match stderrlogpath_yaml.as_str() {
+            Some(val) => {
+                self.stderrlogpath = Some(String::from(val));
+                None
+            }
+            None => Some(format!(
+                "Bad value for stderrlogpath in program {} detected, expecting a string",
+                self.name
+            )),
+        }
+    }
+
+    fn set_env(&mut self, param: &Hash) -> Option<String> {
+        let env_hash_yaml = match param.get(&Yaml::String(String::from("env"))) {
+            Some(arr) => arr,
+            None => return None,
+        };
+        let env_hash = match env_hash_yaml.as_hash() {
+            Some(map) => map,
+            None => {
+                return Some(format!(
+                    "Value provided for env in program {} is invalid, expected a map",
+                    self.name
+                ))
+            }
+        };
+        if env_hash.is_empty() {
+            return None;
+        }
+        let mut new_env: HashMap<String, String> = HashMap::new();
+        for (env_key, env_val) in env_hash.iter() {
+            let key = match env_key.as_str() {
+                Some(k) => String::from(k),
+                None => {
+                    return Some(format!(
+                        "A key provided for env in program {} is not a valid string",
+                        self.name
+                    ))
+                }
+            };
+            let val = match env_val.as_str() {
+                Some(v) => String::from(v),
+                None => {
+                    return Some(format!(
+                        "Value provided for key {} in the env of program {} is not a valid string",
+                        key, self.name
+                    ))
+                }
+            };
+            new_env.insert(key, val);
+        }
+        self.env = Some(new_env);
+        None
+    }
+
+    fn set_workingdir(&mut self, param: &Hash) -> Option<String> {
+        let workingdir_yaml = match param.get(&Yaml::String(String::from("workingdir"))) {
+            Some(val) => val,
+            None => return None,
+        };
+        match workingdir_yaml.as_str() {
+            Some(val) => {
+                self.workingdir = Some(String::from(val));
+                None
+            }
+            None => Some(format!(
+                "Bad value for workingdir in program {} detected, expecting a string",
+                self.name
+            )),
+        }
+    }
+
+    fn set_umask(&mut self, param: &Hash) -> Option<String> {
+        let umask_yaml = match param.get(&Yaml::String(String::from("umask"))) {
+            Some(val) => val,
+            None => return None,
+        };
+        match umask_yaml.as_i64() {
+            Some(n) => {
+                if n > 511 {
+                    Some(format!(
+                        "Umask in program {} is not a valid octal umask, found {:#o}",
+                        self.name, n
+                    ))
+                } else if n < 0 {
+                    Some(format!("Umask in program {} is negative", self.name))
+                } else {
+                    self.umask = Some(n as u16);
+                    None
+                }
+            }
+            None => Some(format!(
+                "Wrong format for umask in program {}, expected value must ba a valid octal number between 0o000 and 0o777",
+                self.name
+            )),
+        }
+    }
+
+    fn set_user(&mut self, param: &Hash) -> Option<String> {
+        let user_yaml = match param.get(&Yaml::String(String::from("user"))) {
+            Some(val) => val,
+            None => return None,
+        };
+        match user_yaml.as_str() {
+            Some(val) => {
+                self.user = Some(String::from(val));
+                None
+            }
+            None => Some(format!(
+                "Bad value for user in program {} detected, expecting a string",
+                self.name
+            )),
         }
     }
 }

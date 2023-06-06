@@ -8,9 +8,16 @@ programs:
             - 1
         autorestart: onerror
         stopsignal: USR2
+        priority: 3
     echoeing:
         command: echo 1
         retry: 3
-        umask: 0o022
+        umask: 0o027
+        user: bdetune
+        workingdir: /
+        env:
+            PATH: ""
+            PATH: "/"
+            pwd: "~"
 server:
     connection: Unix
