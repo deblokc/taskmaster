@@ -19,7 +19,7 @@ pub struct Process {
     start: Instant,  //process's starting timestamp
     status: Status,  //status of the process (refer to enum Status)
     program: String, //associated program's fully parsed config
-    count_restart: u64,
+    count_restart: u64,//number of time the program tried to restart
 }
 
 impl Process {
@@ -59,7 +59,7 @@ impl Process {
                 self.status = Status::FATAL;
                 return false;
             }
-        } else if (self.program.autorestart == Program::NEVER || (self.program.autorestart == Program::UNEXPECTED && ExitStatus.code() in self.program.exitcodes) {
+        } else if (self.program.autorestart == Program::NEVER || (self.program.autorestart == Program::UNEXPECTED && self.program.exitcodes.contains(ExitStatus.code())) {
             // if no autorestart or expected exit dont restart
             self.status = Status::EXITED;
             return false;
