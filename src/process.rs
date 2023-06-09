@@ -2,6 +2,8 @@ use std::collections::HashMap;
 use std::process::{Child, Command, ExitStatus};
 use std::thread;
 use std::time::{Instant, Duration};
+use crate::parsing::Program;
+use crate::parsing::RestartState;
 
 enum Status {
     STOPPED,  //The process has been stopped or was never started
@@ -18,16 +20,16 @@ pub struct Process {
     pid: u32,        //pid of the process
     start: Instant,  //process's starting timestamp
     status: Status,  //status of the process (refer to enum Status)
-    program: String, //associated program's fully parsed config
-    count_restart: u64,//number of time the program tried to restart
+    program: &Program, //associated program's fully parsed config
+    count_restart: u8,//number of time the program tried to restart
 }
 
 impl Process {
-    fn new(name: String, program: String) -> Process {
+    fn new(name: String, program: &Program) -> Process {
         let pid = 0;
         let start = Instant::now();
         let status = Status::STARTING;
-        let count_restart = 0;
+        let count_restart : u8 = 0;
 
         Process {
             name,
@@ -48,10 +50,10 @@ impl Process {
     }
 
     fn need_restart(&self, exit_status: ExitStatus) -> bool {
-        if self.status == Status::STOPPED {
+        if matches!(self.status, Status::STOPPED) {
             return false;
         }
-        if self.status == Status::BACKOFF { // if failed while starting
+        if matches!(self.status, Status::BACKOFF) { // if failed while starting
             if self.count_restart < self.program.startretries { // if can still retry restart
                 self.count_restart += 1;
                 return true;
@@ -59,7 +61,7 @@ impl Process {
                 self.status = Status::FATAL;
                 return false;
             }
-        } else if (self.program.autorestart == Program::NEVER || (self.program.autorestart == Program::UNEXPECTED && self.program.exitcodes.contains(ExitStatus.code())) {
+        } else if matches!(self.program.autorestart, RestartState::NEVER) || (matches!(self.program.autorestart, RestartState::UNEXPECTED) && self.program.exitcodes.contains(exit_status.code().expect("no exit status"))) {
             // if no autorestart or expected exit dont restart
             self.status = Status::EXITED;
             return false;
@@ -71,37 +73,37 @@ impl Process {
 }
 
 fn administrator(proc: Process) {
-    let mut process_handle = proc.start(proc.program.command);
+    let mut process_handle = proc.start(&proc.program.command);
     proc.start = Instant::now();
 
     loop {
         match process_handle.try_wait() {
             Ok(Some(exit_status)) => {
-                if proc.status != Status::STOPPED && proc.status != Status::EXITED {
-                    if proc.status == Status::STOPPING {
+                if !matches!(proc.status, Status::STOPPED) && !matches!(proc.status, Status::EXITED) {
+                    if matches!(proc.status, Status::STOPPING) {
                         // if process was stopped manually
                         proc.status = Status::STOPPED;
                     }
-                    if proc.status == Status::STARTING {
+                    if matches!(proc.status, Status::STARTING) {
                         // if process could not start 
                         proc.status = Status::BACKOFF;
                     }
                     if proc.need_restart(exit_status) {
-                        let mut process_handle = proc.start(proc.program.command);
+                        let mut process_handle = proc.start(&proc.program.command);
                         //restart the process
                     }
                 }
             }
-            Ok(None) => continue;
+            Ok(None) => {continue;}
             Err(e) => {
                 println!("Error with child : {e}");
             }
         }
-        if proc.status == Status::STARTING {
-            if proc.start.elapsed() >= Duration::from_secs(proc.program.startsecs) {
+        if matches!(proc.status, Status::STARTING) {
+            if proc.start.elapsed() >= Duration::from_secs(proc.program.startsecs.into()) {
                 proc.status = Status::RUNNING;
             }
-        } else if proc.status == Status::STOPPING {
+        } else if matches!(proc.status, Status::STOPPING) {
             /* if start_of_stop > proc.program.stopwaitsecs */
             proc.kill();
         }
@@ -109,7 +111,7 @@ fn administrator(proc: Process) {
 }
 
 pub fn infinity() {
-    let mut programs: HashMap<i16, Vec<String>> = HashMap::new();
+    let mut programs: HashMap<i16, Vec<Program>> = HashMap::new();
     let mut priorities: Vec<i16> = Vec::new();
     let mut process: HashMap<String, Process> = HashMap::new();
     let mut thread: Vec<thread::JoinHandle<_>> = Vec::new();

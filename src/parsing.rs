@@ -1,7 +1,7 @@
 extern crate yaml_rust;
 use std::{collections::HashMap, fs::File, io::Read};
 // use std::io;
-use program::Program;
+pub use program::Program;
 use yaml_rust::{yaml::Hash, Yaml, YamlLoader};
 
 pub mod program;
@@ -92,7 +92,7 @@ pub fn get_programs(map: &Hash) -> Result<HashMap<String, Program>, String> {
             }
             Some(n) => n,
         };
-        let mut program = parse_program(&namep, param_unwrapped)?;
+        let program = parse_program(&namep, param_unwrapped)?;
         ret_map.insert(namep, program);
     }
     Ok(ret_map)
