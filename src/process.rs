@@ -1,5 +1,5 @@
+use crate::parsing::program::Program;
 use crate::parsing::program::RestartState;
-use crate::parsing::Program;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::process::{Child, Command, ExitStatus};
@@ -85,7 +85,7 @@ impl Process {
     }
 }
 
-fn administrator(mut proc_ref: Arc<Mutex<Process>>) {
+fn administrator(proc_ref: Arc<Mutex<Process>>) {
     if let Ok(mut proc) = proc_ref.lock() {
         let mut process_handle = proc.start();
         proc.start = Instant::now();
@@ -142,24 +142,24 @@ pub fn infinity(programs: &HashMap<u16, Vec<Arc<Program>>>) {
         let tmp = programs.get(key).expect("no value for this key");
         for prog in tmp {
             if prog.numprocs == 1 {
-                let mut theprocess = Process::new(prog.name.clone(), Arc::clone(prog));
-                let mutex = Mutex::new(theprocess);
-                let current = Arc::new(mutex); //Mutex::new(Process::new(prog.name.clone(), prog)));
+                let current = Arc::new(Mutex::new(Process::new(
+                    prog.name.clone(),
+                    Arc::clone(prog),
+                ))); //Mutex::new(Process::new(prog.name.clone(), prog)));
                 process.insert(prog.name.clone(), Arc::clone(&current));
                 // if only one process use the name given
                 thread.push(thread::spawn(move || administrator(current)));
                 // Arc<Mutex<Process>>
             } else {
-                todo!();
-                /*                for i in 0..prog.numprocs {
+                for i in 0..prog.numprocs {
                     let current = Arc::new(Mutex::new(Process::new(
                         prog.name.clone() + &i.to_string(),
-                        prog,
+                        Arc::clone(prog),
                     )));
                     process.insert(prog.name.clone() + &i.to_string(), Arc::clone(&current));
                     // if multiple process add number after
                     thread.push(thread::spawn(move || administrator(current)));
-                }*/
+                }
             }
             // Create process and insert them in the map with name as key
         }
