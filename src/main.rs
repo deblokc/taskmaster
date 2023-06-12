@@ -1,4 +1,4 @@
-use std::{collections::HashMap, env};
+use std::{collections::HashMap, env, sync::Arc};
 use taskmaster::parsing::{self, program::Program};
 
 fn main() {
@@ -32,7 +32,7 @@ fn main() {
     println!("End");
 }
 
-fn print_programs(programs: &HashMap<String, Program>) {
+fn print_programs(programs: &HashMap<String, Arc<Program>>) {
     eprintln!("\n\n\t\t*********   PROGRAMS   *********\n");
     for (name, program) in programs.iter() {
         eprintln!("program {name}:\n\t{program:?}");

@@ -2,6 +2,7 @@ extern crate yaml_rust;
 use std::{collections::HashMap, fs::File, io::Read};
 // use std::io;
 use program::Program;
+use std::sync::Arc;
 use yaml_rust::{yaml::Hash, Yaml, YamlLoader};
 
 pub mod program;
@@ -65,7 +66,7 @@ fn parse_program(name: &str, param: &Hash) -> Result<Program, String> {
     Ok(program)
 }
 
-pub fn get_programs(map: &Hash) -> Result<HashMap<String, Program>, String> {
+pub fn get_programs(map: &Hash) -> Result<HashMap<String, Arc<Program>>, String> {
     let programs = match map.get(&Yaml::String(String::from("programs"))) {
         None => return Ok(HashMap::new()),
         Some(progs) => progs,
@@ -78,7 +79,7 @@ pub fn get_programs(map: &Hash) -> Result<HashMap<String, Program>, String> {
         }
         Some(m) => m,
     };
-    let mut ret_map: HashMap<String, Program> = HashMap::new();
+    let mut ret_map: HashMap<String, Arc<Program>> = HashMap::new();
     for (name, param) in programs_map.iter() {
         let namep = match name.as_str() {
             None => return Err(format!("Invalid program name detected")),
@@ -92,19 +93,21 @@ pub fn get_programs(map: &Hash) -> Result<HashMap<String, Program>, String> {
             }
             Some(n) => n,
         };
-        let mut program = parse_program(&namep, param_unwrapped)?;
-        ret_map.insert(namep, program);
+        let program = parse_program(&namep, param_unwrapped)?;
+        ret_map.insert(namep, Arc::new(program));
     }
     Ok(ret_map)
 }
 
-pub fn order_priorities(program_list: &HashMap<String, Program>) -> HashMap<u16, Vec<&Program>> {
-    let mut priorities: HashMap<u16, Vec<&Program>> = HashMap::new();
+pub fn order_priorities(
+    program_list: &HashMap<String, Arc<Program>>,
+) -> HashMap<u16, Vec<Arc<Program>>> {
+    let mut priorities: HashMap<u16, Vec<Arc<Program>>> = HashMap::new();
     for (_program_name, program) in program_list.iter() {
-        if let Some(val) = priorities.get_mut(&program.priority) {
-            val.push(program);
+        if let Some(val) = priorities.get_mut(&(program.priority)) {
+            val.push(Arc::clone(program));
         } else {
-            priorities.insert(program.priority, vec![program]);
+            priorities.insert(program.priority, vec![Arc::clone(program)]);
         }
     }
     priorities
