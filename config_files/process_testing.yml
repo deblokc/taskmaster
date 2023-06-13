@@ -1,0 +1,31 @@
+programs:
+    exception:
+        command: ls
+        numprocs: 2
+        retry: 3
+        umask: 0o022
+        exitcodes:
+            - 1
+        autorestart: never
+        startsecs: 0
+        stopsignal: USR2
+        priority: 3
+    echoeing:
+        command: pwd
+        retry: 3
+        umask: 0o027
+        user: bdetune
+        workingdir: /
+        env:
+            PATH: ""
+            PATH: "/"
+            pwd: "~"
+        autorestart: never
+        startsecs: 0
+    infinity&beyond:
+        command: cat
+        retry: 0
+        autorestart: never
+        startsecs: 3
+server:
+    connection: Unix
