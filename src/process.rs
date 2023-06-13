@@ -7,6 +7,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
+#[derive(Debug)]
 enum Status {
     STOPPED,  //The process has been stopped or was never started
     STARTING, //The process is starting
@@ -17,6 +18,7 @@ enum Status {
     FATAL,    //The process could not be started succesfully
 }
 
+#[derive(Debug)]
 pub struct Process {
     name: String,          //name of the process
     pid: u32,              //pid of the process
@@ -47,6 +49,7 @@ impl Process {
         let command = &mut Command::new(self.program.command.clone());
 
         self.status = Status::STARTING;
+        println!("Starting process with {}", self.program.command);
         let child = command.spawn().expect("Faut wrapper tout ca");
         child
     }
@@ -55,7 +58,7 @@ impl Process {
         if matches!(self.status, Status::STOPPED) {
             return false;
         }
-        if matches!(self.status, Status::BACKOFF) {
+        if matches!(self.status, Status::BACKOFF) && self.program.startsecs > 0 {
             // if failed while starting
             if self.count_restart < self.program.startretries {
                 // if can still retry restart
@@ -86,13 +89,21 @@ impl Process {
 }
 
 fn administrator(proc_ref: Arc<Mutex<Process>>) {
+    //    if let Ok(mut proc) = proc_ref.lock() {
+    let mut process_handle;
     if let Ok(mut proc) = proc_ref.lock() {
-        let mut process_handle = proc.start();
+        println!("Administrator running process {}", proc.name);
+        process_handle = proc.start();
         proc.start = Instant::now();
+    } else {
+        println!("Mutex was poisoned, exiting administrator");
+        return;
+    }
 
-        loop {
-            match process_handle.try_wait() {
-                Ok(Some(exit_status)) => {
+    loop {
+        match process_handle.try_wait() {
+            Ok(Some(exit_status)) => {
+                if let Ok(mut proc) = proc_ref.lock() {
                     if !matches!(proc.status, Status::STOPPED)
                         && !matches!(proc.status, Status::EXITED)
                     {
@@ -105,19 +116,37 @@ fn administrator(proc_ref: Arc<Mutex<Process>>) {
                             proc.status = Status::BACKOFF;
                         }
                         if proc.need_restart(exit_status) {
+                            println!("Process need restart {}", proc.name);
                             process_handle = proc.start();
                             //restart the process
                         }
                     }
-                }
-                Ok(None) => {
-                    continue;
-                }
-                Err(e) => {
-                    println!("Error with child : {e}");
+                } else {
+                    println!("Mutex was poisoned, exiting administrator");
+                    return;
                 }
             }
+            Ok(None) => {
+                continue;
+            }
+            Err(e) => {
+                println!("Error with child : {e}");
+            }
+        }
+        if let Ok(mut proc) = proc_ref.lock() {
+            /*println!(
+                "WTF : {:?} == {:?} => {}",
+                proc.status,
+                Status::STARTING,
+                matches!(proc.status, Status::STARTING)
+            );*/
             if matches!(proc.status, Status::STARTING) {
+                println!("\nChecking if status should change to RUNNING");
+                println!(
+                    "{:?} | {:?}",
+                    proc.start.elapsed(),
+                    Duration::from_secs(proc.program.startsecs.into())
+                );
                 if proc.start.elapsed() >= Duration::from_secs(proc.program.startsecs.into()) {
                     proc.status = Status::RUNNING;
                 }
@@ -125,8 +154,12 @@ fn administrator(proc_ref: Arc<Mutex<Process>>) {
                 /* if start_of_stop > proc.program.stopwaitsecs */
                 process_handle.kill();
             }
+        } else {
+            println!("Mutex was poisoned, exiting administrator");
+            return;
         }
     }
+    //    }
 }
 
 pub fn infinity(programs: &HashMap<u16, Vec<Arc<Program>>>) {
@@ -165,6 +198,18 @@ pub fn infinity(programs: &HashMap<u16, Vec<Arc<Program>>>) {
         }
     }
     // }
+    loop {
+        for (procname, procmut) in &process {
+            println!("{procname}");
+            if let Ok(proc) = procmut.lock() {
+                eprintln!("{:?}", proc.status);
+            } else {
+                println!("Mutex was poisoned");
+            }
+        }
+        println!();
+        thread::sleep(Duration::from_secs(3));
+    }
     for child in thread {
         child.join();
     }

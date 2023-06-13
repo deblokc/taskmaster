@@ -1,5 +1,6 @@
 use std::{collections::HashMap, env, sync::Arc};
 use taskmaster::parsing::{self, program::Program};
+use taskmaster::process::{self};
 
 fn main() {
     let mut args = env::args();
@@ -29,6 +30,7 @@ fn main() {
     let priorities = parsing::order_priorities(&programs);
     print_programs(&programs);
     println!("\n\nPriorities\n{priorities:?}");
+    process::infinity(&priorities);
     println!("End");
 }
 
