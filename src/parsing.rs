@@ -2,7 +2,7 @@ extern crate yaml_rust;
 use std::{collections::HashMap, fs::File, io::Read};
 // use std::io;
 use program::Program;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use yaml_rust::{yaml::Hash, Yaml, YamlLoader};
 
 pub mod program;
@@ -49,24 +49,7 @@ pub fn load_yaml(source: &str) -> Result<Hash, String> {
     }
 }
 
-fn parse_program(name: &str, param: &Hash) -> Result<Program, String> {
-    let command_yaml = match param.get(&Yaml::String(String::from("command"))) {
-        Some(c) => c,
-        None => return Err(format!("No command found for program {name}")),
-    };
-    let command = match command_yaml.as_str() {
-        Some(c) => String::from(c),
-        None => return Err(format!("Command is not a string in program {name}")),
-    };
-
-    let mut program = Program::new(name, command);
-    if let Some(msg) = program.parse_yaml(param) {
-        return Err(msg);
-    };
-    Ok(program)
-}
-
-pub fn get_programs(map: &Hash) -> Result<HashMap<String, Arc<Program>>, String> {
+pub fn get_programs(map: &Hash) -> Result<HashMap<String, Arc<Mutex<Program>>>, String> {
     let programs = match map.get(&Yaml::String(String::from("programs"))) {
         None => return Ok(HashMap::new()),
         Some(progs) => progs,
@@ -79,7 +62,7 @@ pub fn get_programs(map: &Hash) -> Result<HashMap<String, Arc<Program>>, String>
         }
         Some(m) => m,
     };
-    let mut ret_map: HashMap<String, Arc<Program>> = HashMap::new();
+    let mut ret_map: HashMap<String, Arc<Mutex<Program>>> = HashMap::new();
     for (name, param) in programs_map.iter() {
         let namep = match name.as_str() {
             None => return Err(format!("Invalid program name detected")),
@@ -93,21 +76,22 @@ pub fn get_programs(map: &Hash) -> Result<HashMap<String, Arc<Program>>, String>
             }
             Some(n) => n,
         };
-        let program = parse_program(&namep, param_unwrapped)?;
-        ret_map.insert(namep, Arc::new(program));
+        let prog = Program::create(&namep, param_unwrapped)?;
+        ret_map.insert(namep, Arc::new(Mutex::new(prog)));
     }
     Ok(ret_map)
 }
 
 pub fn order_priorities(
-    program_list: &HashMap<String, Arc<Program>>,
-) -> HashMap<u16, Vec<Arc<Program>>> {
-    let mut priorities: HashMap<u16, Vec<Arc<Program>>> = HashMap::new();
+    program_list: &HashMap<String, Arc<Mutex<Program>>>,
+) -> HashMap<u16, Vec<Arc<Mutex<Program>>>> {
+    let mut priorities: HashMap<u16, Vec<Arc<Mutex<Program>>>> = HashMap::new();
     for (_program_name, program) in program_list.iter() {
-        if let Some(val) = priorities.get_mut(&(program.priority)) {
+        let prog = program.lock().expect("Cannot acquire mutex");
+        if let Some(val) = priorities.get_mut(&(prog.priority)) {
             val.push(Arc::clone(program));
         } else {
-            priorities.insert(program.priority, vec![Arc::clone(program)]);
+            priorities.insert(prog.priority, vec![Arc::clone(program)]);
         }
     }
     priorities

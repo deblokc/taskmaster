@@ -7,4 +7,5 @@ edition = "2021"
 
 [dependencies]
 nix = "0.26.2"
+shlex = "1.1.0"
 yaml-rust = "0.4.5"
