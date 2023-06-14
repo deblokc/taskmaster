@@ -53,21 +53,28 @@ impl Process {
     fn start(&mut self, program: &MutexGuard<'_, Program>) -> Result<Child, Error> {
         //let program = self.program.lock().expect("mutex poisoned");
         let mut command = Command::new(program.command.clone());
+
+        if let Some(arguments) = &program.args {
+            command.args(arguments);
+        }
+
         self.status = Status::STARTING;
         self.start = Instant::now();
         loop {
-            println!("Starting process with {}", program.command);
             match command.spawn() {
                 Ok(handle) => {
+                    self.pid = handle.id();
+                    println!("INFO spawned: {} with pid {}", self.name, self.pid);
                     return Ok(handle);
                 }
                 Err(er) => {
                     if self.count_restart < program.startretries {
                         self.count_restart += 1;
-                        println!("{er}");
+                        println!("INFO restart: {} (cause : {er})", self.name);
                         continue;
                     } else {
                         self.status = Status::FATAL;
+                        println!("INFO status: {} FATAL", self.name);
                         return Err(er);
                     }
                 }
@@ -76,7 +83,10 @@ impl Process {
     }
 
     fn need_restart(&mut self, exit_status: ExitStatus) -> bool {
-        if matches!(self.status, Status::STOPPED) || matches!(self.status, Status::FATAL) {
+        if matches!(self.status, Status::STOPPED)
+            || matches!(self.status, Status::FATAL)
+            || matches!(self.status, Status::EXITED)
+        {
             return false;
         }
         if let Ok(program) = self.program.lock() {
@@ -84,10 +94,12 @@ impl Process {
                 if self.count_restart < program.startretries {
                     // if can still retry restart
                     self.count_restart += 1;
+                    println!("INFO restart: {} (cause : BACKOFF)", self.name);
                     return true;
                 } else {
                     // else should go to FATAL
                     self.status = Status::FATAL;
+                    println!("INFO status: {} FATAL", self.name);
                     return false;
                 }
             } else if matches!(program.autorestart, RestartState::NEVER)
@@ -100,14 +112,24 @@ impl Process {
             {
                 // if no autorestart or expected exit dont restart
                 self.status = Status::EXITED;
+                println!("INFO status: {} EXITED", self.name);
                 return false;
             } else {
                 // else (autorestart always or unexpected exit) restart
                 self.status = Status::EXITED;
+                println!("INFO status: {} EXITED", self.name);
+                if matches!(program.autorestart, RestartState::ALWAYS) {
+                    println!("INFO restart: {} (cause : autorestart ALWAYS)", self.name);
+                } else {
+                    println!(
+                        "INFO restart: {} (cause : unexpected exit status)",
+                        self.name
+                    );
+                }
                 return true;
             }
         } else {
-            println!("Mutex was poisoned");
+            println!("CRIT : Mutex was poisoned");
             file!();
             line!();
             column!();
@@ -124,9 +146,11 @@ fn change_proc_status(proc_ref: &Arc<Mutex<Process>>) {
             if matches!(proc.status, Status::STOPPING) {
                 // if process was stopped manually
                 proc.status = Status::STOPPED;
+                println!("INFO status: {} STOPPED", proc.name);
             }
             if matches!(proc.status, Status::STARTING) {
                 proc.status = Status::BACKOFF;
+                println!("INFO status: {} BACKOFF", proc.name);
             }
         }
     } else {
@@ -142,6 +166,7 @@ fn check_exit_status(
     proc_ref: &Arc<Mutex<Process>>,
     process: &mut Option<Child>,
     exit_status: &mut Option<ExitStatus>,
+    name: &String,
 ) {
     if let Some(ref mut process_handle) = process {
         match process_handle.try_wait() {
@@ -149,6 +174,7 @@ fn check_exit_status(
             Ok(Some(status)) => {
                 // if it exited
                 *exit_status = Some(status);
+                println!("INFO exited: {name} ({status})");
                 change_proc_status(proc_ref);
                 *process = None;
             }
@@ -168,6 +194,7 @@ fn check_timed_status(proc_ref: &Arc<Mutex<Process>>, process_handle: &mut Child
             if let Ok(program) = cloned.lock() {
                 if proc.start.elapsed() >= Duration::from_secs(program.startsecs as u64) {
                     proc.status = Status::RUNNING;
+                    println!("INFO status: {} RUNNING", proc.name);
                 }
                 drop(program);
             };
@@ -181,6 +208,52 @@ fn check_timed_status(proc_ref: &Arc<Mutex<Process>>, process_handle: &mut Child
     }
 }
 
+fn check_restart(proc_ref: &Arc<Mutex<Process>>, status: &ExitStatus, process: &mut Option<Child>) {
+    if let Ok(mut proc) = proc_ref.lock() {
+        if proc.need_restart(*status) {
+            // if restart needed
+            let cloned = proc.program.clone();
+            if let Ok(program) = cloned.lock() {
+                match proc.start(&program) {
+                    Ok(handle) => {
+                        *process = Some(handle);
+                    }
+                    Err(e) => {
+                        println!("{e}");
+                    }
+                }
+            };
+        } // if need to restart
+        drop(proc);
+    } else {
+        // error on mutex lock
+        println!("Mutex was poisoned");
+        file!();
+        line!();
+        column!();
+    }
+}
+
+fn first_start(proc_ref: &Arc<Mutex<Process>>, process: &mut Option<Child>) {
+    if let Ok(mut proc) = proc_ref.lock() {
+        let cloned = proc.program.clone();
+        if let Ok(program) = cloned.lock() {
+            if program.autostart && !matches!(proc.status, Status::FATAL) {
+                // if process need to start (autostart = true)
+                match proc.start(&program) {
+                    Ok(handle) => {
+                        *process = Some(handle);
+                    }
+                    Err(e) => {
+                        println!("{e}");
+                    }
+                }
+            }
+            drop(program);
+        };
+    }
+}
+
 fn administrator(proc_ref: Arc<Mutex<Process>> /*, mut msg: AtomicUsize*/) {
     let name: String;
     {
@@ -188,7 +261,7 @@ fn administrator(proc_ref: Arc<Mutex<Process>> /*, mut msg: AtomicUsize*/) {
         name = proc.name.clone();
         drop(proc);
     }
-    println!("administrating {name}");
+    println!("INFO start: administrator of {name} started");
     let mut process: Option<Child> = None;
     let mut exit_status: Option<ExitStatus> = None;
     loop {
@@ -199,58 +272,18 @@ fn administrator(proc_ref: Arc<Mutex<Process>> /*, mut msg: AtomicUsize*/) {
         //        }
         if process.is_some() {
             // if we have a process
-            check_exit_status(&proc_ref, &mut process, &mut exit_status);
+            check_exit_status(&proc_ref, &mut process, &mut exit_status, &name);
             if let Some(ref mut process_handle) = process {
                 check_timed_status(&proc_ref, process_handle);
             }
         } else if exit_status.is_some() {
             // if process ran and exited
             if let Some(status) = exit_status {
-                if let Ok(mut proc) = proc_ref.lock() {
-                    if proc.need_restart(status) {
-                        let cloned = proc.program.clone();
-                        if let Ok(program) = cloned.lock() {
-                            match proc.start(&program) {
-                                Ok(handle) => {
-                                    process = Some(handle);
-                                }
-                                Err(e) => {
-                                    println!("{e}");
-                                }
-                            }
-                        };
-                    } // if need to restart
-                    drop(proc);
-                } else {
-                    // error on mutex lock
-                    println!("Mutex was poisoned");
-                    file!();
-                    line!();
-                    column!();
-                }
+                check_restart(&proc_ref, &status, &mut process);
             }
         } else {
             // if process never ran
-            if let Ok(mut proc) = proc_ref.lock() {
-                let cloned = proc.program.clone();
-                println!("{name} is about to lock the cloned");
-                if let Ok(program) = cloned.lock() {
-                    println!("{name} as locked the cloned");
-                    if program.autostart && !matches!(proc.status, Status::FATAL) {
-                        // if process need to start (autostart = true)
-                        match proc.start(&program) {
-                            Ok(handle) => {
-                                process = Some(handle);
-                            }
-                            Err(e) => {
-                                println!("{e}");
-                            }
-                        }
-                    }
-                    drop(program);
-                    println!("{name} unlocked the cloned");
-                };
-            }
+            first_start(&proc_ref, &mut process);
         }
     }
 }
@@ -297,10 +330,9 @@ pub fn infinity(programs: &HashMap<u16, Vec<Arc<Mutex<Program>>>>) {
     // }
     loop {
         for (procname, procmut) in &process {
-            println!("{procname}");
             {
                 if let Ok(proc) = procmut.lock() {
-                    println!("{:?}", proc.status);
+                    println!("{procname} : {:?}", proc.status);
                 } else {
                     println!("Mutex was poisoned");
                 }
