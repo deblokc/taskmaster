@@ -1,6 +1,6 @@
 programs:
     exception:
-        command: cat ls; sleep 5
+        command: /bin/sh -c "echo 32; sleep 5"
         numprocs: 2
         retry: 3
         umask: 0o022

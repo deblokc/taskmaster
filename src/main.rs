@@ -1,4 +1,8 @@
-use std::{collections::HashMap, env, sync::Arc};
+use std::{
+    collections::HashMap,
+    env,
+    sync::{Arc, Mutex},
+};
 use taskmaster::parsing::{self, program::Program};
 use taskmaster::process::{self};
 
@@ -21,20 +25,21 @@ fn main() {
         Ok(c) => c,
     };
     let programs = match parsing::get_programs(&parsed) {
-        Ok(p) => p,
+        Ok(p) => Mutex::new(p),
         Err(msg) => {
             eprintln!("{msg}");
             return;
         }
     };
-    let priorities = parsing::order_priorities(&programs);
-    print_programs(&programs);
+    let prog_map = programs.lock().expect("Cannot acquire mutex");
+    let priorities: HashMap<u16, Vec<Arc<Mutex<Program>>>> = parsing::order_priorities(&prog_map);
+    print_programs(&prog_map);
     println!("\n\nPriorities\n{priorities:?}");
     process::infinity(&priorities);
     println!("End");
 }
 
-fn print_programs(programs: &HashMap<String, Arc<Program>>) {
+fn print_programs(programs: &HashMap<String, Arc<Mutex<Program>>>) {
     eprintln!("\n\n\t\t*********   PROGRAMS   *********\n");
     for (name, program) in programs.iter() {
         eprintln!("program {name}:\n\t{program:?}");

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use nix::libc;
+use shlex;
 use yaml_rust::{yaml::Hash, Yaml};
 
 #[derive(Debug)]
@@ -14,7 +15,7 @@ pub enum RestartState {
 pub struct Program {
     pub name: String,
     pub command: String,
-    pub args: String,
+    pub args: Option<Vec<String>>,
     pub numprocs: u8,
     pub priority: u16,
     pub autostart: bool,
@@ -35,499 +36,431 @@ pub struct Program {
 }
 
 impl Program {
-    pub fn new(name: &str, command: String) -> Self {
-        Program {
+    pub fn create(name: &str, param: &Hash) -> Result<Self, String> {
+        let (command, args) = Program::set_command(param, name)?;
+        Ok(Program {
             name: String::from(name),
             command,
-            args: String::new(),
-            numprocs: 1,
-            priority: 999,
-            autostart: true,
-            startsecs: 1,
-            startretries: 3,
-            autorestart: RestartState::ALWAYS,
-            exitcodes: vec![0],
-            stopsignal: libc::SIGTERM,
-            stopwaitsecs: 3,
-            stdoutlog: true,
-            stdoutlogpath: None,
-            stderrlog: true,
-            stderrlogpath: None,
-            env: None,
-            workingdir: None,
-            umask: None,
-            user: None,
+            args,
+            numprocs: Program::set_numprocs(param, name)?,
+            priority: Program::set_priority(param, name)?,
+            autostart: Program::set_autostart(param, name)?,
+            startsecs: Program::set_startsecs(param, name)?,
+            startretries: Program::set_startretries(param, name)?,
+            autorestart: Program::set_autorestart(param, name)?,
+            exitcodes: Program::set_exitcodes(param, name)?,
+            stopsignal: Program::set_stopsignal(param, name)?,
+            stopwaitsecs: Program::set_stopwaitsecs(param, name)?,
+            stdoutlog: Program::set_stdoutlog(param, name)?,
+            stdoutlogpath: Program::set_stdoutlogpath(param, name)?,
+            stderrlog: Program::set_stderrlog(param, name)?,
+            stderrlogpath: Program::set_stderrlogpath(param, name)?,
+            env: Program::set_env(param, name)?,
+            workingdir: Program::set_workingdir(param, name)?,
+            umask: Program::set_umask(param, name)?,
+            user: Program::set_user(param, name)?,
+        })
+    }
+
+    fn set_command(param: &Hash, name: &str) -> Result<(String, Option<Vec<String>>), String> {
+        let command_yaml = match param.get(&Yaml::String(String::from("command"))) {
+            Some(c) => c,
+            None => return Err(format!("No command found for program {}", name)),
+        };
+        let command = match command_yaml.as_str() {
+            Some(c) => String::from(c),
+            None => return Err(format!("Command is not a string in program {}", name)),
+        };
+        let mut args = match shlex::split(&command) {
+            Some(args) => args,
+            None => return Err(format!("Wrong command formatting in program {}", name)),
+        };
+        if args.len() == 0 {
+            return Err(format!("Empty command in program {}", name));
+        };
+        let command = args.remove(0);
+        if args.len() == 0 {
+            Ok((command, None))
+        } else {
+            Ok((command, Some(args)))
         }
     }
 
-    pub fn parse_yaml(&mut self, param: &Hash) -> Option<String> {
-        if let Some(msg) = self.set_numprocs(param) {
-            return Some(msg);
-        };
-        if let Some(msg) = self.set_priority(param) {
-            return Some(msg);
-        };
-        if let Some(msg) = self.set_autostart(param) {
-            return Some(msg);
-        };
-        if let Some(msg) = self.set_startsecs(param) {
-            return Some(msg);
-        };
-        if let Some(msg) = self.set_startretries(param) {
-            return Some(msg);
-        };
-        if let Some(msg) = self.set_autorestart(param) {
-            return Some(msg);
-        };
-        if let Some(msg) = self.set_exitcodes(param) {
-            return Some(msg);
-        };
-        if let Some(msg) = self.set_stopsignal(param) {
-            return Some(msg);
-        };
-        if let Some(msg) = self.set_stopwaitsecs(param) {
-            return Some(msg);
-        };
-        if let Some(msg) = self.set_stdoutlog(param) {
-            return Some(msg);
-        };
-        if let Some(msg) = self.set_stdoutlogpath(param) {
-            return Some(msg);
-        };
-        if let Some(msg) = self.set_stderrlog(param) {
-            return Some(msg);
-        };
-        if let Some(msg) = self.set_stderrlogpath(param) {
-            return Some(msg);
-        };
-        if let Some(msg) = self.set_env(param) {
-            return Some(msg);
-        };
-        if let Some(msg) = self.set_workingdir(param) {
-            return Some(msg);
-        };
-        if let Some(msg) = self.set_umask(param) {
-            return Some(msg);
-        };
-        if let Some(msg) = self.set_user(param) {
-            return Some(msg);
-        };
-        None
-    }
-
-    fn set_numprocs(&mut self, param: &Hash) -> Option<String> {
+    fn set_numprocs(param: &Hash, name: &str) -> Result<u8, String> {
         let numprocs_yaml = match param.get(&Yaml::String(String::from("numprocs"))) {
             Some(val) => val,
-            None => return None,
+            None => return Ok(1),
         };
         match numprocs_yaml.as_i64() {
             Some(n) => {
                 if n > 255 {
-                    Some(format!("Number of processes in program {} is above 255, found {}", self.name, n))
+                    Err(format!("Number of processes in program {} is above 255, found {}", name, n))
                 }
                 else if n < 1 {
-                    Some(format!("Number of processes in program {} is negative or null", self.name))
+                    Err(format!("Number of processes in program {} is negative or null", name))
                 }
                 else {
-                    self.numprocs = n as u8;
-                    None
+                    Ok(n as u8)
                 }
             }
-            None => Some(format!("Wrong format in the number of processes in program {}, expected value must range between 1 and 255", self.name)),
+            None => Err(format!("Wrong format in the number of processes in program {}, expected value must range between 1 and 255", name)),
         }
     }
 
-    fn set_priority(&mut self, param: &Hash) -> Option<String> {
+    fn set_priority(param: &Hash, name: &str) -> Result<u16, String> {
         let priority_yaml = match param.get(&Yaml::String(String::from("priority"))) {
             Some(val) => val,
-            None => return None,
+            None => return Ok(999),
         };
         match priority_yaml.as_i64() {
             Some(n) => {
                 if n > 999 {
-                    Some(format!(
+                    Err(format!(
                         "Priority in program {} is above 999, found {}",
-                        self.name, n
+                        name, n
                     ))
                 } else if n < 0 {
-                    Some(format!("Priority in program {} is negative", self.name))
+                    Err(format!("Priority in program {} is negative", name))
                 } else {
-                    self.priority = n as u16;
-                    None
+                    Ok(n as u16)
                 }
             }
-            None => Some(format!(
+            None => Err(format!(
                 "Wrong format priority in program {}, expected value must range between 0 and 999",
-                self.name
+                name
             )),
         }
     }
 
-    fn set_autostart(&mut self, param: &Hash) -> Option<String> {
+    fn set_autostart(param: &Hash, name: &str) -> Result<bool, String> {
         let autostart_yaml = match param.get(&Yaml::String(String::from("autostart"))) {
             Some(val) => val,
-            None => return None,
+            None => return Ok(true),
         };
         match autostart_yaml.as_bool() {
-            Some(val) => {
-                self.autostart = val;
-                None
-            }
-            None => Some(format!(
+            Some(val) => Ok(val),
+            None => Err(format!(
                 "Bad value for autostart in program {} detected, expecting boolean value",
-                self.name
+                name
             )),
         }
     }
 
-    fn set_startsecs(&mut self, param: &Hash) -> Option<String> {
+    fn set_startsecs(param: &Hash, name: &str) -> Result<u32, String> {
         let startsecs_yaml = match param.get(&Yaml::String(String::from("startsecs"))) {
             Some(val) => val,
-            None => return None,
+            None => return Ok(1),
         };
         match startsecs_yaml.as_i64() {
             Some(n) => {
                 if n > 4_294_967_295 {
-                    Some(format!("Value provided for number of startsecs in program {} is too high, maximum allowed value is 4 294 967 295, found {}", self.name, n))
+                    Err(format!("Value provided for number of startsecs in program {} is too high, maximum allowed value is 4 294 967 295, found {}", name, n))
                 } else if n < 0 {
-                    Some(format!(
+                    Err(format!(
                         "Value provided for number of startsecs in program {} is negative",
-                        self.name
+                        name
                     ))
                 } else {
-                    self.startsecs = n as u32;
-                    None
+                    Ok(n as u32)
                 }
             },
-            None =>  Some(format!("Value provided for number of startsecs in program {} not a valid signed 64 bits number", self.name))
+            None =>  Err(format!("Value provided for number of startsecs in program {} not a valid signed 64 bits number", name))
         }
     }
 
-    fn set_startretries(&mut self, param: &Hash) -> Option<String> {
+    fn set_startretries(param: &Hash, name: &str) -> Result<u8, String> {
         let startretries_yaml = match param.get(&Yaml::String(String::from("startretries"))) {
             Some(val) => val,
-            None => return None,
+            None => return Ok(3),
         };
         match startretries_yaml.as_i64() {
             Some(n) => {
                 if n > 255 {
-                    Some(format!("Value provided for number of startretries in program {} is too high, maximum allowed value is 255, found {}", self.name, n))
+                    Err(format!("Value provided for number of startretries in program {} is too high, maximum allowed value is 255, found {}", name, n))
                 } else if n < 0 {
-                    Some(format!(
+                    Err(format!(
                         "Value provided for number of startretries in program {} is negative",
-                        self.name
+                        name
                     ))
                 } else {
-                    self.startretries = n as u8;
-                    None
+                    Ok(n as u8)
                 }
             }
-            None => Some(format!(
+            None => Err(format!(
                 "Value provided for number of startretries in program {} not a valid number",
-                self.name
+                name
             )),
         }
     }
 
-    fn set_autorestart(&mut self, param: &Hash) -> Option<String> {
+    fn set_autorestart(param: &Hash, name: &str) -> Result<RestartState, String> {
         let autorestart_yaml = match param.get(&Yaml::String(String::from("autorestart"))) {
             Some(val) => val,
-            None => return None,
+            None => return Ok(RestartState::ALWAYS),
         };
         match autorestart_yaml.as_str() {
             Some(val) => {
                 if val == "always" {
-                    self.autorestart = RestartState::ALWAYS;
-                    None
+                    Ok(RestartState::ALWAYS)
                 } else if val == "onerror" {
-                    self.autorestart = RestartState::ONERROR;
-                    None
+                    Ok(RestartState::ONERROR)
                 } else if val == "never" {
-                    self.autorestart = RestartState::NEVER;
-                    None
+                    Ok(RestartState::NEVER)
                 } else {
-                    Some(format!("Value provided for autorestart in program {} is invalid, expected values are : \n\t- always\n\t- onerror\n\t- never", self.name))
+                    Err(format!("Value provided for autorestart in program {} is invalid, expected values are : \n\t- always\n\t- onerror\n\t- never", name))
                 }
             }
-            None => Some(format!(
+            None => Err(format!(
                 "Value provided for autorestart in program {} is not a valid string",
-                self.name
+                name
             )),
         }
     }
 
-    fn set_exitcodes(&mut self, param: &Hash) -> Option<String> {
+    fn set_exitcodes(param: &Hash, name: &str) -> Result<Vec<u8>, String> {
+        let mut codes: Vec<u8> = vec![];
         let exitcodes_vec_yaml = match param.get(&Yaml::String(String::from("exitcodes"))) {
             Some(arr) => arr,
-            None => return None,
+            None => return Ok(vec![0]),
         };
         let exitcodes_vec = match exitcodes_vec_yaml.as_vec() {
             Some(arr) => arr,
             None => {
-                return Some(format!(
+                return Err(format!(
                     "Value provided for exitcodes in program {} invalid, expected an array",
-                    self.name
+                    name
                 ))
             }
         };
-        self.exitcodes.clear();
         for code in exitcodes_vec.iter() {
             match code.as_i64() {
                 Some(n) => {
                     if n > 255 {
-                        return Some(format!("Value provided for exitcodes in program {} is not a valid number, maximum value is 255, found {}", self.name, n));
+                        return Err(format!("Value provided for exitcodes in program {} is not a valid number, maximum value is 255, found {}", name, n));
                     } else if n < 0 {
-                        return Some(format!(
+                        return Err(format!(
                             "Value provided for exitcodes in program {} is negative",
-                            self.name
+                            name
                         ));
                     } else {
                         let nu8 = n as u8;
-                        if !self.exitcodes.contains(&nu8) {
-                            self.exitcodes.push(nu8)
+                        if !codes.contains(&nu8) {
+                            codes.push(nu8)
                         }
                     }
                 }
                 None => {
-                    return Some(format!(
+                    return Err(format!(
                         "A value provided for exitcodes in program {} is not a valid number",
-                        self.name
+                        name
                     ))
                 }
             };
         }
-        None
+        Ok(codes)
     }
 
-    fn set_stopsignal(&mut self, param: &Hash) -> Option<String> {
+    fn set_stopsignal(param: &Hash, name: &str) -> Result<i32, String> {
         let stopsignal_yaml = match param.get(&Yaml::String(String::from("stopsignal"))) {
             Some(val) => val,
-            None => return None,
+            None => return Ok(libc::SIGTERM),
         };
         match stopsignal_yaml.as_str() {
             Some(val) => {
                 if val == "HUP" {
-                    self.stopsignal = libc::SIGHUP;
-                    None
+                    Ok(libc::SIGHUP)
                 } else if val == "USR1" {
-                    self.stopsignal = libc::SIGUSR1;
-                    None
+                    Ok(libc::SIGUSR1)
                 } else if val == "USR2" {
-                    self.stopsignal = libc::SIGUSR2;
-                    None
+                    Ok(libc::SIGUSR2)
                 } else if val == "TERM" {
-                    self.stopsignal = libc::SIGTERM;
-                    None
+                    Ok(libc::SIGTERM)
                 } else if val == "INT" {
-                    self.stopsignal = libc::SIGINT;
-                    None
+                    Ok(libc::SIGINT)
                 } else if val == "QUIT" {
-                    self.stopsignal = libc::SIGQUIT;
-                    None
+                    Ok(libc::SIGQUIT)
                 } else if val == "KILL" {
-                    self.stopsignal = libc::SIGKILL;
-                    None
+                    Ok(libc::SIGKILL)
                 } else {
-                    Some(format!("Value provided for autorestart in program {} is invalid, expected values are : \n\t- TERM\n\t- HUP\n\t- INT\n\t- QUIT\n\t- KILL\n\t- USR1\n\t- USR2", self.name))
+                    Err(format!("Value provided for autorestart in program {} is invalid, expected values are : \n\t- TERM\n\t- HUP\n\t- INT\n\t- QUIT\n\t- KILL\n\t- USR1\n\t- USR2", name))
                 }
             }
-            None => Some(format!(
+            None => Err(format!(
                 "Value provided for autorestart in program {} is not a valid string",
-                self.name
+                name
             )),
         }
     }
 
-    fn set_stopwaitsecs(&mut self, param: &Hash) -> Option<String> {
+    fn set_stopwaitsecs(param: &Hash, name: &str) -> Result<u32, String> {
         let stopwaitsecs_yaml = match param.get(&Yaml::String(String::from("stopwaitsecs"))) {
             Some(val) => val,
-            None => return None,
+            None => return Ok(3),
         };
         match stopwaitsecs_yaml.as_i64() {
             Some(n) => {
                 if n > 4_294_967_295 {
-                    Some(format!("Value provided for number of stopwaitsecs in program {} is too high, maximum allowed value is 4 294 967 295, found {}", self.name, n))
+                    Err(format!("Value provided for number of stopwaitsecs in program {} is too high, maximum allowed value is 4 294 967 295, found {}", name, n))
                 } else if n < 0 {
-                    Some(format!(
+                    Err(format!(
                         "Value provided for number of stopwaitsecs in program {} is negative",
-                        self.name
+                        name
                     ))
                 } else {
-                    self.stopwaitsecs = n as u32;
-                    None
+                    Ok(n as u32)
                 }
             },
-            None =>  Some(format!("Value provided for number of stopwaitsecs in program {} not a valid signed 64 bits number", self.name))
+            None =>  Err(format!("Value provided for number of stopwaitsecs in program {} not a valid signed 64 bits number", name))
         }
     }
 
-    fn set_stdoutlog(&mut self, param: &Hash) -> Option<String> {
+    fn set_stdoutlog(param: &Hash, name: &str) -> Result<bool, String> {
         let stdoutlog_yaml = match param.get(&Yaml::String(String::from("stdoutlog"))) {
             Some(val) => val,
-            None => return None,
+            None => return Ok(true),
         };
         match stdoutlog_yaml.as_bool() {
-            Some(val) => {
-                self.stdoutlog = val;
-                None
-            }
-            None => Some(format!(
+            Some(val) => Ok(val),
+            None => Err(format!(
                 "Bad value for stdoutlog in program {} detected, expecting boolean value",
-                self.name
+                name
             )),
         }
     }
 
-    fn set_stdoutlogpath(&mut self, param: &Hash) -> Option<String> {
+    fn set_stdoutlogpath(param: &Hash, name: &str) -> Result<Option<String>, String> {
         let stdoutlogpath_yaml = match param.get(&Yaml::String(String::from("stdoutlogpath"))) {
             Some(val) => val,
-            None => return None,
+            None => return Ok(None),
         };
         match stdoutlogpath_yaml.as_str() {
-            Some(val) => {
-                self.stdoutlogpath = Some(String::from(val));
-                None
-            }
-            None => Some(format!(
+            Some(val) => Ok(Some(String::from(val))),
+            None => Err(format!(
                 "Bad value for stdoutlogpath in program {} detected, expecting a string",
-                self.name
+                name
             )),
         }
     }
 
-    fn set_stderrlog(&mut self, param: &Hash) -> Option<String> {
+    fn set_stderrlog(param: &Hash, name: &str) -> Result<bool, String> {
         let stderrlog_yaml = match param.get(&Yaml::String(String::from("stderrlog"))) {
             Some(val) => val,
-            None => return None,
+            None => return Ok(true),
         };
         match stderrlog_yaml.as_bool() {
-            Some(val) => {
-                self.stderrlog = val;
-                None
-            }
-            None => Some(format!(
+            Some(val) => Ok(val),
+            None => Err(format!(
                 "Bad value for stderrlog in program {} detected, expecting boolean value",
-                self.name
+                name
             )),
         }
     }
 
-    fn set_stderrlogpath(&mut self, param: &Hash) -> Option<String> {
+    fn set_stderrlogpath(param: &Hash, name: &str) -> Result<Option<String>, String> {
         let stderrlogpath_yaml = match param.get(&Yaml::String(String::from("stderrlogpath"))) {
             Some(val) => val,
-            None => return None,
+            None => return Ok(None),
         };
         match stderrlogpath_yaml.as_str() {
-            Some(val) => {
-                self.stderrlogpath = Some(String::from(val));
-                None
-            }
-            None => Some(format!(
+            Some(val) => Ok(Some(String::from(val))),
+            None => Err(format!(
                 "Bad value for stderrlogpath in program {} detected, expecting a string",
-                self.name
+                name
             )),
         }
     }
 
-    fn set_env(&mut self, param: &Hash) -> Option<String> {
+    fn set_env(param: &Hash, name: &str) -> Result<Option<HashMap<String, String>>, String> {
         let env_hash_yaml = match param.get(&Yaml::String(String::from("env"))) {
             Some(arr) => arr,
-            None => return None,
+            None => return Ok(None),
         };
         let env_hash = match env_hash_yaml.as_hash() {
             Some(map) => map,
             None => {
-                return Some(format!(
+                return Err(format!(
                     "Value provided for env in program {} is invalid, expected a map",
-                    self.name
+                    name
                 ))
             }
         };
         if env_hash.is_empty() {
-            return None;
+            return Ok(None);
         }
         let mut new_env: HashMap<String, String> = HashMap::new();
         for (env_key, env_val) in env_hash.iter() {
             let key = match env_key.as_str() {
                 Some(k) => String::from(k),
                 None => {
-                    return Some(format!(
+                    return Err(format!(
                         "A key provided for env in program {} is not a valid string",
-                        self.name
+                        name
                     ))
                 }
             };
             let val = match env_val.as_str() {
                 Some(v) => String::from(v),
                 None => {
-                    return Some(format!(
+                    return Err(format!(
                         "Value provided for key {} in the env of program {} is not a valid string",
-                        key, self.name
+                        key, name
                     ))
                 }
             };
             new_env.insert(key, val);
         }
-        self.env = Some(new_env);
-        None
+        Ok(Some(new_env))
     }
 
-    fn set_workingdir(&mut self, param: &Hash) -> Option<String> {
+    fn set_workingdir(param: &Hash, name: &str) -> Result<Option<String>, String> {
         let workingdir_yaml = match param.get(&Yaml::String(String::from("workingdir"))) {
             Some(val) => val,
-            None => return None,
+            None => return Ok(None),
         };
         match workingdir_yaml.as_str() {
-            Some(val) => {
-                self.workingdir = Some(String::from(val));
-                None
-            }
-            None => Some(format!(
+            Some(val) => Ok(Some(String::from(val))),
+            None => Err(format!(
                 "Bad value for workingdir in program {} detected, expecting a string",
-                self.name
+                name
             )),
         }
     }
 
-    fn set_umask(&mut self, param: &Hash) -> Option<String> {
+    fn set_umask(param: &Hash, name: &str) -> Result<Option<u16>, String> {
         let umask_yaml = match param.get(&Yaml::String(String::from("umask"))) {
             Some(val) => val,
-            None => return None,
+            None => return Ok(None),
         };
         match umask_yaml.as_i64() {
             Some(n) => {
                 if n > 511 {
-                    Some(format!(
+                    Err(format!(
                         "Umask in program {} is not a valid octal umask, found {:#o}",
-                        self.name, n
+                        name, n
                     ))
                 } else if n < 0 {
-                    Some(format!("Umask in program {} is negative", self.name))
+                    Err(format!("Umask in program {} is negative", name))
                 } else {
-                    self.umask = Some(n as u16);
-                    None
+                    Ok(Some(n as u16))
                 }
             }
-            None => Some(format!(
+            None => Err(format!(
                 "Wrong format for umask in program {}, expected value must ba a valid octal number between 0o000 and 0o777",
-                self.name
+                name
             )),
         }
     }
 
-    fn set_user(&mut self, param: &Hash) -> Option<String> {
+    fn set_user(param: &Hash, name: &str) -> Result<Option<String>, String> {
         let user_yaml = match param.get(&Yaml::String(String::from("user"))) {
             Some(val) => val,
-            None => return None,
+            None => return Ok(None),
         };
         match user_yaml.as_str() {
-            Some(val) => {
-                self.user = Some(String::from(val));
-                None
-            }
-            None => Some(format!(
+            Some(val) => Ok(Some(String::from(val))),
+            None => Err(format!(
                 "Bad value for user in program {} detected, expecting a string",
-                self.name
+                name
             )),
         }
     }
