@@ -3,6 +3,8 @@ use std::{
     env,
     sync::{Arc, Mutex},
 };
+
+use taskmaster::process::{self};
 use taskmaster::{parsing, Program, Server};
 
 fn main() {
@@ -36,6 +38,7 @@ fn main() {
     drop(prog_map);
     println!("\n\nPriorities\n{priorities:?}");
     println!("\n\nServer\n{server:?}");
+    process::infinity(&priorities);
     println!("End");
 }
 

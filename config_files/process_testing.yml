@@ -1,17 +1,17 @@
 programs:
     exception:
-        command: /bin/sh -c "echo 32; sleep 5"
+        command: ls
         numprocs: 2
         retry: 3
         umask: 0o022
         exitcodes:
-            - 0
             - 1
-        autorestart: onerror
+        autorestart: never
+        startsecs: 0
         stopsignal: USR2
         priority: 3
     echoeing:
-        command: echo 1
+        command: pwd
         retry: 3
         umask: 0o027
         user: bdetune
@@ -20,11 +20,12 @@ programs:
             PATH: ""
             PATH: "/"
             pwd: "~"
+        autorestart: never
+        startsecs: 0
+    infinity&beyond:
+        command: cat
+        retry: 0
+        autorestart: never
+        startsecs: 3
 server:
-    unixsocket:
-        file: /mnt/nfs/homes/bdetune/taskmasterd.sock
-        chmod: 0o744
-        username: bdetune
-        chown: :user
-    logfile: /mnt/nfs/homes/bdetune/taskmaster.log
-    loglevel: ERRO
+    connection: Unix

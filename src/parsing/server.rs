@@ -4,6 +4,7 @@ mod sockets;
 
 pub use log::Log;
 pub use program::Program;
+pub use program::RestartState;
 pub use sockets::UnixSocket;
 use std::{
     collections::HashMap,

@@ -18,3 +18,10 @@ impl fmt::Display for Log {
         }
     }
 }
+
+impl Log {
+    pub fn log(level: Log, msg: String) {
+        // need to add a global to print only expected log
+        println!("{} {}", level, msg);
+    }
+}
