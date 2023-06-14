@@ -1,7 +1,6 @@
-use std::collections::HashMap;
-
 use nix::libc;
 use shlex;
+use std::collections::HashMap;
 use yaml_rust::{yaml::Hash, Yaml};
 
 #[derive(Debug)]
@@ -196,7 +195,7 @@ impl Program {
     fn set_autorestart(param: &Hash, name: &str) -> Result<RestartState, String> {
         let autorestart_yaml = match param.get(&Yaml::String(String::from("autorestart"))) {
             Some(val) => val,
-            None => return Ok(RestartState::ALWAYS),
+            None => return Ok(RestartState::ONERROR),
         };
         match autorestart_yaml.as_str() {
             Some(val) => {
