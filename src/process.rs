@@ -2,6 +2,7 @@ use crate::parsing::program::{Program, RestartState};
 use std::{
     collections::HashMap,
     convert::TryFrom,
+    fmt,
     io::Error,
     process::{Child, Command, ExitStatus},
     sync::{
@@ -31,6 +32,29 @@ pub struct Process {
     status: Status,               //status of the process (refer to enum Status)
     program: Arc<Mutex<Program>>, //associated program's fully parsed config
     count_restart: u8,            //number of time the program tried to restart
+}
+
+enum Log {
+    CRIT, //Fatal error of taskmaster (Panic, expect, mutex poisoning)
+    ERRO, //Unexepected issue (process going FATAL, cannot write log, ...)
+    INFO, //Basic information about process (spawn of process, status change, ...)
+    DEBG, //Print for debug of taskmaster itself only
+}
+
+impl fmt::Display for Log {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Log::CRIT => write!(f, "CRIT"),
+            Log::ERRO => write!(f, "ERRO"),
+            Log::INFO => write!(f, "INFO"),
+            Log::DEBG => write!(f, "DEBG"),
+        }
+    }
+}
+
+fn log(level: Log, msg: String) {
+    // need to add a global to print only expected log
+    println!("{} {}", level, msg);
 }
 
 impl Process {
@@ -64,17 +88,20 @@ impl Process {
             match command.spawn() {
                 Ok(handle) => {
                     self.pid = handle.id();
-                    println!("INFO spawned: {} with pid {}", self.name, self.pid);
+                    log(
+                        Log::INFO,
+                        format!("spawned: {} with pid {}", self.name, self.pid),
+                    );
                     return Ok(handle);
                 }
                 Err(er) => {
                     if self.count_restart < program.startretries {
                         self.count_restart += 1;
-                        println!("INFO restart: {} (cause : {er})", self.name);
+                        log(Log::INFO, format!("restart: {} (cause : {er})", self.name));
                         continue;
                     } else {
                         self.status = Status::FATAL;
-                        println!("INFO status: {} FATAL", self.name);
+                        log(Log::ERRO, format!("status: {} FATAL", self.name));
                         return Err(er);
                     }
                 }
@@ -89,17 +116,27 @@ impl Process {
         {
             return false;
         }
+        log(
+            Log::DEBG,
+            format!(
+                "{} in need_restart with status {:?}",
+                self.name, self.status
+            ),
+        );
         if let Ok(program) = self.program.lock() {
             if matches!(self.status, Status::BACKOFF) {
                 if self.count_restart < program.startretries {
                     // if can still retry restart
                     self.count_restart += 1;
-                    println!("INFO restart: {} (cause : BACKOFF)", self.name);
+                    log(
+                        Log::INFO,
+                        format!("restart: {} (cause : BACKOFF)", self.name),
+                    );
                     return true;
                 } else {
                     // else should go to FATAL
                     self.status = Status::FATAL;
-                    println!("INFO status: {} FATAL", self.name);
+                    log(Log::ERRO, format!("status: {} FATAL", self.name));
                     return false;
                 }
             } else if matches!(program.autorestart, RestartState::NEVER)
@@ -112,24 +149,27 @@ impl Process {
             {
                 // if no autorestart or expected exit dont restart
                 self.status = Status::EXITED;
-                println!("INFO status: {} EXITED", self.name);
+                log(Log::INFO, format!("status: {} EXITED", self.name));
                 return false;
             } else {
                 // else (autorestart always or unexpected exit) restart
                 self.status = Status::EXITED;
-                println!("INFO status: {} EXITED", self.name);
+                log(Log::INFO, format!("status: {} EXITED", self.name));
                 if matches!(program.autorestart, RestartState::ALWAYS) {
-                    println!("INFO restart: {} (cause : autorestart ALWAYS)", self.name);
+                    log(
+                        Log::INFO,
+                        format!("restart: {} (cause : autorestart ALWAYS)", self.name),
+                    );
                 } else {
-                    println!(
-                        "INFO restart: {} (cause : unexpected exit status)",
-                        self.name
+                    log(
+                        Log::INFO,
+                        format!("restart: {} (cause : unexpected exit status)", self.name),
                     );
                 }
                 return true;
             }
         } else {
-            println!("CRIT : Mutex was poisoned");
+            log(Log::CRIT, format!("mutex: Mutex was poisoned"));
             file!();
             line!();
             column!();
@@ -146,16 +186,17 @@ fn change_proc_status(proc_ref: &Arc<Mutex<Process>>) {
             if matches!(proc.status, Status::STOPPING) {
                 // if process was stopped manually
                 proc.status = Status::STOPPED;
-                println!("INFO status: {} STOPPED", proc.name);
+                log(Log::INFO, format!("status: {} STOPPED", proc.name));
             }
             if matches!(proc.status, Status::STARTING) {
+                // if process was starting
                 proc.status = Status::BACKOFF;
-                println!("INFO status: {} BACKOFF", proc.name);
+                log(Log::INFO, format!("status: {} BACKOFF", proc.name));
             }
         }
     } else {
         // error on mutex lock
-        println!("Mutex was poisoned");
+        log(Log::CRIT, format!("mutex: Mutex was poisoned"));
         file!();
         line!();
         column!();
@@ -174,14 +215,14 @@ fn check_exit_status(
             Ok(Some(status)) => {
                 // if it exited
                 *exit_status = Some(status);
-                println!("INFO exited: {name} ({status})");
+                log(Log::INFO, format!("exited: {name} ({status})"));
                 change_proc_status(proc_ref);
                 *process = None;
             }
             Ok(None) => {} // if it is still running
             Err(e) => {
                 // if we couldnt try_wait
-                println!("Error with child : {e}");
+                log(Log::ERRO, format!("try_wait failed : {e}"));
             }
         }
     }
@@ -194,7 +235,7 @@ fn check_timed_status(proc_ref: &Arc<Mutex<Process>>, process_handle: &mut Child
             if let Ok(program) = cloned.lock() {
                 if proc.start.elapsed() >= Duration::from_secs(program.startsecs as u64) {
                     proc.status = Status::RUNNING;
-                    println!("INFO status: {} RUNNING", proc.name);
+                    log(Log::INFO, format!("status: {} RUNNING", proc.name));
                 }
                 drop(program);
             };
@@ -203,8 +244,11 @@ fn check_timed_status(proc_ref: &Arc<Mutex<Process>>, process_handle: &mut Child
             process_handle.kill();
         }
     } else {
-        println!("Mutex was poisoned, exiting administrator");
-        return;
+        // error on mutex lock
+        log(Log::CRIT, format!("mutex: Mutex was poisoned"));
+        file!();
+        line!();
+        column!();
     }
 }
 
@@ -227,7 +271,7 @@ fn check_restart(proc_ref: &Arc<Mutex<Process>>, status: &ExitStatus, process: &
         drop(proc);
     } else {
         // error on mutex lock
-        println!("Mutex was poisoned");
+        log(Log::CRIT, format!("mutex: Mutex was poisoned"));
         file!();
         line!();
         column!();
@@ -245,7 +289,7 @@ fn first_start(proc_ref: &Arc<Mutex<Process>>, process: &mut Option<Child>) {
                         *process = Some(handle);
                     }
                     Err(e) => {
-                        println!("{e}");
+                        log(Log::ERRO, format!("start failed : {e}"));
                     }
                 }
             }
@@ -261,7 +305,7 @@ fn administrator(proc_ref: Arc<Mutex<Process>> /*, mut msg: AtomicUsize*/) {
         name = proc.name.clone();
         drop(proc);
     }
-    println!("INFO start: administrator of {name} started");
+    log(Log::INFO, format!("start: administrator of {name} started"));
     let mut process: Option<Child> = None;
     let mut exit_status: Option<ExitStatus> = None;
     loop {
@@ -297,6 +341,9 @@ pub fn infinity(programs: &HashMap<u16, Vec<Arc<Mutex<Program>>>>) {
     //(programs, priorities) = parsing(file);
     let mut priorities: Vec<&u16> = programs.keys().collect();
     priorities.sort();
+
+    println!("\n =-=-=-=-=-=-=-= CREATING EVERY ADMINISTRATOR AND PROCESS =-=-=-=-=-=-=-= \n");
+
     for key in priorities {
         let tmp = programs.get(key).expect("no value for this key");
         for prog in tmp {
