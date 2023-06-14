@@ -122,25 +122,7 @@ impl Process {
                 self.name, self.status
             ),
         );
-        log(
-            Log::DEBG,
-            format!(
-                "{} is trying to lock its program at {} {}",
-                self.name,
-                file!(),
-                line!()
-            ),
-        );
         if let Ok(program) = self.program.lock() {
-            log(
-                Log::DEBG,
-                format!(
-                    "{} has locked its program {} {}",
-                    self.name,
-                    file!(),
-                    line!()
-                ),
-            );
             if matches!(self.status, Status::BACKOFF) {
                 if self.count_restart < program.startretries {
                     // if can still retry restart
@@ -196,12 +178,12 @@ impl Process {
 }
 
 fn change_proc_status(proc_ref: &Arc<Mutex<Process>>) {
-    //log(Log::DEBG, format!("{} is trying to lock its process", name));
+    //log(Log::DEBG, format!("mutex: {} is trying to lock its process", name));
     if let Ok(mut proc) = proc_ref.lock() {
         log(
             Log::DEBG,
             format!(
-                "{} has locked its process {} {}",
+                "mutex: {} has locked its process {} {}",
                 proc.name,
                 file!(),
                 line!()
@@ -224,7 +206,7 @@ fn change_proc_status(proc_ref: &Arc<Mutex<Process>>) {
         log(
             Log::DEBG,
             format!(
-                "{} has unlocked its process {} {}",
+                "mutex: {} has unlocked its process {} {}",
                 proc.name,
                 file!(),
                 line!()
@@ -265,25 +247,25 @@ fn check_exit_status(
 }
 
 fn check_timed_status(proc_ref: &Arc<Mutex<Process>>, process_handle: &mut Child) {
-    //log(Log::DEBG, format!("{} is trying to lock its process", name));
+    //log(Log::DEBG, format!("mutex: {} is trying to lock its process", name));
     if let Ok(mut proc) = proc_ref.lock() {
-        // log(Log::DEBG,format!("{} has locked its process {} {}",proc.name,file!(),line!()),);
+        // log(Log::DEBG,format!("mutex: {} has locked its process {} {}",proc.name,file!(),line!()),);
         if matches!(proc.status, Status::STARTING) {
             let cloned = proc.program.clone();
-            // log(Log::DEBG,format!("{} is trying to lock its program", proc.name),);
+            // log(Log::DEBG,format!("mutex: {} is trying to lock its program", proc.name),);
             if let Ok(program) = cloned.lock() {
-                // log(Log::DEBG,format!("{} has locked its program {} {}",proc.name,file!(),line!()),);
+                // log(Log::DEBG,format!("mutex: {} has locked its program {} {}",proc.name,file!(),line!()),);
                 if proc.start.elapsed() >= Duration::from_secs(program.startsecs as u64) {
                     proc.status = Status::RUNNING;
                     log(Log::INFO, format!("status: {} RUNNING", proc.name));
                 }
-                // log(Log::DEBG,format!("{} has unlocked its program {} {}",proc.name,file!(),line!()),);
+                // log(Log::DEBG,format!("mutex: {} has unlocked its program {} {}",proc.name,file!(),line!()),);
             };
         } else if matches!(proc.status, Status::STOPPING) {
             /* if start_of_stop > proc.program.stopwaitsecs */
             process_handle.kill();
         }
-    // log(Log::DEBG,format!("{} has unlocked its process {} {}",proc.name,file!(),line!()),);
+    // log(Log::DEBG,format!("mutex: {} has unlocked its process {} {}",proc.name,file!(),line!()),);
     } else {
         // error on mutex lock
         log(Log::CRIT, format!("mutex: Mutex was poisoned"));
@@ -291,14 +273,14 @@ fn check_timed_status(proc_ref: &Arc<Mutex<Process>>, process_handle: &mut Child
 }
 
 fn check_restart(proc_ref: &Arc<Mutex<Process>>, status: &ExitStatus, process: &mut Option<Child>) {
-    // log(Log::DEBG, format!("{} is trying to lock its process", name));
+    // log(Log::DEBG, format!("mutex: {} is trying to lock its process", name));
     if let Ok(mut proc) = proc_ref.lock() {
-        // log(Log::DEBG,format!("{} has locked its process {} {}",proc.name,file!(),line!()),);
+        // log(Log::DEBG,format!("mutex: {} has locked its process {} {}",proc.name,file!(),line!()),);
         if proc.need_restart(*status) {
             log(
                 Log::DEBG,
                 format!(
-                    "{} has unlocked its program {} {}",
+                    "mutex: {} has unlocked its program {} {}",
                     proc.name,
                     file!(),
                     line!()
@@ -317,9 +299,9 @@ fn check_restart(proc_ref: &Arc<Mutex<Process>>, status: &ExitStatus, process: &
                 }
             };
         } else {
-            // log(Log::DEBG,format!("{} has unlocked its program {} {}",proc.name,file!(),line!()),);
+            // log(Log::DEBG,format!("mutex: {} has unlocked its program {} {}",proc.name,file!(),line!()),);
         } // if need to restart
-          // log(Log::DEBG,format!("{} has unlocked its process {} {}",proc.name,file!(),line!()),);
+          // log(Log::DEBG,format!("mutex: {} has unlocked its process {} {}",proc.name,file!(),line!()),);
         drop(proc);
     } else {
         // error on mutex lock
@@ -331,12 +313,12 @@ fn check_restart(proc_ref: &Arc<Mutex<Process>>, status: &ExitStatus, process: &
 }
 
 fn first_start(proc_ref: &Arc<Mutex<Process>>, process: &mut Option<Child>) {
-    //log(Log::DEBG, format!("{} is trying to lock its process", name));
+    //log(Log::DEBG, format!("mutex: {} is trying to lock its process", name));
     if let Ok(mut proc) = proc_ref.lock() {
         log(
             Log::DEBG,
             format!(
-                "{} has locked its process {} {}",
+                "mutex: {} has locked its process {} {}",
                 proc.name,
                 file!(),
                 line!()
@@ -345,13 +327,13 @@ fn first_start(proc_ref: &Arc<Mutex<Process>>, process: &mut Option<Child>) {
         let cloned = proc.program.clone();
         log(
             Log::DEBG,
-            format!("{} is trying to locke its program", proc.name),
+            format!("mutex: {} is trying to locke its program", proc.name),
         );
         if let Ok(program) = cloned.lock() {
             log(
                 Log::DEBG,
                 format!(
-                    "{} has locked its program {} {}",
+                    "mutex: {} has locked its program {} {}",
                     proc.name,
                     file!(),
                     line!()
@@ -371,7 +353,7 @@ fn first_start(proc_ref: &Arc<Mutex<Process>>, process: &mut Option<Child>) {
             log(
                 Log::DEBG,
                 format!(
-                    "{} has unlocked its program {} {}",
+                    "mutex: {} has unlocked its program {} {}",
                     proc.name,
                     file!(),
                     line!()
@@ -381,7 +363,7 @@ fn first_start(proc_ref: &Arc<Mutex<Process>>, process: &mut Option<Child>) {
         log(
             Log::DEBG,
             format!(
-                "{} has unlocked its process {} {}",
+                "mutex: {} has unlocked its process {} {}",
                 proc.name,
                 file!(),
                 line!()
