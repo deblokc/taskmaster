@@ -6,7 +6,7 @@ use std::{
     process::{Child, Command, ExitStatus},
     sync::{
         atomic::{AtomicUsize, Ordering},
-        Arc, Mutex,
+        Arc, Mutex, MutexGuard,
     },
     thread,
     time::{Duration, Instant},
@@ -50,41 +50,27 @@ impl Process {
         }
     }
 
-    fn start(&mut self) -> Result<Child, Error> {
-        let mut command: &mut Command;
-        if let Ok(mut program) = self.program.lock() {
-            command = &mut Command::new(program.command.clone());
-        } else {
-            println!("Mutex was poisoned");
-            file!();
-            line!();
-            column!();
-        }
+    fn start(&mut self, program: &MutexGuard<'_, Program>) -> Result<Child, Error> {
+        //let program = self.program.lock().expect("mutex poisoned");
+        let mut command = Command::new(program.command.clone());
         self.status = Status::STARTING;
         self.start = Instant::now();
         loop {
-            if let Ok(mut program) = self.program.lock() {
-                println!("Starting process with {}", program.command);
-                match command.spawn() {
-                    Ok(handle) => {
-                        return Ok(handle);
-                    }
-                    Err(er) => {
-                        if self.count_restart < program.startretries {
-                            self.count_restart += 1;
-                            println!("{er}");
-                            continue;
-                        } else {
-                            self.status = Status::FATAL;
-                            return Err(er);
-                        }
+            println!("Starting process with {}", program.command);
+            match command.spawn() {
+                Ok(handle) => {
+                    return Ok(handle);
+                }
+                Err(er) => {
+                    if self.count_restart < program.startretries {
+                        self.count_restart += 1;
+                        println!("{er}");
+                        continue;
+                    } else {
+                        self.status = Status::FATAL;
+                        return Err(er);
                     }
                 }
-            } else {
-                println!("Mutex was poisoned");
-                file!();
-                line!();
-                column!();
             }
         }
     }
@@ -93,7 +79,7 @@ impl Process {
         if matches!(self.status, Status::STOPPED) || matches!(self.status, Status::FATAL) {
             return false;
         }
-        if let Ok(mut program) = self.program.lock() {
+        if let Ok(program) = self.program.lock() {
             if matches!(self.status, Status::BACKOFF) {
                 if self.count_restart < program.startretries {
                     // if can still retry restart
@@ -178,11 +164,13 @@ fn check_exit_status(
 fn check_timed_status(proc_ref: &Arc<Mutex<Process>>, process_handle: &mut Child) {
     if let Ok(mut proc) = proc_ref.lock() {
         if matches!(proc.status, Status::STARTING) {
-            if let Ok(program) = proc.program.lock() {
-                if proc.start.elapsed() >= Duration::from_secs(program.startsecs.into()) {
+            let cloned = proc.program.clone();
+            if let Ok(program) = cloned.lock() {
+                if proc.start.elapsed() >= Duration::from_secs(program.startsecs as u64) {
                     proc.status = Status::RUNNING;
                 }
-            }
+                drop(program);
+            };
         } else if matches!(proc.status, Status::STOPPING) {
             /* if start_of_stop > proc.program.stopwaitsecs */
             process_handle.kill();
@@ -194,6 +182,13 @@ fn check_timed_status(proc_ref: &Arc<Mutex<Process>>, process_handle: &mut Child
 }
 
 fn administrator(proc_ref: Arc<Mutex<Process>> /*, mut msg: AtomicUsize*/) {
+    let name: String;
+    {
+        let proc = proc_ref.lock().expect("could not fail ?");
+        name = proc.name.clone();
+        drop(proc);
+    }
+    println!("administrating {name}");
     let mut process: Option<Child> = None;
     let mut exit_status: Option<ExitStatus> = None;
     loop {
@@ -213,15 +208,19 @@ fn administrator(proc_ref: Arc<Mutex<Process>> /*, mut msg: AtomicUsize*/) {
             if let Some(status) = exit_status {
                 if let Ok(mut proc) = proc_ref.lock() {
                     if proc.need_restart(status) {
-                        match proc.start() {
-                            Ok(handle) => {
-                                process = Some(handle);
+                        let cloned = proc.program.clone();
+                        if let Ok(program) = cloned.lock() {
+                            match proc.start(&program) {
+                                Ok(handle) => {
+                                    process = Some(handle);
+                                }
+                                Err(e) => {
+                                    println!("{e}");
+                                }
                             }
-                            Err(e) => {
-                                println!("{e}");
-                            }
-                        }
+                        };
                     } // if need to restart
+                    drop(proc);
                 } else {
                     // error on mutex lock
                     println!("Mutex was poisoned");
@@ -233,10 +232,13 @@ fn administrator(proc_ref: Arc<Mutex<Process>> /*, mut msg: AtomicUsize*/) {
         } else {
             // if process never ran
             if let Ok(mut proc) = proc_ref.lock() {
-                if let Ok(mut program) = proc.program.lock() {
+                let cloned = proc.program.clone();
+                println!("{name} is about to lock the cloned");
+                if let Ok(program) = cloned.lock() {
+                    println!("{name} as locked the cloned");
                     if program.autostart && !matches!(proc.status, Status::FATAL) {
                         // if process need to start (autostart = true)
-                        match proc.start() {
+                        match proc.start(&program) {
                             Ok(handle) => {
                                 process = Some(handle);
                             }
@@ -245,13 +247,15 @@ fn administrator(proc_ref: Arc<Mutex<Process>> /*, mut msg: AtomicUsize*/) {
                             }
                         }
                     }
-                }
+                    drop(program);
+                    println!("{name} unlocked the cloned");
+                };
             }
         }
     }
 }
 
-pub fn infinity(programs: &HashMap<u16, Vec<Arc<Program>>>) {
+pub fn infinity(programs: &HashMap<u16, Vec<Arc<Mutex<Program>>>>) {
     //    let mut programs: HashMap<u16, Vec<&Program>> = HashMap::new();
     let mut process: HashMap<String, Arc<Mutex<Process>>> = HashMap::new();
     let mut thread: Vec<thread::JoinHandle<()>> = Vec::new();
@@ -263,36 +267,40 @@ pub fn infinity(programs: &HashMap<u16, Vec<Arc<Program>>>) {
     for key in priorities {
         let tmp = programs.get(key).expect("no value for this key");
         for prog in tmp {
-            if prog.numprocs == 1 {
-                let current = Arc::new(Mutex::new(Process::new(
-                    prog.name.clone(),
-                    Arc::clone(prog),
-                ))); //Mutex::new(Process::new(prog.name.clone(), prog)));
-                process.insert(prog.name.clone(), Arc::clone(&current));
-                // if only one process use the name given
-                thread.push(thread::spawn(move || administrator(current)));
-                // Arc<Mutex<Process>>
-            } else {
-                for i in 0..prog.numprocs {
+            println!("\n\nprog : {:?}", prog);
+            if let Ok(program) = prog.lock() {
+                if program.numprocs == 1 {
                     let current = Arc::new(Mutex::new(Process::new(
-                        prog.name.clone() + &i.to_string(),
+                        program.name.clone(),
                         Arc::clone(prog),
-                    )));
-                    process.insert(prog.name.clone() + &i.to_string(), Arc::clone(&current));
-                    // if multiple process add number after
+                    ))); //Mutex::new(Process::new(prog.name.clone(), prog)));
+                    process.insert(program.name.clone(), Arc::clone(&current));
+                    // if only one process use the name given
                     thread.push(thread::spawn(move || administrator(current)));
+                    // Arc<Mutex<Process>>
+                } else {
+                    for i in 0..program.numprocs {
+                        let current = Arc::new(Mutex::new(Process::new(
+                            program.name.clone() + &i.to_string(),
+                            Arc::clone(prog),
+                        )));
+                        process.insert(program.name.clone() + &i.to_string(), Arc::clone(&current));
+                        // if multiple process add number after
+                        thread.push(thread::spawn(move || administrator(current)));
+                    }
                 }
+                // Create process and insert them in the map with name as key
             }
-            // Create process and insert them in the map with name as key
         }
     }
+    println!("\n =-=-=-=-=-=-=-= CREATED EVERY ADMINISTRATOR NOW MONITORING =-=-=-=-=-=-=-=-= \n");
     // }
     loop {
         for (procname, procmut) in &process {
             println!("{procname}");
             {
                 if let Ok(proc) = procmut.lock() {
-                    eprintln!("{:?}", proc.status);
+                    println!("{:?}", proc.status);
                 } else {
                     println!("Mutex was poisoned");
                 }
