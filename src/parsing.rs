@@ -1,13 +1,9 @@
 pub mod server;
 
-// extern crate yaml_rust;
-use std::{collections::HashMap, fs::File, io::Read};
-// use std::io;
 use server::Program;
 use std::sync::{Arc, Mutex};
-use yaml_rust::{yaml::Hash, Yaml, YamlLoader};
-
-
+use std::{collections::HashMap, fs::File, io::Read};
+use yaml_rust::{yaml::Hash, YamlLoader};
 
 pub fn get_file_content(filename: Option<String>) -> Result<String, String> {
     let filename = match filename {
@@ -65,11 +61,3 @@ pub fn order_priorities(
     }
     priorities
 }
-
-pub fn parse_server(map: &Hash) -> {
-    let server = match map.get(&Yaml::String(String::from("server"))) {
-        None => return Ok(HashMap::new()),
-        Some(progs) => progs,
-    };
-}
- 

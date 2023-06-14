@@ -1,30 +1,43 @@
+mod log;
 mod program;
 mod sockets;
 
+pub use log::Log;
 pub use program::Program;
 pub use sockets::UnixSocket;
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 use yaml_rust::{yaml::Hash, Yaml};
 
-type program_list = Arc<Mutex<HashMap<String, Arc<Mutex<Program>>>>>;
+pub type ProgramMap = Arc<Mutex<HashMap<String, Arc<Mutex<Program>>>>>;
 
 #[derive(Debug)]
 pub struct Server {
+    pub programs: ProgramMap,
     pub unixsocket: Option<UnixSocket>,
-    pub programs: program_list,
+    pub logfile: String,
+    pub logfile_maxbytes: u64,
+    pub logfile_backups: u8,
+    pub loglevel: Log,
 }
 
 impl Server {
-    fn new() -> Self {
-        Server {
-            unixsocket: None,
+    fn default(map: &Hash) -> Result<Self, String> {
+        Ok(Server {
             programs: Server::get_programs(map)?,
-        }
+            unixsocket: None,
+            logfile: String::from("taskmaster.log"),
+            logfile_maxbytes: (5 * 1024 * 1024),
+            logfile_backups: 5,
+            loglevel: Log::INFO,
+        })
     }
 
     pub fn create(map: &Hash) -> Result<Self, String> {
         let server_yaml = match map.get(&Yaml::String(String::from("server"))) {
-            None => return Ok(Server::new()),
+            None => return Server::default(map),
             Some(server) => server,
         };
         let server = match server_yaml.as_hash() {
@@ -36,16 +49,98 @@ impl Server {
             }
         };
         Ok(Server {
-            unixsocket: UnixSocket::create(server)?,
             programs: Server::get_programs(map)?,
+            unixsocket: UnixSocket::create(server)?,
+            logfile: Server::set_logfile(server)?,
+            logfile_maxbytes: Server::set_logfile_maxbytes(server)?,
+            logfile_backups: Server::set_logfile_backups(server)?,
+            loglevel: Server::set_loglevel(server)?,
         })
     }
 
-    fn get_programs(
-        map: &Hash,
-    ) -> Result<Arc<Mutex<HashMap<String, Arc<Mutex<Program>>>>>, String> {
+    fn set_logfile(server: &Hash) -> Result<String, String> {
+        let logfile = match server.get(&Yaml::String(String::from("logfile"))) {
+            None => return Ok(String::from("taskmaster.log")),
+            Some(val) => val,
+        };
+        match logfile.as_str() {
+            None => Err(format!("Error in server block, logfile is not a String")),
+            Some(val) => Ok(val.to_string()),
+        }
+    }
+
+    fn set_logfile_maxbytes(server: &Hash) -> Result<u64, String> {
+        let logfile_maxbytes = match server.get(&Yaml::String(String::from("logfile_maxbytes"))) {
+            None => return Ok(5 * 1024 * 1024),
+            Some(val) => val,
+        };
+        match logfile_maxbytes.as_i64() {
+            None => Err(format!(
+                "Error in server block, logfile_maxbytes is not a number"
+            )),
+            Some(val) => {
+                if val < 0 {
+                    Err(format!(
+                        "Error in server block, logfile_maxbytes must be a positive number"
+                    ))
+                } else {
+                    Ok(val as u64)
+                }
+            }
+        }
+    }
+
+    fn set_logfile_backups(server: &Hash) -> Result<u8, String> {
+        let logfile_maxbytes = match server.get(&Yaml::String(String::from("logfile_backups"))) {
+            None => return Ok(5),
+            Some(val) => val,
+        };
+        match logfile_maxbytes.as_i64() {
+            None => Err(format!(
+                "Error in server block, logfile_backups is not a number"
+            )),
+            Some(val) => {
+                if val < 0 {
+                    Err(format!(
+                        "Error in server block, logfile_backups must be a positive number"
+                    ))
+                } else if val > 255 {
+                    Err(format!(
+                        "Error in server block, logfile_backups cannot be over 255, found {val}"
+                    ))
+                } else {
+                    Ok(val as u8)
+                }
+            }
+        }
+    }
+
+    fn set_loglevel(server: &Hash) -> Result<Log, String> {
+        let loglevel = match server.get(&Yaml::String(String::from("loglevel"))) {
+            None => return Ok(Log::INFO),
+            Some(val) => val,
+        };
+        match loglevel.as_str() {
+            None => Err(format!("Error in server block, loglevel is not a String")),
+            Some(val) => {
+                if val == "CRIT" {
+                    Ok(Log::CRIT)
+                } else if val == "ERRO" {
+                    Ok(Log::ERRO)
+                } else if val == "INFO" {
+                    Ok(Log::INFO)
+                } else if val == "DEBG" {
+                    Ok(Log::DEBG)
+                } else {
+                    Err(format!("Value provided for loglevel is invalid, expected values are : \n\t- CRIT\n\t- ERRO\n\t- INFO\n\t- DEBG"))
+                }
+            }
+        }
+    }
+
+    fn get_programs(map: &Hash) -> Result<ProgramMap, String> {
         let programs = match map.get(&Yaml::String(String::from("programs"))) {
-            None => return Ok(HashMap::new()),
+            None => return Ok(Arc::new(Mutex::new(HashMap::new()))),
             Some(progs) => progs,
         };
         let programs_map = match programs.as_hash() {

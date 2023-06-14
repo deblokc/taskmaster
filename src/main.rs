@@ -3,7 +3,7 @@ use std::{
     env,
     sync::{Arc, Mutex},
 };
-use taskmaster::parsing::{self, program::Program};
+use taskmaster::{parsing, Program, Server};
 
 fn main() {
     let mut args = env::args();
@@ -23,17 +23,19 @@ fn main() {
         }
         Ok(c) => c,
     };
-    let programs = match parsing::get_programs(&parsed) {
-        Ok(p) => Mutex::new(p),
+    let server = match Server::create(&parsed) {
+        Ok(val) => val,
         Err(msg) => {
             eprintln!("{msg}");
             return;
         }
     };
-    let prog_map = programs.lock().expect("Cannot acquire mutex");
+    let prog_map = server.programs.lock().expect("Cannot acquire mutex");
     let priorities: HashMap<u16, Vec<Arc<Mutex<Program>>>> = parsing::order_priorities(&prog_map);
     print_programs(&prog_map);
+    drop(prog_map);
     println!("\n\nPriorities\n{priorities:?}");
+    println!("\n\nServer\n{server:?}");
     println!("End");
 }
 
