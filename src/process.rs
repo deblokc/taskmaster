@@ -25,16 +25,16 @@ enum Status {
 
 #[derive(Debug)]
 pub struct Process {
-    name: String,          //name of the process
-    pid: u32,              //pid of the process
-    start: Instant,        //process's starting timestamp
-    status: Status,        //status of the process (refer to enum Status)
-    program: Arc<Program>, //associated program's fully parsed config
-    count_restart: u8,     //number of time the program tried to restart
+    name: String,                 //name of the process
+    pid: u32,                     //pid of the process
+    start: Instant,               //process's starting timestamp
+    status: Status,               //status of the process (refer to enum Status)
+    program: Arc<Mutex<Program>>, //associated program's fully parsed config
+    count_restart: u8,            //number of time the program tried to restart
 }
 
 impl Process {
-    fn new(name: String, program: Arc<Program>) -> Process {
+    fn new(name: String, program: Arc<Mutex<Program>>) -> Process {
         let pid = 0;
         let start = Instant::now();
         let status = Status::STARTING;
@@ -51,26 +51,40 @@ impl Process {
     }
 
     fn start(&mut self) -> Result<Child, Error> {
-        let command = &mut Command::new(self.program.command.clone());
-
+        let mut command: &mut Command;
+        if let Ok(mut program) = self.program.lock() {
+            command = &mut Command::new(program.command.clone());
+        } else {
+            println!("Mutex was poisoned");
+            file!();
+            line!();
+            column!();
+        }
         self.status = Status::STARTING;
         self.start = Instant::now();
         loop {
-            println!("Starting process with {}", self.program.command);
-            match command.spawn() {
-                Ok(handle) => {
-                    return Ok(handle);
-                }
-                Err(er) => {
-                    if self.count_restart < self.program.startretries {
-                        self.count_restart += 1;
-                        println!("{er}");
-                        continue;
-                    } else {
-                        self.status = Status::FATAL;
-                        return Err(er);
+            if let Ok(mut program) = self.program.lock() {
+                println!("Starting process with {}", program.command);
+                match command.spawn() {
+                    Ok(handle) => {
+                        return Ok(handle);
+                    }
+                    Err(er) => {
+                        if self.count_restart < program.startretries {
+                            self.count_restart += 1;
+                            println!("{er}");
+                            continue;
+                        } else {
+                            self.status = Status::FATAL;
+                            return Err(er);
+                        }
                     }
                 }
+            } else {
+                println!("Mutex was poisoned");
+                file!();
+                line!();
+                column!();
             }
         }
     }
@@ -79,31 +93,39 @@ impl Process {
         if matches!(self.status, Status::STOPPED) || matches!(self.status, Status::FATAL) {
             return false;
         }
-        if matches!(self.status, Status::BACKOFF) {
-            if self.count_restart < self.program.startretries {
-                // if can still retry restart
-                self.count_restart += 1;
-                return true;
-            } else {
-                // else should go to FATAL
-                self.status = Status::FATAL;
+        if let Ok(mut program) = self.program.lock() {
+            if matches!(self.status, Status::BACKOFF) {
+                if self.count_restart < program.startretries {
+                    // if can still retry restart
+                    self.count_restart += 1;
+                    return true;
+                } else {
+                    // else should go to FATAL
+                    self.status = Status::FATAL;
+                    return false;
+                }
+            } else if matches!(program.autorestart, RestartState::NEVER)
+                || (matches!(program.autorestart, RestartState::ONERROR)
+                    && program.exitcodes.contains(
+                        &(u8::try_from(exit_status.code().expect("no exit status"))
+                            .ok()
+                            .expect("could not convert")),
+                    ))
+            {
+                // if no autorestart or expected exit dont restart
+                self.status = Status::EXITED;
                 return false;
+            } else {
+                // else (autorestart always or unexpected exit) restart
+                self.status = Status::EXITED;
+                return true;
             }
-        } else if matches!(self.program.autorestart, RestartState::NEVER)
-            || (matches!(self.program.autorestart, RestartState::ONERROR)
-                && self.program.exitcodes.contains(
-                    &(u8::try_from(exit_status.code().expect("no exit status"))
-                        .ok()
-                        .expect("could not convert")),
-                ))
-        {
-            // if no autorestart or expected exit dont restart
-            self.status = Status::EXITED;
-            return false;
         } else {
-            // else (autorestart always or unexpected exit) restart
-            self.status = Status::EXITED;
-            return true;
+            println!("Mutex was poisoned");
+            file!();
+            line!();
+            column!();
+            return false;
         }
     }
 }
@@ -153,6 +175,24 @@ fn check_exit_status(
     }
 }
 
+fn check_timed_status(proc_ref: &Arc<Mutex<Process>>, process_handle: &mut Child) {
+    if let Ok(mut proc) = proc_ref.lock() {
+        if matches!(proc.status, Status::STARTING) {
+            if let Ok(program) = proc.program.lock() {
+                if proc.start.elapsed() >= Duration::from_secs(program.startsecs.into()) {
+                    proc.status = Status::RUNNING;
+                }
+            }
+        } else if matches!(proc.status, Status::STOPPING) {
+            /* if start_of_stop > proc.program.stopwaitsecs */
+            process_handle.kill();
+        }
+    } else {
+        println!("Mutex was poisoned, exiting administrator");
+        return;
+    }
+}
+
 fn administrator(proc_ref: Arc<Mutex<Process>> /*, mut msg: AtomicUsize*/) {
     let mut process: Option<Child> = None;
     let mut exit_status: Option<ExitStatus> = None;
@@ -166,21 +206,7 @@ fn administrator(proc_ref: Arc<Mutex<Process>> /*, mut msg: AtomicUsize*/) {
             // if we have a process
             check_exit_status(&proc_ref, &mut process, &mut exit_status);
             if let Some(ref mut process_handle) = process {
-                if let Ok(mut proc) = proc_ref.lock() {
-                    if matches!(proc.status, Status::STARTING) {
-                        if proc.start.elapsed()
-                            >= Duration::from_secs(proc.program.startsecs.into())
-                        {
-                            proc.status = Status::RUNNING;
-                        }
-                    } else if matches!(proc.status, Status::STOPPING) {
-                        /* if start_of_stop > proc.program.stopwaitsecs */
-                        process_handle.kill();
-                    }
-                } else {
-                    println!("Mutex was poisoned, exiting administrator");
-                    return;
-                }
+                check_timed_status(&proc_ref, process_handle);
             }
         } else if exit_status.is_some() {
             // if process ran and exited
@@ -207,14 +233,16 @@ fn administrator(proc_ref: Arc<Mutex<Process>> /*, mut msg: AtomicUsize*/) {
         } else {
             // if process never ran
             if let Ok(mut proc) = proc_ref.lock() {
-                if proc.program.autostart && !matches!(proc.status, Status::FATAL) {
-                    // if process need to start (autostart = true)
-                    match proc.start() {
-                        Ok(handle) => {
-                            process = Some(handle);
-                        }
-                        Err(e) => {
-                            println!("{e}");
+                if let Ok(mut program) = proc.program.lock() {
+                    if program.autostart && !matches!(proc.status, Status::FATAL) {
+                        // if process need to start (autostart = true)
+                        match proc.start() {
+                            Ok(handle) => {
+                                process = Some(handle);
+                            }
+                            Err(e) => {
+                                println!("{e}");
+                            }
                         }
                     }
                 }
