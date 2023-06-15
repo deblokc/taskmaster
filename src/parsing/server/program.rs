@@ -3,14 +3,14 @@ use shlex;
 use std::collections::HashMap;
 use yaml_rust::{yaml::Hash, Yaml};
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum RestartState {
     ALWAYS,
     ONERROR,
     NEVER,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Program {
     pub name: String,
     pub command: String,

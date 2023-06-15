@@ -50,7 +50,7 @@ impl Process {
         }
     }
 
-    fn start(&mut self, program: &MutexGuard<'_, Program>) -> Result<Child, Error> {
+    fn start(&mut self, program: &Program) -> Result<Child, Error> {
         let mut command = Command::new(program.command.clone());
 
         if let Some(arguments) = &program.args {
@@ -84,7 +84,7 @@ impl Process {
         }
     }
 
-    fn need_restart(&mut self, exit_status: ExitStatus) -> bool {
+    fn need_restart(&mut self, exit_status: ExitStatus, program: &Program) -> bool {
         if matches!(self.status, Status::STOPPED)
             || matches!(self.status, Status::FATAL)
             || matches!(self.status, Status::EXITED)
@@ -98,57 +98,49 @@ impl Process {
                 self.name, self.status
             ),
         );
-        if let Ok(program) = self.program.lock() {
-            if matches!(self.status, Status::BACKOFF) {
-                if self.count_restart < program.startretries {
-                    // if can still retry restart
-                    self.count_restart += 1;
-                    Log::log(
-                        Log::INFO,
-                        format!("restart: {} (cause : BACKOFF)", self.name),
-                    );
-                    return true;
-                } else {
-                    // else should go to FATAL
-                    self.status = Status::FATAL;
-                    Log::log(Log::ERRO, format!("status: {} FATAL", self.name));
-                    return false;
-                }
-            } else if matches!(program.autorestart, RestartState::NEVER)
-                || (matches!(program.autorestart, RestartState::ONERROR)
-                    && program.exitcodes.contains(
-                        &(u8::try_from(exit_status.code().expect("no exit status"))
-                            .ok()
-                            .expect("could not convert")),
-                    ))
-            {
-                // if no autorestart or expected exit dont restart
-                self.status = Status::EXITED;
-                Log::log(Log::INFO, format!("status: {} EXITED", self.name));
-                return false;
-            } else {
-                // else (autorestart always or unexpected exit) restart
-                self.status = Status::EXITED;
-                Log::log(Log::INFO, format!("status: {} EXITED", self.name));
-                if matches!(program.autorestart, RestartState::ALWAYS) {
-                    Log::log(
-                        Log::INFO,
-                        format!("restart: {} (cause : autorestart ALWAYS)", self.name),
-                    );
-                } else {
-                    Log::log(
-                        Log::INFO,
-                        format!("restart: {} (cause : unexpected exit status)", self.name),
-                    );
-                }
+        if matches!(self.status, Status::BACKOFF) {
+            if self.count_restart < program.startretries {
+                // if can still retry restart
+                self.count_restart += 1;
+                Log::log(
+                    Log::INFO,
+                    format!("restart: {} (cause : BACKOFF)", self.name),
+                );
                 return true;
+            } else {
+                // else should go to FATAL
+                self.status = Status::FATAL;
+                Log::log(Log::ERRO, format!("status: {} FATAL", self.name));
+                return false;
             }
-        } else {
-            Log::log(Log::CRIT, format!("mutex: Mutex was poisoned"));
-            file!();
-            line!();
-            column!();
+        } else if matches!(program.autorestart, RestartState::NEVER)
+            || (matches!(program.autorestart, RestartState::ONERROR)
+                && program.exitcodes.contains(
+                    &(u8::try_from(exit_status.code().expect("no exit status"))
+                        .ok()
+                        .expect("could not convert")),
+                ))
+        {
+            // if no autorestart or expected exit dont restart
+            self.status = Status::EXITED;
+            Log::log(Log::INFO, format!("status: {} EXITED", self.name));
             return false;
+        } else {
+            // else (autorestart always or unexpected exit) restart
+            self.status = Status::EXITED;
+            Log::log(Log::INFO, format!("status: {} EXITED", self.name));
+            if matches!(program.autorestart, RestartState::ALWAYS) {
+                Log::log(
+                    Log::INFO,
+                    format!("restart: {} (cause : autorestart ALWAYS)", self.name),
+                );
+            } else {
+                Log::log(
+                    Log::INFO,
+                    format!("restart: {} (cause : unexpected exit status)", self.name),
+                );
+            }
+            return true;
         }
     }
 }
@@ -222,21 +214,19 @@ fn check_exit_status(
     }
 }
 
-fn check_timed_status(proc_ref: &Arc<Mutex<Process>>, process_handle: &mut Child) {
+fn check_timed_status(
+    proc_ref: &Arc<Mutex<Process>>,
+    process_handle: &mut Child,
+    program: &Program,
+) {
     //Log::log(Log::DEBG, format!("mutex: {} is trying to lock its process", name));
     if let Ok(mut proc) = proc_ref.lock() {
         // Log::log(Log::DEBG,format!("mutex: {} has locked its process {} {}",proc.name,file!(),line!()),);
         if matches!(proc.status, Status::STARTING) {
-            let cloned = proc.program.clone();
-            // Log::log(Log::DEBG,format!("mutex: {} is trying to lock its program", proc.name),);
-            if let Ok(program) = cloned.lock() {
-                // Log::log(Log::DEBG,format!("mutex: {} has locked its program {} {}",proc.name,file!(),line!()),);
-                if proc.start.elapsed() >= Duration::from_secs(program.startsecs as u64) {
-                    proc.status = Status::RUNNING;
-                    Log::log(Log::INFO, format!("status: {} RUNNING", proc.name));
-                }
-                // Log::log(Log::DEBG,format!("mutex: {} has unlocked its program {} {}",proc.name,file!(),line!()),);
-            };
+            if proc.start.elapsed() >= Duration::from_secs(program.startsecs as u64) {
+                proc.status = Status::RUNNING;
+                Log::log(Log::INFO, format!("status: {} RUNNING", proc.name));
+            }
         } else if matches!(proc.status, Status::STOPPING) {
             /* if start_of_stop > proc.program.stopwaitsecs */
             process_handle.kill();
@@ -248,36 +238,27 @@ fn check_timed_status(proc_ref: &Arc<Mutex<Process>>, process_handle: &mut Child
     }
 }
 
-fn check_restart(proc_ref: &Arc<Mutex<Process>>, status: &ExitStatus, process: &mut Option<Child>) {
+fn check_restart(
+    proc_ref: &Arc<Mutex<Process>>,
+    status: &ExitStatus,
+    process: &mut Option<Child>,
+    program: &Program,
+) {
     // Log::log(Log::DEBG, format!("mutex: {} is trying to lock its process", name));
     if let Ok(mut proc) = proc_ref.lock() {
         // Log::log(Log::DEBG,format!("mutex: {} has locked its process {} {}",proc.name,file!(),line!()),);
-        if proc.need_restart(*status) {
-            Log::log(
-                Log::DEBG,
-                format!(
-                    "mutex: {} has unlocked its program {} {}",
-                    proc.name,
-                    file!(),
-                    line!()
-                ),
-            );
-            // if restart needed
-            let cloned = proc.program.clone();
-            if let Ok(program) = cloned.lock() {
-                match proc.start(&program) {
-                    Ok(handle) => {
-                        *process = Some(handle);
-                    }
-                    Err(e) => {
-                        println!("{e}");
-                    }
+        if proc.need_restart(*status, program) {
+            // if need to restart
+            match proc.start(program) {
+                Ok(handle) => {
+                    *process = Some(handle);
                 }
-            };
-        } else {
-            // Log::log(Log::DEBG,format!("mutex: {} has unlocked its program {} {}",proc.name,file!(),line!()),);
-        } // if need to restart
-          // Log::log(Log::DEBG,format!("mutex: {} has unlocked its process {} {}",proc.name,file!(),line!()),);
+                Err(e) => {
+                    println!("{e}");
+                }
+            }
+        }
+        // Log::log(Log::DEBG,format!("mutex: {} has unlocked its process {} {}",proc.name,file!(),line!()),);
         drop(proc);
     } else {
         // error on mutex lock
@@ -288,7 +269,7 @@ fn check_restart(proc_ref: &Arc<Mutex<Process>>, status: &ExitStatus, process: &
     }
 }
 
-fn first_start(proc_ref: &Arc<Mutex<Process>>, process: &mut Option<Child>) {
+fn first_start(proc_ref: &Arc<Mutex<Process>>, process: &mut Option<Child>, program: &Program) {
     //Log::log(Log::DEBG, format!("mutex: {} is trying to lock its process", name));
     if let Ok(mut proc) = proc_ref.lock() {
         Log::log(
@@ -300,42 +281,17 @@ fn first_start(proc_ref: &Arc<Mutex<Process>>, process: &mut Option<Child>) {
                 line!()
             ),
         );
-        let cloned = proc.program.clone();
-        Log::log(
-            Log::DEBG,
-            format!("mutex: {} is trying to locke its program", proc.name),
-        );
-        if let Ok(program) = cloned.lock() {
-            Log::log(
-                Log::DEBG,
-                format!(
-                    "mutex: {} has locked its program {} {}",
-                    proc.name,
-                    file!(),
-                    line!()
-                ),
-            );
-            if program.autostart && !matches!(proc.status, Status::FATAL) {
-                // if process need to start (autostart = true)
-                match proc.start(&program) {
-                    Ok(handle) => {
-                        *process = Some(handle);
-                    }
-                    Err(e) => {
-                        Log::log(Log::ERRO, format!("start failed : {e}"));
-                    }
+        if program.autostart && !matches!(proc.status, Status::FATAL) {
+            // if process need to start (autostart = true)
+            match proc.start(program) {
+                Ok(handle) => {
+                    *process = Some(handle);
+                }
+                Err(e) => {
+                    Log::log(Log::ERRO, format!("start failed : {e}"));
                 }
             }
-            Log::log(
-                Log::DEBG,
-                format!(
-                    "mutex: {} has unlocked its program {} {}",
-                    proc.name,
-                    file!(),
-                    line!()
-                ),
-            );
-        };
+        }
         Log::log(
             Log::DEBG,
             format!(
@@ -350,9 +306,13 @@ fn first_start(proc_ref: &Arc<Mutex<Process>>, process: &mut Option<Child>) {
 
 fn administrator(proc_ref: Arc<Mutex<Process>> /*, mut msg: AtomicUsize*/) {
     let name: String;
+    let program: Program;
     {
         let proc = proc_ref.lock().expect("could not fail ?");
-        name = proc.name.clone();
+        name = proc.name.clone(); // we keep the name of the process so we dont need to lock every time
+        let prog = proc.program.lock().expect("could not fail ?");
+        program = prog.clone(); // we keep a clone of the program and only change it when its value changed
+        drop(prog);
         drop(proc);
     }
     Log::log(Log::INFO, format!("start: administrator of {name} started"));
@@ -368,16 +328,16 @@ fn administrator(proc_ref: Arc<Mutex<Process>> /*, mut msg: AtomicUsize*/) {
             // if we have a process
             check_exit_status(&proc_ref, &mut process, &mut exit_status, &name);
             if let Some(ref mut process_handle) = process {
-                check_timed_status(&proc_ref, process_handle);
+                check_timed_status(&proc_ref, process_handle, &program);
             }
         } else if exit_status.is_some() {
             // if process ran and exited
             if let Some(status) = exit_status {
-                check_restart(&proc_ref, &status, &mut process);
+                check_restart(&proc_ref, &status, &mut process, &program);
             }
         } else {
             // if process never ran
-            first_start(&proc_ref, &mut process);
+            first_start(&proc_ref, &mut process, &program);
         }
     }
 }
