@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/06/16 12:42:45 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/06/16 15:04:13 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,6 +15,11 @@
 
 # include <stdbool.h>
 # include <sys/time.h>
+
+
+/*
+ * ENUM
+*/
 
 enum restart_state {
 	NEVER = 0,
@@ -31,6 +36,10 @@ enum status {
 	EXITED = 5,
 	FATAL = 6
 };
+
+/*
+ * STRUCT
+*/
 
 struct s_program {
 	char	*name;
@@ -63,5 +72,11 @@ struct s_process {
 	struct s_program	*program;
 	int					count_restart;
 };
+
+/*
+ * FUNCTIONS
+*/
+
+void test(void);
 
 #endif

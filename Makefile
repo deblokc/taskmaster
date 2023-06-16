@@ -6,7 +6,7 @@
 #    By: tnaton <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/06/16 11:17:59 by tnaton            #+#    #+#              #
-#    Updated: 2023/06/16 12:08:05 by tnaton           ###   ########.fr        #
+#    Updated: 2023/06/16 15:05:11 by tnaton           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -18,7 +18,7 @@ NAME = taskmaster
 
 OBJDIR := obj
 
-SRCS = main.c
+SRCS = main.c administrator.c
 
 INC = taskmaster.h
 
@@ -52,7 +52,7 @@ $(OBJS): $(INC)
 $(OBJS) : | $(OBJDIR)
 
 $(OBJDIR)/%.o: %.c
-	$(CC) $(CFLAGS) -o $@ -c $<
+	$(CC) $(CFLAGS) -I inc -o $@ -c $<
 
 $(OBJDIR) :
 	mkdir $(OBJDIR)
