@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/06/16 15:04:13 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/06/16 16:41:42 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -71,6 +71,9 @@ struct s_process {
 	int					status;
 	struct s_program	*program;
 	int					count_restart;
+	int					stdin[2];
+	int					stdout[2];
+	int					stderr[2];
 };
 
 /*
