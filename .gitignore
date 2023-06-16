@@ -4,3 +4,5 @@ vscode/
 taskmaster
 .*.swp
 .nfs*
+yaml-0.2.5/
+*.so
