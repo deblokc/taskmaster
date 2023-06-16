@@ -6,3 +6,4 @@ taskmaster
 .nfs*
 yaml-0.2.5/
 *.so
+yaml.h
