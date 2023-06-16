@@ -6,10 +6,19 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/06/16 11:25:35 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/06/16 12:14:39 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-int main(void) {
+#include <stdio.h>
+
+int main(int ac, char **av) {
+	if (ac != 2) {
+		printf("Arg error\n");
+		return (1);
+	}
+	for (int i = 1; i < ac; i++) {
+		printf("%s\n", av[i]);
+	}
 	return (0);
 }
