@@ -6,19 +6,15 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/06/16 12:14:39 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/06/16 12:43:47 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <stdio.h>
 
 int main(int ac, char **av) {
-	if (ac != 2) {
-		printf("Arg error\n");
-		return (1);
-	}
-	for (int i = 1; i < ac; i++) {
-		printf("%s\n", av[i]);
-	}
+	(void)ac;
+	(void)av;
+	printf("Hello World!\n");
 	return (0);
 }
