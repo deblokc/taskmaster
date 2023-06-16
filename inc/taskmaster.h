@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/06/16 12:42:45 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/06/16 15:32:33 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,6 +15,7 @@
 
 # include <stdbool.h>
 # include <sys/time.h>
+# include "yaml.h"
 
 enum restart_state {
 	NEVER = 0,

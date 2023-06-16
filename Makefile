@@ -6,7 +6,7 @@
 #    By: tnaton <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/06/16 11:17:59 by tnaton            #+#    #+#              #
-#    Updated: 2023/06/16 12:08:05 by tnaton           ###   ########.fr        #
+#    Updated: 2023/06/16 15:33:24 by bdetune          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -45,14 +45,14 @@ CC = gcc
 OBJS := $(patsubst %.c,$(OBJDIR)/%.o,$(SRCS))
 
 $(NAME) : $(OBJS) $(INC)
-	$(CC) $(CFLAGS) $(OBJS) -o $@
+	$(CC) $(CFLAGS) $(OBJS) -L libs -lyaml -o $@
 
 $(OBJS): $(INC)
 
 $(OBJS) : | $(OBJDIR)
 
 $(OBJDIR)/%.o: %.c
-	$(CC) $(CFLAGS) -o $@ -c $<
+	$(CC) $(CFLAGS) -I inc -o $@ -c $<
 
 $(OBJDIR) :
 	mkdir $(OBJDIR)

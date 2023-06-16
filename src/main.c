@@ -6,15 +6,18 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/06/16 12:43:47 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/06/16 15:35:32 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include <stdio.h>
+#include "taskmaster.h"
 
 int main(int ac, char **av) {
 	(void)ac;
 	(void)av;
-	printf("Hello World!\n");
+	int	major, minor, patch;
+
+	yaml_get_version(&major, &minor, &patch);
+	printf("Yaml version: %d.%d.%d", major, minor, patch);
 	return (0);
 }
