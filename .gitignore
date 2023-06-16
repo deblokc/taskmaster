@@ -2,3 +2,5 @@ vscode/
 /obj
 *.o
 taskmaster
+.*.swp
+.nfs*
