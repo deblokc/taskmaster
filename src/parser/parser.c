@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 18:00:54 by bdetune           #+#    #+#             */
-/*   Updated: 2023/06/19 16:59:35 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/06/19 19:15:57 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,22 +15,12 @@
 #include <fcntl.h>
 #include <stdio.h>
 
-static struct s_server	*free_server(struct s_server *server)
-{
-	if (server->log_pipe[0] != 0)
-		close(server->log_pipe[0]);
-	if (server->log_pipe[1] != 0)
-		close(server->log_pipe[1]);
-	free(server);
-	return (NULL);
-}
-
 static bool parse_document(struct s_server *server, yaml_document_t * document)
 {
 	bool		ret = true;
 	yaml_node_t	*current_node;
+	yaml_node_t	*key_node;
 
-	(void)server;
 	current_node = yaml_document_get_root_node(document);
 	if (!current_node)
 	{
@@ -41,11 +31,39 @@ static bool parse_document(struct s_server *server, yaml_document_t * document)
 	{
 		if (current_node->type == YAML_MAPPING_NODE)
 		{
-			printf("Encountered a map\n");
-			for (int i = 1; (current_node->data.mapping.pairs.start + i) <= current_node->data.mapping.pairs.top; i++)
-			printf("%d\n", (current_node->data.mapping.pairs.start + i -1)->key);
+			for (int i = 0; (current_node->data.mapping.pairs.start + i) < current_node->data.mapping.pairs.top; i++)
+			{
+				key_node = yaml_document_get_node(document, (current_node->data.mapping.pairs.start + i)->key);
+				if (key_node->type == YAML_SCALAR_NODE)
+				{
+					if (!strcmp((char *)key_node->data.scalar.value, "programs"))
+					{
+						if (!parse_programs(server, document, (current_node->data.mapping.pairs.start + i)->value))
+						{
+							ret = false;
+							break ;
+						}
+					}
+					else if (!strcmp((char*)key_node->data.scalar.value, "server"))
+					{
+						if (!parse_server(server, document, (current_node->data.mapping.pairs.start + i)->value))
+						{
+							ret = false;
+							break ;
+						}
+					}
+					else
+					{
+						printf("Unknown key encountered: %s\n",  key_node->data.scalar.value);
+					}
+				}
+			}
 		}
-		printf("Encountered node %s\n", current_node->tag);
+		else
+		{
+			printf("Expected map at the root of yaml document, found: %s\n", current_node->tag);
+			ret = false;
+		}
 	}
 
 	return ret;
@@ -84,7 +102,7 @@ struct s_server*	parse_config(char* config_file)
 	server = calloc(1, sizeof(*server));
 	if (server)
 	{
-		server->cleaner = free_server;
+		init_server(server);
 		if (write(2, "Building server\n", strlen("Building server\n")) == -1){}
 		else if (pipe2(server->log_pipe, O_DIRECT | O_NONBLOCK))
 		{

@@ -6,7 +6,7 @@
 #    By: tnaton <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/06/16 11:17:59 by tnaton            #+#    #+#              #
-#    Updated: 2023/06/16 18:16:41 by bdetune          ###   ########.fr        #
+#    Updated: 2023/06/19 19:07:16 by bdetune          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -19,7 +19,10 @@ NAME = taskmaster
 OBJDIR := obj
 
 SRCS = main.c \
-	   parser/parser.c
+	   parser/parser.c \
+	   parser/server.c \
+	   parser/logger.c \
+	   parser/program.c \
 
 INC = taskmaster.h
 

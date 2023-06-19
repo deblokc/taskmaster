@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/06/16 19:54:37 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/06/19 19:35:11 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -81,6 +81,7 @@ struct s_program {
 	struct s_process	*processes;
 	struct s_program	*left;
 	struct s_program	*right;
+	struct s_program	*parent;
 };
 
 struct s_process {
@@ -107,5 +108,10 @@ struct s_server {
 };
 
 struct s_server*	parse_config(char* config_file);
+bool				init_server(struct s_server * server);
+bool				default_logger(struct s_server *server);
+bool				parse_server(struct s_server *server, yaml_document_t *document, int value_index);
+bool				parse_programs(struct s_server *server, yaml_document_t *document, int value_index);
+
 
 #endif
