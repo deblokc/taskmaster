@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/06/19 19:46:42 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/06/20 16:58:47 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,6 +20,8 @@
 #include <unistd.h>
 #include "taskmaster.h"
 
+extern char **environ;
+
 void child_exec(struct s_process *proc) {
 		// dup every standard stream to pipe
 		dup2(proc->stdin[0], 0);
@@ -31,7 +33,19 @@ void child_exec(struct s_process *proc) {
 		close(proc->stdout[0]);
 		close(proc->stderr[0]);
 
-		execve(proc->program->command, proc->program->args, proc->program->env);
+		if (proc->program->env) {
+			char **tmp = proc->program->env;
+			while (tmp && *tmp) {
+				putenv(*tmp);
+				tmp++;
+			}
+		}
+
+		char *path = getenv("PATH");
+		if (path) {
+		}
+
+		execve(proc->program->command, proc->program->args, environ);
 		perror("execve");
 
 		// one error dont leak fds
@@ -149,6 +163,7 @@ void administrator(struct s_process *process) {
 
 	in.events = EPOLLIN;
 	in.data.fd = 0;
+//	(void)in;
 	// ALL THIS IS TEMPORARY -- WILL USE PIPE WITH MAIN THREAD INSTEAD
 	epoll_ctl(epollfd, EPOLL_CTL_ADD, 0, &in);
 
@@ -247,9 +262,9 @@ void administrator(struct s_process *process) {
 						char buf[4096];
 						bzero(buf, 4096);
 						if (read(0, buf, 4095) > 0) {
-							if (write(process->stdin[1], buf, strlen(buf)) == -1) {
-								perror("write");
-							}
+							printf("send : >%s<\n", buf);
+							int ret =  (write(process->stdin[1], buf, strlen(buf)));
+							printf("Wrote to pipe stdin %d chars out of %ld\n", ret, strlen(buf));
 						}
 					}
 				}
@@ -262,9 +277,9 @@ void administrator(struct s_process *process) {
 
 void test(void) {
 	struct s_program prog;
-	char *cmd = "/usr/bin/telnet";
-	char *args[2] = {cmd, NULL};
-	char *env[3] = {"USER=tnaton", "TEST=1", NULL};
+	char *cmd = "/bin/bash";
+	char *args[] = {cmd, NULL};
+	char *env[] = {"USER=tnaton", "TEST=42", NULL};
 
 	prog.name = "ls";
 	prog.command = cmd;
