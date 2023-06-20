@@ -6,11 +6,11 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/06/20 16:58:47 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/06/20 17:27:23 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#define _GNU_SOURCE
+//#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -41,8 +41,12 @@ void child_exec(struct s_process *proc) {
 			}
 		}
 
-		char *path = getenv("PATH");
-		if (path) {
+		char *envpath = getenv("PATH");
+		if (envpath) {
+			char *path;
+			path = strtok(envpath, ":");
+			while (path) {
+			}
 		}
 
 		execve(proc->program->command, proc->program->args, environ);
