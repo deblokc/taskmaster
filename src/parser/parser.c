@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 18:00:54 by bdetune           #+#    #+#             */
-/*   Updated: 2023/06/19 19:15:57 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/06/20 14:59:21 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -75,7 +75,6 @@ static bool	parse_config_yaml(struct s_server * server, FILE *config_file_handle
 	yaml_parser_t	parser;
 	yaml_document_t	document;
 
-	(void)server;
 	if (!yaml_parser_initialize(&parser))
 	{
 		ret = false;
@@ -126,6 +125,10 @@ struct s_server*	parse_config(char* config_file)
 				fclose(config_file_handle);
 			}
 		}
+	}
+	else
+	{
+		printf("Could not allocate server\n);
 	}
 	return (server);
 }

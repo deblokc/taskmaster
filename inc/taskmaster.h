@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/06/19 19:35:11 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/06/20 14:39:03 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -66,7 +66,7 @@ struct s_program {
 	bool				autostart;
 	int					startsecs;
 	int					startretries;
-	int					autorestart;
+	enum restart_state	autorestart;
 	int					*exitcodes;
 	int					stopsignal;
 	int					stopwaitsecs;
