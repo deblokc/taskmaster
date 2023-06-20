@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 18:00:54 by bdetune           #+#    #+#             */
-/*   Updated: 2023/06/20 14:59:21 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/06/20 16:28:11 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,6 +21,7 @@ static bool parse_document(struct s_server *server, yaml_document_t * document)
 	yaml_node_t	*current_node;
 	yaml_node_t	*key_node;
 
+	printf("Parsing document\n");
 	current_node = yaml_document_get_root_node(document);
 	if (!current_node)
 	{
@@ -57,6 +58,10 @@ static bool parse_document(struct s_server *server, yaml_document_t * document)
 						printf("Unknown key encountered: %s\n",  key_node->data.scalar.value);
 					}
 				}
+				else
+				{
+					printf("Wrong format of node\n");
+				}
 			}
 		}
 		else
@@ -77,6 +82,7 @@ static bool	parse_config_yaml(struct s_server * server, FILE *config_file_handle
 
 	if (!yaml_parser_initialize(&parser))
 	{
+		printf("Could not initialize parser\n");
 		ret = false;
 	}
 	else
@@ -84,7 +90,10 @@ static bool	parse_config_yaml(struct s_server * server, FILE *config_file_handle
 		yaml_parser_set_encoding(&parser, YAML_UTF8_ENCODING);
 		yaml_parser_set_input_file(&parser, config_file_handle);
 		if (!yaml_parser_load(&parser, &document))
+		{
+			printf("Could not load document, please verify YAML syntax\n");
 			ret = false;
+		}
 		else
 			ret = parse_document(server, &document);
 		yaml_document_delete(&document);
@@ -128,7 +137,7 @@ struct s_server*	parse_config(char* config_file)
 	}
 	else
 	{
-		printf("Could not allocate server\n);
+		printf("Could not allocate server\n");
 	}
 	return (server);
 }

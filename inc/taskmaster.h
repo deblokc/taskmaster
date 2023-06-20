@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/06/20 14:39:03 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/06/20 17:49:16 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -78,6 +78,7 @@ struct s_program {
 	char				*workingdir;
 	int					umask;
 	char				*user;
+	struct s_program*	(*cleaner)(struct s_program *self);
 	struct s_process	*processes;
 	struct s_program	*left;
 	struct s_program	*right;

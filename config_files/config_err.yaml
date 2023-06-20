@@ -1,0 +1,23 @@
+programs:
+    exception:
+        command: /bin/sh -c "echo 32; sleep 5"
+        numprocs: 2
+        retry: 3
+        umask: 0o022
+        exitcodes:
+            - 0
+            - 1
+        autorestart: onerror
+        stopsignal: USR2
+        priority: 3
+    echoeing:
+		- asd: d
+		- asd: q
+server:
+    unixsocket:
+        file: /mnt/nfs/homes/bdetune/taskmasterd.sock
+        chmod: 0o744
+        username: bdetune
+        chown: :user
+    logfile: /mnt/nfs/homes/bdetune/taskmaster.log
+    loglevel: ERRO
