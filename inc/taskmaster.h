@@ -103,7 +103,7 @@ struct s_process {
 struct s_server {
 	char *				config_file;
 	int					log_pipe[2];
-	enum log_level		log_level;
+	enum log_level		loglevel;
 	struct s_logger		logger;
 	char				*pidfile;
 	char				*user;

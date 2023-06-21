@@ -36,10 +36,34 @@ static struct s_server	*free_server(struct s_server *self)
 void	init_server(struct s_server * server)
 {
 	server->cleaner = free_server;
-	server->log_level = WARN;
+	server->loglevel = WARN;
 	server->umask = 022;
 	server->daemon= false;
 	default_logger(&server->logger);
+}
+
+static void add_loglevel(struct s_server *server, yaml_node_t *value)
+{
+	printf("Parsing loglevel in server\n");
+	if (value->type != YAML_SCALAR_NODE)
+	{
+		printf("Wrong format for loglevel in server, falling back to default value WARN\n");
+	}
+	else
+	{
+		if (!strcmp((char *)value->data.scalar.value, "CRITICAL"))
+			server->loglevel = CRITICAL;
+		else if (!strcmp((char *)value->data.scalar.value, "ERROR"))
+			server->loglevel = ERROR;
+		else if (!strcmp((char *)value->data.scalar.value, "WARN"))
+			server->loglevel = WARN;
+		else if (!strcmp((char *)value->data.scalar.value, "INFO"))
+			server->loglevel = INFO;
+		else if (!strcmp((char *)value->data.scalar.value, "DEBUG"))
+			server->loglevel = DEBUG;
+		else
+			printf("Wrong format for loglevel in server, accepted values are:\n\t- CRITICAL\n\t- ERROR\n\t- WARN\n\t- INFO\n\t- DEBUG\nfalling back to default value WARN\n");
+	}
 }
 
 static bool add_value(struct s_server *server, yaml_document_t *document, char* key, yaml_node_t *value)
@@ -63,6 +87,8 @@ static bool add_value(struct s_server *server, yaml_document_t *document, char* 
 		add_octal(NULL, "umask", &server->umask, value, 0, 0777);
 	else if (!strcmp("daemon", key))
 		add_bool(NULL, "daemon", &server->daemon, value);
+	else if (!strcmp("loglevel", key))
+		add_loglevel(server, value);
 	else
 		printf("Unknown field %s in server\n", key);
 	return (ret) ;	
@@ -70,11 +96,18 @@ static bool add_value(struct s_server *server, yaml_document_t *document, char* 
 
 bool	parse_server(struct s_server *server, yaml_document_t *document, int value_index)
 {
+	static bool	duplicate = false;
 	bool		ret = true;
 	yaml_node_t	*params_node = NULL;
 	yaml_node_t	*key_node = NULL;
 	yaml_node_t	*value_node = NULL;
 
+	if (duplicate)
+	{
+		printf("Error, encountered block server twice in configuration file\n");
+		return (false);
+	}
+	duplicate = true;
 	printf("Parsing server\n");
 	params_node = yaml_document_get_node(document, value_index);
 	if (params_node->type != YAML_MAPPING_NODE)
