@@ -70,131 +70,6 @@ static void	init_program(struct s_program *program)
 	program->umask = 022;
 }
 
-static bool add_char(char const *program_name, char const *field_name, char **target, yaml_node_t *value)
-{
-	bool	ret = true;
-
-	printf("Parsing %s in program %s\n", field_name, program_name);
-	if (value->type != YAML_SCALAR_NODE)
-	{
-		printf("Wrong format for field %s in program %s, expected a scalar value, encountered %s\n",field_name, program_name, value->tag);
-	}
-	else
-	{
-		*target = strdup((char *)value->data.scalar.value);
-		if (!*target)
-		{
-			printf("Could not allocate %s in program %s\n", field_name, program_name);
-			ret = false;
-		}
-	}
-	return (ret);
-}
-
-static bool	add_number(char const *program_name, char const *field_name, int *target, yaml_node_t *value, long min, long max)
-{
-	bool	ret = true;
-	long	nb;
-
-	printf("Parsing %s in program %s\n", field_name, program_name);
-	if (value->type != YAML_SCALAR_NODE)
-	{
-		ret = false;
-		printf("Wrong format for field %s in program %s, expected a scalar value, encountered %s\n",field_name, program_name, value->tag);
-	}
-	else
-	{
-		for (int i = 0; (value->data.scalar.value)[i]; i++)
-		{
-			if (!isdigit((value->data.scalar.value)[i]))
-			{
-				ret = false;
-				printf("Wrong format for field %s in program %s, provided value is not a digit, falling back to default value %d\n", field_name, program_name, *target);
-				break ;
-			}
-		}
-		if (ret)
-		{
-			nb = strtol((char *)value->data.scalar.value, NULL, 10);
-			if (nb < min || nb > max)
-			{
-				printf("Wrong value for field %s in program %s, provided value must range between %ld and %ld, falling back to default value %d\n", field_name, program_name, min, max, *target);
-				ret = false;
-			}
-			else
-			{
-				*target = (int)nb;
-			}
-		}
-	}
-	return (ret);
-}
-
-static bool	add_octal(char const *program_name, char const *field_name, int *target, yaml_node_t *value, long min, long max)
-{
-	bool	ret = true;
-	long	nb;
-
-	printf("Parsing %s in program %s\n", field_name, program_name);
-	if (value->type != YAML_SCALAR_NODE)
-	{
-		ret = false;
-		printf("Wrong format for field %s in program %s, expected a scalar value, encountered %s\n",field_name, program_name, value->tag);
-	}
-	else
-	{
-		for (int i = 0; (value->data.scalar.value)[i]; i++)
-		{
-			if ((value->data.scalar.value)[i] < '0' || (value->data.scalar.value)[i] > '7')
-			{
-				ret = false;
-				printf("Wrong format for field %s in program %s, provided value is not a digit in base 8, falling back to default value %d\n", field_name, program_name, *target);
-				break ;
-			}
-		}
-		if (ret)
-		{
-			nb = strtol((char *)value->data.scalar.value, NULL, 8);
-			if (nb < min || nb > max)
-			{
-				printf("Wrong value for field %s in program %s, provided value must range between %ld and %ld, falling back to default value %d\n", field_name, program_name, min, max, *target);
-				ret = false;
-			}
-			else
-			{
-				*target = (int)nb;
-			}
-		}
-	}
-	return (ret);
-}
-
-
-static void	add_bool(char const *program_name, char const *field_name, bool *target, yaml_node_t *value)
-{
-	printf("Parsing %s in program %s\n", field_name, program_name);
-	if (value->type != YAML_SCALAR_NODE)
-	{
-		printf("Wrong format for field %s in program %s, expected a scalar value, encountered %s\n",field_name, program_name, value->tag);
-	}
-	else
-	{
-		if (!strcmp((char *)value->data.scalar.value, "true")
-				|| !strcmp((char *)value->data.scalar.value, "True")
-				|| !strcmp((char *)value->data.scalar.value, "on")
-				|| !strcmp((char *)value->data.scalar.value, "yes"))
-			*target = true;
-		else if (!strcmp((char *)value->data.scalar.value, "false")
-				|| !strcmp((char *)value->data.scalar.value, "False")
-				|| !strcmp((char *)value->data.scalar.value, "off")
-				|| !strcmp((char *)value->data.scalar.value, "no"))
-			*target = false;
-		else
-			printf("Wrong format for field %s in program %s, accepted values are:\n\t- For positive values: true, True, on, yes\n\t- For negative values: false, False, off, no\nfalling back to default value %s\n", field_name, program_name, *target?"true":"false");
-	}
-}
-
-
 static void add_autorestart(struct s_program *program, yaml_node_t *value)
 {
 	printf("Parsing autorestart in program %s\n", program->name);
@@ -308,6 +183,8 @@ static bool add_value(struct s_program *program, yaml_document_t *document, char
 		add_stopsignal(program, value);
 	else if (!strcmp("stopwaitsecs", key))
 		add_number(program->name, "stopwaitsecs", &program->stopwaitsecs, value, 0, 300);
+	else if (!strcmp("stopasgroup", key))
+		add_bool(program->name, "stopasgroup", &program->stopasgroup, value);
 	else if (!strcmp("stdoutlog", key))
 		add_bool(program->name, "stdoutlog", &program->stdoutlog, value);
 	else if (!strcmp("stdout_logfile", key))
@@ -330,6 +207,8 @@ static bool add_value(struct s_program *program, yaml_document_t *document, char
 		add_octal(program->name, "umask", &program->umask, value, 0, 0777);
 	else if (!strcmp("user", key))
 		ret = add_char(program->name, "user", &program->user, value);
+	else if (!strcmp("group", key))
+		ret = add_char(program->name, "group", &program->group, value);
 	else
 		printf("Unknown field %s in program %s\n", key, program->name);
 	return (ret);
@@ -394,7 +273,6 @@ static bool	add_program(struct s_server *server, yaml_document_t *document, yaml
 				init_program(program);
 				if (!parse_values(program, document, params))
 				{
-					printf("Error while parsing program %s\n", program->name);
 					program->cleaner(program);
 				}
 				else

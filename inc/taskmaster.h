@@ -72,6 +72,7 @@ struct s_program {
 	int					*exitcodes;
 	int					stopsignal;
 	int					stopwaitsecs;
+	bool				stopasgroup;
 	bool				stdoutlog;
 	struct s_logger		stdout_logger;
 	bool				stderrlog;
@@ -80,11 +81,13 @@ struct s_program {
 	char				*workingdir;
 	int					umask;
 	char				*user;
+	char				*group;
 	struct s_program*	(*cleaner)(struct s_program *self);
 	struct s_process	*processes;
 	struct s_program	*left;
 	struct s_program	*right;
 	struct s_program	*parent;
+	struct s_program	*next;
 };
 
 struct s_process {
@@ -102,9 +105,12 @@ struct s_server {
 	int					log_pipe[2];
 	enum log_level		log_level;
 	struct s_logger		logger;
+	char				*pidfile;
 	char				*user;
+	char				*group;
 	int					umask;
 	char				**env;
+	bool				daemon;
 	struct s_socket		socket;
 	struct s_program	*program_tree;
 	struct s_server*	(*cleaner)(struct s_server*);
@@ -115,6 +121,9 @@ void				init_server(struct s_server * server);
 void				default_logger(struct s_logger *logger);
 bool				parse_server(struct s_server *server, yaml_document_t *document, int value_index);
 bool				parse_programs(struct s_server *server, yaml_document_t *document, int value_index);
-
+bool 				add_char(char const *program_name, char const *field_name, char **target, yaml_node_t *value);
+bool				add_number(char const *program_name, char const *field_name, int *target, yaml_node_t *value, long min, long max);
+bool				add_octal(char const *program_name, char const *field_name, int *target, yaml_node_t *value, long min, long max);
+void				add_bool(char const *program_name, char const *field_name, bool *target, yaml_node_t *value);
 
 #endif

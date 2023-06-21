@@ -23,6 +23,7 @@ SRCS = main.c \
 	   parser/server.c \
 	   parser/logger.c \
 	   parser/program.c \
+	   parser/utils.c
 
 INC = taskmaster.h
 

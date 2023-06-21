@@ -33,3 +33,6 @@ programs:
         startsecs: 3
 server:
     connection: Unix
+    user: bdetune
+    umask: 022
+    daemon: true
