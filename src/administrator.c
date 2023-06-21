@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/06/20 17:27:23 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/06/21 13:32:11 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <bsd/string.h>
 #include <sys/epoll.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -21,6 +22,37 @@
 #include "taskmaster.h"
 
 extern char **environ;
+
+char *getcmd(struct s_process *proc) {
+		char *command = NULL;
+		if (!access(proc->program->command, X_OK)) { // if no need to search w/ path (aka absolute path or relative
+			command = strdup(proc->program->command);
+		} else {
+			char *envpath = strdup(getenv("PATH"));
+			if (envpath) {
+				char *path;
+				path = strtok(envpath, ":");
+				while (path) {// size of path + '/'    +    size of command   +   '\0'
+					int size = (strlen(path) + 1 + strlen(proc->program->command) + 1);
+					command = (char *)calloc(sizeof(char), size);
+					if (!command) {
+						break ;
+					}
+					strlcat(command, path, size);
+					strlcat(command, "/", size);
+					strlcat(command, proc->program->command, size);
+					if (!access(command, X_OK)) {
+						free(envpath);
+						break ;
+					}
+					free(command);
+					command = NULL;
+					path = strtok(NULL, ":");
+				}
+			}
+		}
+		return (command);
+}
 
 void child_exec(struct s_process *proc) {
 		// dup every standard stream to pipe
@@ -40,22 +72,19 @@ void child_exec(struct s_process *proc) {
 				tmp++;
 			}
 		}
+		char *command = getcmd(proc);
 
-		char *envpath = getenv("PATH");
-		if (envpath) {
-			char *path;
-			path = strtok(envpath, ":");
-			while (path) {
-			}
+		if (!command) {
+			printf("FATAL ERROR");
+		} else {
+			execve(command, proc->program->args, environ);
+			perror("execve");
 		}
-
-		execve(proc->program->command, proc->program->args, environ);
-		perror("execve");
-
 		// one error dont leak fds
 		close(proc->stdin[0]);
 		close(proc->stdout[1]);
 		close(proc->stderr[1]);
+		free(command);
 		exit(1);
 }
 
@@ -160,6 +189,9 @@ void administrator(struct s_process *process) {
 	int					nfds = 0;
 	struct epoll_event	events[3], in;
 	int					epollfd = epoll_create(1);
+	struct timeval		stop;  //
+	stop.tv_sec = 0;           // NEED TO SET W/ gettimeofday WHEN CHANGING STATUS TO STOPPING
+	stop.tv_usec = 0;          //
 
 	if (process->program->autostart) {
 		start = true;
@@ -272,6 +304,58 @@ void administrator(struct s_process *process) {
 						}
 					}
 				}
+			} else if (process->status == STOPPING) {
+				struct timeval tmp;
+				if (gettimeofday(&tmp, NULL)) {
+					printf("FATAL ERROR\n");
+					return ;
+				}
+
+				unsigned long start_micro = ((stop.tv_sec * 1000) + (stop.tv_usec / 1000));
+				unsigned long tmp_micro = ((tmp.tv_sec * 1000) + (tmp.tv_usec / 1000));
+
+				if ((process->program->stopwaitsecs * 1000) - (tmp_micro - start_micro) <= 0) {
+					process->status = STOPPED;
+					printf("FORCED STOPPED\n");
+					// kill(process->pid, SIGKILL);
+					// need to epoll_wait 0 to return instantly
+					tmp_micro = (process->program->stopwaitsecs * 1000);
+					start_micro = 0;
+				}
+				printf("time to wait : %ld\n", (process->program->stopwaitsecs * 1000) - (tmp_micro - start_micro));
+				nfds = epoll_wait(epollfd, events, 3, ((process->program->stopwaitsecs * 1000) - (tmp_micro - start_micro)));
+				if (nfds) { // if not timeout
+					printf("GOT EVENT\n");
+					for (int i = 0; i < nfds; i++) {
+					/* handles fds as needed */
+						if (events[i].data.fd == process->stdout[0]) { // if process print in stdout
+							char buf[4096];
+							bzero(buf, 4096);
+							if (read(process->stdout[0], buf, 4095) > 0) {
+								printf("%s : >%s<\n", process->name, buf);
+							} else {
+								closeall(process, epollfd);
+								process->status = STOPPED;
+								break ;
+							}
+						}
+						if (events[i].data.fd == process->stderr[0]) { // if process print in stderr
+							char buf[4096];
+							bzero(buf, 4096);
+							if (read(process->stderr[0], buf, 4095) > 0) {
+								printf("%s ERROR : >%s<\n", process->name, buf);
+							} else {
+								closeall(process, epollfd);
+								process->status = STOPPED;
+								break ;
+							}
+						}
+					}
+				} else { // if timeout
+					process->status = STOPPED;
+					printf("FORCED STOPPED\n");
+					// kill(process->pid, SIGKILL);
+				}
 			}
 		}
 	}
@@ -281,7 +365,7 @@ void administrator(struct s_process *process) {
 
 void test(void) {
 	struct s_program prog;
-	char *cmd = "/bin/bash";
+	char *cmd = "bash";
 	char *args[] = {cmd, NULL};
 	char *env[] = {"USER=tnaton", "TEST=42", NULL};
 
