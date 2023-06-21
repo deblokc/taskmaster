@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/06/21 16:25:06 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/06/21 18:54:32 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -65,8 +65,8 @@ void child_exec(struct s_process *proc) {
 		close(proc->stdin[1]);
 		close(proc->stdout[0]);
 		close(proc->stderr[0]);
-//		close(proc->com[0]);
-//		close(proc->com[1]);
+		close(proc->com[0]);
+		close(proc->com[1]);
 	
 		if (proc->program->env) {
 			char **tmp = proc->program->env;
@@ -153,10 +153,7 @@ int exec(struct s_process *process, int epollfd) {
 }
 
 bool should_start(struct s_process *process) {
-	if (process->program->autostart) {
-		process->program->autostart = false; // ?
-		return true;
-	} else if (process->status == EXITED) {
+	if (process->status == EXITED) {
 		if (process->program->autorestart == ALWAYS) {
 			return true;
 		} else if (process->program->autorestart == ONERROR) {
@@ -382,51 +379,88 @@ void *administrator(void *arg) {
 	return NULL;
 }
 
-void create_process(struct s_program *lst, int len) {
+char *getname(char *name, int num) {
+	int size = strlen(name) + 2;
+	char *ret = (char *)calloc(sizeof(char), size);
+	if (!ret) {
+		return NULL;
+	}
+	strlcpy(ret, name, size);
+	ret[size - 1] = '0' + num + 1;
+	return (ret);
+}
+
+void wait_process(struct s_program **lst) {
+	for (int i = 0; lst[i]; i++) {
+		if (!lst[i]->processes) {
+			printf("NO PROCESSES ???\n");
+		}
+		if (lst[i]->numprocs == 1) {
+			pthread_join(lst[i]->processes[0].handle, NULL);
+		} else {
+			for (int j = 0; j < lst[i]->numprocs; j++) {
+				pthread_join(lst[i]->processes[j].handle, NULL);
+			}
+		}
+	}
+}
+
+void create_process(struct s_program **lst) {
 	if (!lst) {
-		return ;
+		return;
 	}
 
-	pthread_t *threads; // CANNOT STAY LIKE THIS BECAUSE A PROGRAM MAY HAVE MULTIPLES PROCESS
+	/*
+	 * NEED TO GIVE LOGGER TO THE PROCESS
+	 */
 
-	threads = (pthread_t *)calloc(sizeof(pthread_t), len);
-
-	struct s_process *lstproc = (struct s_process *)calloc(sizeof(struct s_process), len);
-	for (int i = 0; i < len; i++) {
-		bzero(&(lstproc[i]), sizeof(lstproc[i]));
-		printf("parsing %s\n", lst[i].name);
-		if (lst[i].numprocs != 1) {
-			printf("DOESNT HANDLE MULTIPLE PROCESS YET :coldface:\n");
+	for (int i = 0; lst[i]; i++) {
+		printf("creating processes for %s\n", lst[i]->name);
+		lst[i]->processes = (struct s_process *)calloc(sizeof(struct s_process), lst[i]->numprocs);
+		if (!lst[i]->processes) {
+			printf("FATAL ERROR CALLOC PROCESS\n");
 		}
-		lstproc[i].name = lst[i].name;
-		lstproc[i].pid = 0;
-		lstproc[i].status = STOPPED;
-		lstproc[i].program = &(lst[i]);
-		lstproc[i].count_restart = 0;
-		bzero(lstproc[i].stdin, 2);
-		bzero(lstproc[i].stdout, 2);
-		bzero(lstproc[i].stderr, 2);
-		printf("main creating %s\n", lstproc[i].name);
-		if (pthread_create(&(threads[i]), NULL, administrator, &lstproc[i])) {
-			printf("ERROR\n");
-			perror("pthread_create");
+		if (lst[i]->numprocs == 1) {
+			lst[i]->processes[0].name = strdup(lst[i]->name);
+			if (!lst[i]->processes[0].name) {
+				printf("FATAL ERROR STRDUP FAILED\n");
+			}
+			lst[i]->processes[0].status = STOPPED;
+			lst[i]->processes[0].program = lst[i];
+			if (pipe(lst[i]->processes[0].com)) {
+				perror("pipe");
+			}
+			if (pthread_create(&(lst[i]->processes[0].handle), NULL, administrator, &(lst[i]->processes[0]))) {
+				printf("FATAL ERROR PTHREAD_CREATE\n");
+			}
+		} else {
+			for (int j = 0; j < lst[i]->numprocs; j++) {
+				lst[i]->processes[j].name = getname(lst[i]->name, j);
+				if (!lst[i]->processes[j].name) {
+					printf("FATAL ERROR GETNAME FAILED\n");
+				}
+				lst[i]->processes[j].status = STOPPED;
+				lst[i]->processes[j].program = lst[i];
+				if (pipe(lst[i]->processes[j].com)) {
+					perror("pipe");
+				}
+				if (pthread_create(&(lst[i]->processes[j].handle), NULL, administrator, &(lst[i]->processes[j]))) {
+					printf("FATAL ERROR PTHREAD_CREATE\n");
+				}
+			}
 		}
 	}
-
-	for (int i = 0; i < len; i++) {
-		pthread_join(threads[i], NULL);
-		printf("JOINED THREAD\n");
-	}
+	wait_process(lst);
 }
 
 void test(void) {
 	struct s_program prog;
-	char *cmd = "ls";
-	char *args[] = {cmd, "/usr", NULL};
+	char *cmd = "bash";
+	char *args[] = {cmd,  NULL};
 	char *args2[] = {"whoami", NULL};
 	char *env[] = {"USER=pasmoilol", "TEST=42", NULL};
 
-	prog.name = "listing";
+	prog.name = "bash";
 	prog.command = cmd;
 	prog.args = args;
 	prog.numprocs = 1;
@@ -452,7 +486,7 @@ void test(void) {
 	prog2.name = "quisuisje";
 	prog2.command = "whoami";
 	prog2.args = args2;
-	prog2.numprocs = 1;
+	prog2.numprocs = 3;
 	prog2.priority = 1;
 	prog2.autostart = true;
 	prog2.startsecs = 1;
@@ -471,7 +505,10 @@ void test(void) {
 	prog2.user = NULL;
 
 
-	struct s_program lst[] = {prog, prog2};
+	struct s_program **lst = (struct s_program **)calloc(sizeof(struct s_program *), 3);
+
+	lst[0] = &prog;
+	lst[1] = &prog2;
 
 	struct s_process proc;
 
@@ -483,6 +520,6 @@ void test(void) {
 	bzero(proc.stdin, 2);
 	bzero(proc.stdout, 2);
 	bzero(proc.stderr, 2);
-	create_process(lst, 2);
+	create_process(lst);
 	//administrator(&proc);
 }

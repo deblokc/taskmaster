@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/06/21 14:53:14 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/06/21 17:01:30 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,6 +15,7 @@
 
 # include <stdbool.h>
 # include <sys/time.h>
+# include <pthread.h>
 
 
 /*
@@ -62,6 +63,7 @@ struct s_program {
 	char	*workingdir;
 	int		umask;
 	char	*user;
+	struct s_process *processes;
 };
 
 struct s_process {
@@ -76,6 +78,7 @@ struct s_process {
 	int					stderr[2];
 	int					log;
 	int					com[2];
+	pthread_t			handle;
 };
 
 /*
