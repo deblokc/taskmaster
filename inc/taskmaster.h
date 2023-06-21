@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/06/21 19:48:55 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/06/21 20:47:50 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,9 +44,9 @@ enum log_level {
 };
 
 struct s_logger {
-	char*				logfile;
-	unsigned int		logfile_maxbytes;
-	unsigned char		logfile_backups;
+	char*	logfile;
+	int		logfile_maxbytes;
+	int		logfile_backups;
 };
 
 struct s_socket {

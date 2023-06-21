@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/19 19:03:58 by bdetune           #+#    #+#             */
-/*   Updated: 2023/06/21 19:47:56 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/06/21 21:27:16 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -70,93 +70,112 @@ static void	init_program(struct s_program *program)
 	program->umask = 022;
 }
 
-static bool add_command(struct s_program *program, yaml_node_t *value)
+static bool add_char(char const *program_name, char const *field_name, char **target, yaml_node_t *value)
 {
 	bool	ret = true;
 
-	printf("Parsing command in program %s\n", program->name);
+	printf("Parsing %s in program %s\n", field_name, program_name);
 	if (value->type != YAML_SCALAR_NODE)
 	{
-		printf("Wrong format for command in program %s\n", program->name);
+		printf("Wrong format for field %s in program %s, expected a scalar value, encountered %s\n",field_name, program_name, value->tag);
 	}
 	else
 	{
-		program->command = strdup((char *)value->data.scalar.value);
-		if (!program->command)
+		*target = strdup((char *)value->data.scalar.value);
+		if (!*target)
 		{
-			printf("Could not allocate command in program %s\n", program->name);
+			printf("Could not allocate %s in program %s\n", field_name, program_name);
 			ret = false;
 		}
 	}
 	return (ret);
 }
 
-static int	is_valid_number(char* number, long min, long max)
+static bool	add_number(char const *program_name, char const *field_name, int *target, yaml_node_t *value, long min, long max)
 {
-	long	ret = 0;
+	bool	ret = true;
+	long	nb;
 
-	for (int i = 0; number[i]; i++)
+	printf("Parsing %s in program %s\n", field_name, program_name);
+	if (value->type != YAML_SCALAR_NODE)
 	{
-		if (!isdigit(number[i]))
+		ret = false;
+		printf("Wrong format for field %s in program %s, expected a scalar value, encountered %s\n",field_name, program_name, value->tag);
+	}
+	else
+	{
+		for (int i = 0; (value->data.scalar.value)[i]; i++)
 		{
-			ret = -1;
-			break ;
+			if (!isdigit((value->data.scalar.value)[i]))
+			{
+				ret = false;
+				printf("Wrong format for field %s in program %s, provided value is not a digit, falling back to default value %d\n", field_name, program_name, *target);
+				break ;
+			}
+		}
+		if (ret)
+		{
+			nb = strtol((char *)value->data.scalar.value, NULL, 10);
+			if (nb < min || nb > max)
+			{
+				printf("Wrong value for field %s in program %s, provided value must range between %ld and %ld, falling back to default value %d\n", field_name, program_name, min, max, *target);
+				ret = false;
+			}
+			else
+			{
+				*target = (int)nb;
+			}
 		}
 	}
-	if (!ret)
-	{
-		ret = strtol(number, NULL, 10);
-		if (ret < min || ret > max)
-			ret = -1;
-	}
-	return ((int)ret);
+	return (ret);
 }
 
-static void add_numprocs(struct s_program *program, yaml_document_t *document, yaml_node_t *value)
+static bool	add_octal(char const *program_name, char const *field_name, int *target, yaml_node_t *value, long min, long max)
 {
-	int		numprocs;
+	bool	ret = true;
+	long	nb;
 
-	(void) document;
-	printf("Parsing numprocs in program %s\n", program->name);
+	printf("Parsing %s in program %s\n", field_name, program_name);
 	if (value->type != YAML_SCALAR_NODE)
 	{
-		printf("Wrong format for number of processes in program %s, falling back to default value %d\n", program->name, program->numprocs);
+		ret = false;
+		printf("Wrong format for field %s in program %s, expected a scalar value, encountered %s\n",field_name, program_name, value->tag);
 	}
 	else
 	{
-		numprocs = is_valid_number((char *)value->data.scalar.value, 1, 255);
-		if (numprocs == -1)
-			printf("Wrong value for number of processes in program %s, accepted value must range between 1 and 255, falling back to default value %d\n", program->name, program->numprocs);
-		else
-			program->numprocs = numprocs;
+		for (int i = 0; (value->data.scalar.value)[i]; i++)
+		{
+			if ((value->data.scalar.value)[i] < '0' || (value->data.scalar.value)[i] > '7')
+			{
+				ret = false;
+				printf("Wrong format for field %s in program %s, provided value is not a digit in base 8, falling back to default value %d\n", field_name, program_name, *target);
+				break ;
+			}
+		}
+		if (ret)
+		{
+			nb = strtol((char *)value->data.scalar.value, NULL, 8);
+			if (nb < min || nb > max)
+			{
+				printf("Wrong value for field %s in program %s, provided value must range between %ld and %ld, falling back to default value %d\n", field_name, program_name, min, max, *target);
+				ret = false;
+			}
+			else
+			{
+				*target = (int)nb;
+			}
+		}
 	}
+	return (ret);
 }
 
-static void add_priority(struct s_program *program, yaml_node_t *value)
-{
-	int		priority;
 
-	printf("Parsing priority in program %s\n", program->name);
+static void	add_bool(char const *program_name, char const *field_name, bool *target, yaml_node_t *value)
+{
+	printf("Parsing %s in program %s\n", field_name, program_name);
 	if (value->type != YAML_SCALAR_NODE)
 	{
-		printf("Wrong format for priority in program %s, falling back to default value %d\n", program->name, program->priority);
-	}
-	else
-	{
-		priority = is_valid_number((char *)value->data.scalar.value, 0, 999);
-		if (priority == -1)
-			printf("Wrong value for priority in program %s, accepted value must range between 0 and 999, falling back to default value %d\n", program->name, program->priority);
-		else
-			program->priority = priority;
-	}
-}
-
-static void add_autostart(struct s_program *program, yaml_node_t *value)
-{
-	printf("Parsing autostart in program %s\n", program->name);
-	if (value->type != YAML_SCALAR_NODE)
-	{
-		printf("Wrong format for autostart in program %s, falling back to default value %s\n", program->name, program->autostart?"true":"false");
+		printf("Wrong format for field %s in program %s, expected a scalar value, encountered %s\n",field_name, program_name, value->tag);
 	}
 	else
 	{
@@ -164,54 +183,17 @@ static void add_autostart(struct s_program *program, yaml_node_t *value)
 				|| !strcmp((char *)value->data.scalar.value, "True")
 				|| !strcmp((char *)value->data.scalar.value, "on")
 				|| !strcmp((char *)value->data.scalar.value, "yes"))
-			program->autostart = true;
+			*target = true;
 		else if (!strcmp((char *)value->data.scalar.value, "false")
 				|| !strcmp((char *)value->data.scalar.value, "False")
 				|| !strcmp((char *)value->data.scalar.value, "off")
 				|| !strcmp((char *)value->data.scalar.value, "no"))
-			program->autostart = true;
+			*target = false;
 		else
-			printf("Wrong format for autostart in program %s, accepted values are:\n\t- For positive values: true, True, on, yes\n\t- For negative values: false, False, off, no\nfalling back to default value %s\n", program->name, program->autostart?"true":"false");
+			printf("Wrong format for field %s in program %s, accepted values are:\n\t- For positive values: true, True, on, yes\n\t- For negative values: false, False, off, no\nfalling back to default value %s\n", field_name, program_name, *target?"true":"false");
 	}
 }
 
-static void add_startsecs(struct s_program *program, yaml_node_t *value)
-{
-	int		startsecs;
-
-	printf("Parsing startsecs in program %s\n", program->name);
-	if (value->type != YAML_SCALAR_NODE)
-	{
-		printf("Wrong format for startsecs in program %s, falling back to default value %d\n", program->name, program->startsecs);
-	}
-	else
-	{
-		startsecs = is_valid_number((char *)value->data.scalar.value, 0, 300);
-		if (startsecs == -1)
-			printf("Wrong value for startsecs in program %s, accepted value must range between 0 and 300, falling back to default value %d\n", program->name, program->startsecs);
-		else
-			program->startsecs = startsecs;
-	}
-}
-
-static void add_startretries(struct s_program *program, yaml_node_t *value)
-{
-	int		startretries;
-
-	printf("Parsing startretries in program %s\n", program->name);
-	if (value->type != YAML_SCALAR_NODE)
-	{
-		printf("Wrong format for startretries in program %s, falling back to default value %d\n", program->name, program->startretries);
-	}
-	else
-	{
-		startretries = is_valid_number((char *)value->data.scalar.value, 0, 10);
-		if (startretries == -1)
-			printf("Wrong value for startretries in program %s, accepted value must range between 0 and 10, falling back to default value %d\n", program->name, program->startretries);
-		else
-			program->startretries = startretries;
-	}
-}
 
 static void add_autorestart(struct s_program *program, yaml_node_t *value)
 {
@@ -235,9 +217,9 @@ static void add_autorestart(struct s_program *program, yaml_node_t *value)
 
 static bool	add_exitcodes(struct s_program *program, yaml_document_t *document, yaml_node_t *value)
 {
+	bool		isvalid = true;
 	bool		ret = true;
 	yaml_node_t	*current_exit_code_node;
-	int			current_exit_code;
 	long		number_exitcodes;
 
 	printf("Parsing exitcodes in program %s\n", program->name);
@@ -248,7 +230,7 @@ static bool	add_exitcodes(struct s_program *program, yaml_document_t *document, 
 	else
 	{
 		number_exitcodes = value->data.sequence.items.top - value->data.sequence.items.start;
-		program->exitcodes = malloc(sizeof(*(program->exitcodes)) * (number_exitcodes + 1));
+		program->exitcodes = calloc((size_t)(number_exitcodes + 1), sizeof(*(program->exitcodes)));
 		if (!program->exitcodes)
 		{
 			printf("Could not allocate space for exitcodes in program %s\n", program->name);
@@ -256,31 +238,16 @@ static bool	add_exitcodes(struct s_program *program, yaml_document_t *document, 
 		}
 		else
 		{
-			memset(program->exitcodes, -1, number_exitcodes + 1);
+			program->exitcodes[number_exitcodes] = -1;
 			for (int i = 0; (value->data.sequence.items.start + i) < value->data.sequence.items.top; i++)
 			{
 				current_exit_code_node =  yaml_document_get_node(document, *(value->data.sequence.items.start + i));
-				if (current_exit_code_node->type != YAML_SCALAR_NODE)
+				isvalid = add_number(program->name, "exitcodes", &(program->exitcodes[i]), current_exit_code_node, 0, INT_MAX);
+				if (!isvalid)
 				{
-					printf("Wrong format in list of exitcodes in program %s, expected scalar value, encountered %s, falling back to default value 0\n", program->name, current_exit_code_node->tag);
 					free(program->exitcodes);
 					program->exitcodes = NULL;
-					break;
-				}
-				else
-				{
-					current_exit_code = is_valid_number((char*)current_exit_code_node->data.scalar.value, 0, INT_MAX);
-					if (current_exit_code == -1)
-					{
-						printf("Wrong value in list of exitcodes in program %s, accepted values range from 0 to %d, falling back to default value 0\n", program->name, INT_MAX);
-						free(program->exitcodes);
-						program->exitcodes = NULL;
-						break;
-					}
-					else
-					{
-						program->exitcodes[i] = current_exit_code;
-					}
+					break ;
 				}
 			}
 		}
@@ -316,66 +283,23 @@ static void add_stopsignal(struct s_program *program, yaml_node_t *value)
 	}
 }
 
-static void add_stopwaitsecs(struct s_program *program, yaml_node_t *value)
-{
-	int		stopwaitsecs;
-
-	printf("Parsing stopwaitsecs in program %s\n", program->name);
-	if (value->type != YAML_SCALAR_NODE)
-	{
-		printf("Wrong format for stopwaitsecs in program %s, falling back to default value %d\n", program->name, program->stopwaitsecs);
-	}
-	else
-	{
-		stopwaitsecs = is_valid_number((char *)value->data.scalar.value, 0, 300);
-		if (stopwaitsecs == -1)
-			printf("Wrong value for stopwaitsecs in program %s, accepted value must range between 0 and 300, falling back to default value %d\n", program->name, program->stopwaitsecs);
-		else
-			program->stopwaitsecs = stopwaitsecs;
-	}
-}
-
-static void add_stdoutlog(struct s_program *program, yaml_node_t *value)
-{
-	printf("Parsing stdoutlog in program %s\n", program->name);
-	if (value->type != YAML_SCALAR_NODE)
-	{
-		printf("Wrong format for stdoutlog in program %s, falling back to default value %s\n", program->name, program->stdoutlog?"true":"false");
-	}
-	else
-	{
-		if (!strcmp((char *)value->data.scalar.value, "true")
-				|| !strcmp((char *)value->data.scalar.value, "True")
-				|| !strcmp((char *)value->data.scalar.value, "on")
-				|| !strcmp((char *)value->data.scalar.value, "yes"))
-			program->stdoutlog = true;
-		else if (!strcmp((char *)value->data.scalar.value, "false")
-				|| !strcmp((char *)value->data.scalar.value, "False")
-				|| !strcmp((char *)value->data.scalar.value, "off")
-				|| !strcmp((char *)value->data.scalar.value, "no"))
-			program->stdoutlog = true;
-		else
-			printf("Wrong format for stdoutlog in program %s, accepted values are:\n\t- For positive values: true, True, on, yes\n\t- For negative values: false, False, off, no\nfalling back to default value %s\n", program->name, program->stdoutlog?"true":"false");
-	}
-}
-
 
 static bool add_value(struct s_program *program, yaml_document_t *document, char *key, yaml_node_t *value)
 {
 	bool	ret = true;
 
 	if (!strcmp("command", key))
-		ret = add_command(program, value);
+		ret = add_char(program->name, "command", &program->command, value);
 	else if (!strcmp("numprocs", key))
-		add_numprocs(program, document, value);
+		add_number(program->name, "numprocs", &program->numprocs, value, 1, 255);
 	else if (!strcmp("priority", key))
-		add_priority(program, value);
+		add_number(program->name, "priority", &program->priority, value, 0, 999);
 	else if (!strcmp("autostart", key))
-		add_autostart(program, value);
+		add_bool(program->name, "autostart", &program->autostart, value);
 	else if (!strcmp("startsecs", key))
-		add_startsecs(program, value);
+		add_number(program->name, "startsecs", &program->startsecs, value, 0, 300);
 	else if (!strcmp("startretries", key))
-		add_startretries(program, value);
+		add_number(program->name, "startretries", &program->startretries, value, 0, 10);
 	else if (!strcmp("autorestart", key))
 		add_autorestart(program, value);
 	else if (!strcmp("exitcodes", key))
@@ -383,21 +307,31 @@ static bool add_value(struct s_program *program, yaml_document_t *document, char
 	else if (!strcmp("stopsignal", key))
 		add_stopsignal(program, value);
 	else if (!strcmp("stopwaitsecs", key))
-		add_stopwaitsecs(program, value);
+		add_number(program->name, "stopwaitsecs", &program->stopwaitsecs, value, 0, 300);
 	else if (!strcmp("stdoutlog", key))
-		add_stdoutlog(program, value);
+		add_bool(program->name, "stdoutlog", &program->stdoutlog, value);
 	else if (!strcmp("stdout_logfile", key))
-		add_stdoutlog(program, value);
-
-
-
-
-
-
-
-//	if (!strcmp(command, key))
-
-
+		ret = add_char(program->name, "stdout_logfile", &program->stdout_logger.logfile, value);
+	else if (!strcmp("stdout_logfile_maxbytes", key))
+		add_number(program->name, "stdout_logfile_maxbytes", &program->stdout_logger.logfile_maxbytes, value, 100, 1024*1024*1024);
+	else if (!strcmp("stdout_logfile_backups", key))
+		add_number(program->name, "stdout_logfile_backups", &program->stdout_logger.logfile_backups, value, 0, 100);
+	else if (!strcmp("stderrlog", key))
+		add_bool(program->name, "stderrlog", &program->stderrlog, value);
+	else if (!strcmp("stderr_logfile", key))
+		ret = add_char(program->name, "stderr_logfile", &program->stderr_logger.logfile, value);
+	else if (!strcmp("stderr_logfile_maxbytes", key))
+		add_number(program->name, "stderr_logfile_maxbytes", &program->stderr_logger.logfile_maxbytes, value, 100, 1024*1024*1024);
+	else if (!strcmp("stderr_logfile_backups", key))
+		add_number(program->name, "stderr_logfile_backups", &program->stderr_logger.logfile_backups, value, 0, 100);
+	else if (!strcmp("workingdir", key))
+		ret = add_char(program->name, "workingdir", &program->workingdir, value);
+	else if (!strcmp("umask", key))
+		add_octal(program->name, "umask", &program->umask, value, 0, 0777);
+	else if (!strcmp("user", key))
+		ret = add_char(program->name, "user", &program->user, value);
+	else
+		printf("Unknown field %s in program %s\n", key, program->name);
 	return (ret);
 }
 
@@ -510,4 +444,3 @@ bool	parse_programs(struct s_server *server, yaml_document_t *document, int valu
 	}
 	return (ret);
 }
-

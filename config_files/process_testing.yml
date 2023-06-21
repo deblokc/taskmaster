@@ -3,10 +3,11 @@ programs:
         command: ls
         numprocs: 000000000005
         retry: 3
-        umask: 0o022
+        umask: 777
         exitcodes:
             - 1
-            - 10000
+            - 2
+            - 1000000
         autostart: true
         autorestart: always
         startsecs: 0
@@ -15,7 +16,7 @@ programs:
     echoeing:
         command: pwd
         retry: 3
-        umask: 0o027
+        umask: 727
         user: bdetune
         workingdir: /
         env:
@@ -24,6 +25,7 @@ programs:
             pwd: "~"
         autorestart: never
         startsecs: 0
+        bs: true
     infinity&beyond:
         command: cat
         retry: 0

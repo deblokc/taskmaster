@@ -6,7 +6,7 @@
 #    By: tnaton <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/06/16 11:17:59 by tnaton            #+#    #+#              #
-#    Updated: 2023/06/19 19:07:16 by bdetune          ###   ########.fr        #
+#    Updated: 2023/06/21 20:40:40 by bdetune          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -32,7 +32,8 @@ MOREFLAGS = -Wformat=2				\
 			-Wstringop-overflow=4	\
 			-Winit-self				\
 			-ftrapv					\
-			-Wdate-time
+			-Wdate-time				\
+			-Wconversion
 
 #	-Wformat=2						Check format when call to printf/scanf...
 #	-Wformat-overflow=2				Check overflow of buffer with sprintf/vsprintf
