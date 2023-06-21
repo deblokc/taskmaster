@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/06/21 17:01:30 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/06/21 19:57:23 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,6 +16,7 @@
 # include <stdbool.h>
 # include <sys/time.h>
 # include <pthread.h>
+# include <stdatomic.h>
 
 
 /*
@@ -28,7 +29,7 @@ enum restart_state {
 	ALWAYS = 2
 };
 
-enum status {
+_Atomic enum status {
 	STOPPED = 0,
 	STARTING = 1,
 	RUNNING = 2,
@@ -70,7 +71,7 @@ struct s_process {
 	char				*name;
 	int					pid;
 	struct timeval		start;
-	int					status;
+	_Atomic int			status;
 	struct s_program	*program;
 	int					count_restart;
 	int					stdin[2];

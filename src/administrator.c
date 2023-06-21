@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/06/21 18:54:32 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/06/21 19:28:25 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -456,7 +456,7 @@ void create_process(struct s_program **lst) {
 void test(void) {
 	struct s_program prog;
 	char *cmd = "bash";
-	char *args[] = {cmd,  NULL};
+	char *args[] = {cmd, "salut", NULL};
 	char *args2[] = {"whoami", NULL};
 	char *env[] = {"USER=pasmoilol", "TEST=42", NULL};
 
