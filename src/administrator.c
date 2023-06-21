@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/06/21 13:32:11 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/06/21 16:25:06 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,6 +20,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include "taskmaster.h"
+#include <pthread.h>
 
 extern char **environ;
 
@@ -64,7 +65,9 @@ void child_exec(struct s_process *proc) {
 		close(proc->stdin[1]);
 		close(proc->stdout[0]);
 		close(proc->stderr[0]);
-
+//		close(proc->com[0]);
+//		close(proc->com[1]);
+	
 		if (proc->program->env) {
 			char **tmp = proc->program->env;
 			while (tmp && *tmp) {
@@ -81,6 +84,7 @@ void child_exec(struct s_process *proc) {
 			perror("execve");
 		}
 		// one error dont leak fds
+		close(proc->log);
 		close(proc->stdin[0]);
 		close(proc->stdout[1]);
 		close(proc->stderr[1]);
@@ -182,7 +186,8 @@ void closeall(struct s_process *process, int epollfd) {
 	close(process->stderr[0]);
 }
 
-void administrator(struct s_process *process) {
+void *administrator(void *arg) {
+	struct s_process *process = (struct s_process *)arg;
 	printf("Administrator for %s created\n", process->name);
 
 	bool				start = false; // this bool serve for autostart and start signal sent by controller
@@ -199,9 +204,9 @@ void administrator(struct s_process *process) {
 
 	in.events = EPOLLIN;
 	in.data.fd = 0;
-//	(void)in;
+	(void)in;
 	// ALL THIS IS TEMPORARY -- WILL USE PIPE WITH MAIN THREAD INSTEAD
-	epoll_ctl(epollfd, EPOLL_CTL_ADD, 0, &in);
+	//epoll_ctl(epollfd, EPOLL_CTL_ADD, 0, &in);
 
 	while (1) {
 		if (process->status == EXITED || process->status == BACKOFF || start) {
@@ -210,67 +215,36 @@ void administrator(struct s_process *process) {
 				printf("starting %s\n", process->name);
 				if (exec(process, epollfd)) {
 					printf("FATAL ERROR\n");
-					return ;
+					return NULL;
 				}
+			} else {
+				printf("%s could not restart, exiting\n", process->name);
+				return NULL;
 			}
-		}  else {
-			if (process->status == STARTING) {
-				struct timeval tmp;
-				if (gettimeofday(&tmp, NULL)) {
-					printf("FATAL ERROR\n");
-					return ;
-				}
+		}
+		if (process->status == STARTING) {
+			struct timeval tmp;
+			if (gettimeofday(&tmp, NULL)) {
+				printf("FATAL ERROR\n");
+				return NULL;
+			}
 
-				unsigned long start_micro = ((process->start.tv_sec * 1000) + (process->start.tv_usec / 1000));
-				unsigned long tmp_micro = ((tmp.tv_sec * 1000) + (tmp.tv_usec / 1000));
+			unsigned long start_micro = ((process->start.tv_sec * 1000) + (process->start.tv_usec / 1000));
+			unsigned long tmp_micro = ((tmp.tv_sec * 1000) + (tmp.tv_usec / 1000));
 
-				if ((process->program->startsecs * 1000) - (tmp_micro - start_micro) <= 0) {
-					process->status = RUNNING;
-					printf("NOW RUNNING\n");
-					// need to epoll_wait 0 to return instantly
-					tmp_micro = (process->program->startsecs * 1000);
-					start_micro = 0;
-				}
-				printf("time to wait : %ld\n", (process->program->startsecs * 1000) - (tmp_micro - start_micro));
-				nfds = epoll_wait(epollfd, events, 3, ((process->program->startsecs * 1000) - (tmp_micro - start_micro)));
-				if (nfds) { // if not timeout
-					printf("GOT EVENT\n");
-					for (int i = 0; i < nfds; i++) {
-					/* handles fds as needed */
-						if (events[i].data.fd == process->stdout[0]) { // if process print in stdout
-							char buf[4096];
-							bzero(buf, 4096);
-							if (read(process->stdout[0], buf, 4095) > 0) {
-								printf("%s : >%s<\n", process->name, buf);
-							} else {
-								closeall(process, epollfd);
-								process->status = BACKOFF;
-								break ;
-							}
-						}
-						if (events[i].data.fd == process->stderr[0]) { // if process print in stderr
-							char buf[4096];
-							bzero(buf, 4096);
-							if (read(process->stderr[0], buf, 4095) > 0) {
-								printf("%s ERROR : >%s<\n", process->name, buf);
-							} else {
-								closeall(process, epollfd);
-								process->status = BACKOFF;
-								break ;
-							}
-						}
-					}
-				} else { // if timeout
-					process->status = RUNNING;
-					printf("%s IS NOW RUNNING\n", process->name);
-				}
-			} else if (process->status == RUNNING) {
-				nfds = epoll_wait(epollfd, events, 3, -1); // busy wait for smth to do
-
-				printf("number events : %d\n", nfds);
+			if ((process->program->startsecs * 1000) - (tmp_micro - start_micro) <= 0) {
+				process->status = RUNNING;
+				printf("NOW RUNNING\n");
+				// need to epoll_wait 0 to return instantly
+				tmp_micro = (process->program->startsecs * 1000);
+				start_micro = 0;
+			}
+			printf("time to wait : %ld\n", (process->program->startsecs * 1000) - (tmp_micro - start_micro));
+			nfds = epoll_wait(epollfd, events, 3, ((process->program->startsecs * 1000) - (tmp_micro - start_micro)));
+			if (nfds) { // if not timeout
+				printf("GOT EVENT\n");
 				for (int i = 0; i < nfds; i++) {
 				/* handles fds as needed */
-					printf("GOT EVENT\n");
 					if (events[i].data.fd == process->stdout[0]) { // if process print in stdout
 						char buf[4096];
 						bzero(buf, 4096);
@@ -278,7 +252,7 @@ void administrator(struct s_process *process) {
 							printf("%s : >%s<\n", process->name, buf);
 						} else {
 							closeall(process, epollfd);
-							process->status = EXITED;
+							process->status = BACKOFF;
 							break ;
 						}
 					}
@@ -289,94 +263,177 @@ void administrator(struct s_process *process) {
 							printf("%s ERROR : >%s<\n", process->name, buf);
 						} else {
 							closeall(process, epollfd);
-							process->status = EXITED;
+							process->status = BACKOFF;
 							break ;
 						}
 					}
-					if (events[i].data.fd == 0) {
-						printf("READ STDIN AND WRITING\n");
+				}
+			} else { // if timeout
+				process->status = RUNNING;
+				printf("%s IS NOW RUNNING\n", process->name);
+			}
+		} else if (process->status == RUNNING) {
+			nfds = epoll_wait(epollfd, events, 3, -1); // busy wait for smth to do
+
+			printf("number events : %d\n", nfds);
+			for (int i = 0; i < nfds; i++) {
+			/* handles fds as needed */
+				printf("GOT EVENT\n");
+				if (events[i].data.fd == process->stdout[0]) { // if process print in stdout
+					char buf[4096];
+					bzero(buf, 4096);
+					if (read(process->stdout[0], buf, 4095) > 0) {
+						printf("%s : >%s<\n", process->name, buf);
+					} else {
+						closeall(process, epollfd);
+						process->status = EXITED;
+						break ;
+					}
+				}
+				if (events[i].data.fd == process->stderr[0]) { // if process print in stderr
+					char buf[4096];
+					bzero(buf, 4096);
+					if (read(process->stderr[0], buf, 4095) > 0) {
+						printf("%s ERROR : >%s<\n", process->name, buf);
+					} else {
+						closeall(process, epollfd);
+						process->status = EXITED;
+						break ;
+					}
+				}
+				if (events[i].data.fd == 0) {
+					printf("READ STDIN AND WRITING\n");
+					char buf[4096];
+					bzero(buf, 4096);
+					if (read(0, buf, 4095) > 0) {
+						printf("send : >%s<\n", buf);
+						int ret =  (write(process->stdin[1], buf, strlen(buf)));
+						printf("Wrote to pipe stdin %d chars out of %ld\n", ret, strlen(buf));
+					}
+				}
+			}
+		} else if (process->status == STOPPING) {
+			struct timeval tmp;
+			if (gettimeofday(&tmp, NULL)) {
+				printf("FATAL ERROR\n");
+				return NULL;
+			}
+
+			unsigned long start_micro = ((stop.tv_sec * 1000) + (stop.tv_usec / 1000));
+			unsigned long tmp_micro = ((tmp.tv_sec * 1000) + (tmp.tv_usec / 1000));
+
+			if ((process->program->stopwaitsecs * 1000) - (tmp_micro - start_micro) <= 0) {
+				process->status = STOPPED;
+				printf("FORCED STOPPED\n");
+				// kill(process->pid, SIGKILL);
+				// need to epoll_wait 0 to return instantly
+				tmp_micro = (process->program->stopwaitsecs * 1000);
+				start_micro = 0;
+			}
+			printf("time to wait : %ld\n", (process->program->stopwaitsecs * 1000) - (tmp_micro - start_micro));
+			nfds = epoll_wait(epollfd, events, 3, ((process->program->stopwaitsecs * 1000) - (tmp_micro - start_micro)));
+			if (nfds) { // if not timeout
+				printf("GOT EVENT\n");
+				for (int i = 0; i < nfds; i++) {
+				/* handles fds as needed */
+					if (events[i].data.fd == process->stdout[0]) { // if process print in stdout
 						char buf[4096];
 						bzero(buf, 4096);
-						if (read(0, buf, 4095) > 0) {
-							printf("send : >%s<\n", buf);
-							int ret =  (write(process->stdin[1], buf, strlen(buf)));
-							printf("Wrote to pipe stdin %d chars out of %ld\n", ret, strlen(buf));
+						if (read(process->stdout[0], buf, 4095) > 0) {
+							printf("%s : >%s<\n", process->name, buf);
+						} else {
+							closeall(process, epollfd);
+							process->status = STOPPED;
+							stop.tv_sec = 0;
+							stop.tv_usec = 0;
+							break ;
+						}
+					}
+					if (events[i].data.fd == process->stderr[0]) { // if process print in stderr
+						char buf[4096];
+						bzero(buf, 4096);
+						if (read(process->stderr[0], buf, 4095) > 0) {
+							printf("%s ERROR : >%s<\n", process->name, buf);
+						} else {
+							closeall(process, epollfd);
+							process->status = STOPPED;
+							stop.tv_sec = 0;
+							stop.tv_usec = 0;
+							break ;
 						}
 					}
 				}
-			} else if (process->status == STOPPING) {
-				struct timeval tmp;
-				if (gettimeofday(&tmp, NULL)) {
-					printf("FATAL ERROR\n");
-					return ;
-				}
+			} else { // if timeout
+				process->status = STOPPED;
+				printf("FORCED STOPPED\n");
+				// kill(process->pid, SIGKILL);
+				stop.tv_sec = 0;
+				stop.tv_usec = 0;
+			}
+		} else if (process->status == STOPPED || process->status == EXITED || process->status == FATAL) {
+			nfds = epoll_wait(epollfd, events, 3, -1); // busy wait for main thread to send instruction
 
-				unsigned long start_micro = ((stop.tv_sec * 1000) + (stop.tv_usec / 1000));
-				unsigned long tmp_micro = ((tmp.tv_sec * 1000) + (tmp.tv_usec / 1000));
-
-				if ((process->program->stopwaitsecs * 1000) - (tmp_micro - start_micro) <= 0) {
-					process->status = STOPPED;
-					printf("FORCED STOPPED\n");
-					// kill(process->pid, SIGKILL);
-					// need to epoll_wait 0 to return instantly
-					tmp_micro = (process->program->stopwaitsecs * 1000);
-					start_micro = 0;
-				}
-				printf("time to wait : %ld\n", (process->program->stopwaitsecs * 1000) - (tmp_micro - start_micro));
-				nfds = epoll_wait(epollfd, events, 3, ((process->program->stopwaitsecs * 1000) - (tmp_micro - start_micro)));
-				if (nfds) { // if not timeout
-					printf("GOT EVENT\n");
-					for (int i = 0; i < nfds; i++) {
-					/* handles fds as needed */
-						if (events[i].data.fd == process->stdout[0]) { // if process print in stdout
-							char buf[4096];
-							bzero(buf, 4096);
-							if (read(process->stdout[0], buf, 4095) > 0) {
-								printf("%s : >%s<\n", process->name, buf);
-							} else {
-								closeall(process, epollfd);
-								process->status = STOPPED;
-								break ;
-							}
-						}
-						if (events[i].data.fd == process->stderr[0]) { // if process print in stderr
-							char buf[4096];
-							bzero(buf, 4096);
-							if (read(process->stderr[0], buf, 4095) > 0) {
-								printf("%s ERROR : >%s<\n", process->name, buf);
-							} else {
-								closeall(process, epollfd);
-								process->status = STOPPED;
-								break ;
-							}
-						}
-					}
-				} else { // if timeout
-					process->status = STOPPED;
-					printf("FORCED STOPPED\n");
-					// kill(process->pid, SIGKILL);
-				}
+			for (int i = 0; i < nfds; i++) {
+				// do shit
 			}
 		}
 	}
 	printf("Exiting administrator\n");
-	return ;
+	return NULL;
+}
+
+void create_process(struct s_program *lst, int len) {
+	if (!lst) {
+		return ;
+	}
+
+	pthread_t *threads; // CANNOT STAY LIKE THIS BECAUSE A PROGRAM MAY HAVE MULTIPLES PROCESS
+
+	threads = (pthread_t *)calloc(sizeof(pthread_t), len);
+
+	struct s_process *lstproc = (struct s_process *)calloc(sizeof(struct s_process), len);
+	for (int i = 0; i < len; i++) {
+		bzero(&(lstproc[i]), sizeof(lstproc[i]));
+		printf("parsing %s\n", lst[i].name);
+		if (lst[i].numprocs != 1) {
+			printf("DOESNT HANDLE MULTIPLE PROCESS YET :coldface:\n");
+		}
+		lstproc[i].name = lst[i].name;
+		lstproc[i].pid = 0;
+		lstproc[i].status = STOPPED;
+		lstproc[i].program = &(lst[i]);
+		lstproc[i].count_restart = 0;
+		bzero(lstproc[i].stdin, 2);
+		bzero(lstproc[i].stdout, 2);
+		bzero(lstproc[i].stderr, 2);
+		printf("main creating %s\n", lstproc[i].name);
+		if (pthread_create(&(threads[i]), NULL, administrator, &lstproc[i])) {
+			printf("ERROR\n");
+			perror("pthread_create");
+		}
+	}
+
+	for (int i = 0; i < len; i++) {
+		pthread_join(threads[i], NULL);
+		printf("JOINED THREAD\n");
+	}
 }
 
 void test(void) {
 	struct s_program prog;
-	char *cmd = "bash";
-	char *args[] = {cmd, NULL};
-	char *env[] = {"USER=tnaton", "TEST=42", NULL};
+	char *cmd = "ls";
+	char *args[] = {cmd, "/usr", NULL};
+	char *args2[] = {"whoami", NULL};
+	char *env[] = {"USER=pasmoilol", "TEST=42", NULL};
 
-	prog.name = "ls";
+	prog.name = "listing";
 	prog.command = cmd;
 	prog.args = args;
 	prog.numprocs = 1;
 	prog.priority = 1;
 	prog.autostart = true;
 	prog.startsecs = 1;
-	prog.startretries = 3;
+	prog.startretries = 0;
 	prog.autorestart = ONERROR;
 	prog.exitcodes = NULL;
 	prog.stopsignal = 0;
@@ -390,6 +447,32 @@ void test(void) {
 	prog.umask = 0;
 	prog.user = NULL;
 
+	struct s_program prog2;
+
+	prog2.name = "quisuisje";
+	prog2.command = "whoami";
+	prog2.args = args2;
+	prog2.numprocs = 1;
+	prog2.priority = 1;
+	prog2.autostart = true;
+	prog2.startsecs = 1;
+	prog2.startretries = 0;
+	prog2.autorestart = ONERROR;
+	prog2.exitcodes = NULL;
+	prog2.stopsignal = 0;
+	prog2.stopwaitsecs = 5;
+	prog2.stdoutlog = false;
+	prog2.stdoutlogpath = NULL;
+	prog2.stderrlog = false;
+	prog2.stderrlogpath = NULL;
+	prog2.env = env;
+	prog2.workingdir = "/";
+	prog2.umask = 0;
+	prog2.user = NULL;
+
+
+	struct s_program lst[] = {prog, prog2};
+
 	struct s_process proc;
 
 	proc.name = "listing";
@@ -400,5 +483,6 @@ void test(void) {
 	bzero(proc.stdin, 2);
 	bzero(proc.stdout, 2);
 	bzero(proc.stderr, 2);
-	administrator(&proc);
+	create_process(lst, 2);
+	//administrator(&proc);
 }
