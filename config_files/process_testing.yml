@@ -1,15 +1,17 @@
 programs:
     exception:
         command: ls
-        numprocs: 2
+        numprocs: 000000000005
         retry: 3
         umask: 0o022
         exitcodes:
             - 1
-        autorestart: never
+            - 10000
+        autostart: true
+        autorestart: always
         startsecs: 0
-        stopsignal: USR2
-        priority: 3
+        stopsignal: HUP
+        priority: 0
     echoeing:
         command: pwd
         retry: 3

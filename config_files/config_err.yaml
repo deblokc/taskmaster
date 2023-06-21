@@ -11,8 +11,8 @@ programs:
         stopsignal: USR2
         priority: 3
     echoeing:
-		- asd: d
-		- asd: q
+        - asd: d
+        - asd: q
 server:
     unixsocket:
         file: /mnt/nfs/homes/bdetune/taskmasterd.sock

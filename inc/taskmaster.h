@@ -6,13 +6,15 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/06/20 17:49:16 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/06/21 19:48:55 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef TASKMASTER_H
 # define TASKMASTER_H
 # define _GNU_SOURCE
+# include <errno.h>
+# include <limits.h>
 # include <stdbool.h>
 # include <sys/time.h>
 # include "yaml.h"
@@ -109,8 +111,8 @@ struct s_server {
 };
 
 struct s_server*	parse_config(char* config_file);
-bool				init_server(struct s_server * server);
-bool				default_logger(struct s_server *server);
+void				init_server(struct s_server * server);
+void				default_logger(struct s_logger *logger);
 bool				parse_server(struct s_server *server, yaml_document_t *document, int value_index);
 bool				parse_programs(struct s_server *server, yaml_document_t *document, int value_index);
 

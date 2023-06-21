@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 19:48:45 by bdetune           #+#    #+#             */
-/*   Updated: 2023/06/19 19:56:42 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/06/21 19:48:23 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,16 +29,12 @@ static struct s_server	*free_server(struct s_server *server)
 	return (NULL);
 }
 
-bool	init_server(struct s_server * server)
+void	init_server(struct s_server * server)
 {
-	bool	ret = true;
-
 	server->cleaner = free_server;
 	server->log_level = WARN;
 	server->umask = 022;
-	if (!default_logger(server))
-		ret = false;
-	return (ret);
+	default_logger(&server->logger);
 }
 
 bool	parse_server(struct s_server *server, yaml_document_t *document, int value_index)
