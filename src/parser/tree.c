@@ -6,10 +6,11 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 17:17:11 by bdetune           #+#    #+#             */
-/*   Updated: 2023/06/22 17:43:35 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/06/22 18:40:56 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
+#include <string.h>
 #include "taskmaster.h"
 
 static struct s_program*	next(struct s_program* self)
@@ -42,10 +43,135 @@ static struct s_program*	begin(struct s_server* server)
 {
 	struct s_program*	current;
 
-	current = server->program_tree
+	current = server->program_tree;
+	if (current)
+	{
+		while(current->left)
+			current = current->left;
+	}
+	return (current);
 }
 
-static void	empty_tree(struct s_server* server)
+static struct s_program*	free_next_node(struct s_program* begin)
 {
-	
+	struct s_program*	ret = NULL;
+	if (begin)
+	{
+		while (begin->left || begin->right)
+		{
+			if (begin->left)
+				begin = begin->left;
+			else
+				begin = begin->right;
+		}
+		if (begin->parent)
+		{
+			ret = begin->parent;
+			if (begin->parent->left == begin)
+				begin->parent->left = NULL;
+			else
+				begin->parent->right = NULL;
+		}
+		begin->cleaner(begin);
+	}
+	return (ret);
+}
+
+static void	delete_tree(struct s_server* server)
+{
+	struct s_program *current;
+
+	current = server->program_tree;
+	current = free_next_node(server->program_tree);
+	while (current)
+		current = free_next_node(server->program_tree);
+}
+
+static struct s_program* find_location(struct s_program *begin, struct s_program *to_insert)
+{
+	int					diff;
+	struct s_program*	target;
+
+	target = begin;
+	while (target->left || target->right)
+	{
+		diff = strcmp(target->name, to_insert->name);
+		if (!diff)
+			break ;
+		if (diff < 0)
+		{
+			if (!target->right)
+				break ;
+			target = target->right;
+		}
+		else
+		{
+			if (!target->left)
+				break ;
+			target = target->left;
+		}
+	}
+	return (target);
+}
+
+
+static void	replace_node(struct s_program* target, struct s_program *to_insert)
+{
+	to_insert->left = target->left;
+	if (target->left)
+		target->left->parent = to_insert;
+	to_insert->right = target->right;
+	if (target->right)
+		target->right->parent = to_insert;
+	to_insert->parent = target->parent;
+	if (target->parent)
+	{
+		if (target->parent->left == target)
+			target->parent->left = to_insert;
+		else
+			target->parent->right = to_insert;
+	}
+	target->cleaner(target);
+}
+
+static bool	insert(struct s_server* server, struc s_program* program)
+{
+	int					diff;
+	bool				ret = false;
+	struct s_program*	target = NULL;
+
+	if (!server->program_tree)
+		server->program_tree = program;
+	else
+	{
+		target = find_location(server->program_tree, program);
+		diff = strcmp(target->name, program->name);
+		if (!diff)
+		{
+			replace_node(target, program);
+			ret = true;
+		}
+		else if (diff < 0)
+		{
+			target->right = program;
+			program->parent = target;
+		}
+		else
+		{
+			target->left = program;
+			program->parent = target;
+		}
+	}
+}
+
+void	register_treefn_serv(struct s_self *self)
+{
+	self->insert = insert;
+	self->delete_tree = delete_tree;
+	self->begin = begin;
+}
+
+void	register_treefn_prog(struct s_prgram *self)
+{
+	self->next = next;
 }

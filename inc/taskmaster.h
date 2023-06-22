@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/06/22 17:33:55 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/06/22 18:38:56 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -102,7 +102,8 @@ struct s_program {
 	int					umask;
 	char				*user;
 	char				*group;
-	struct s_program*	(*cleaner)(struct s_program *self);
+	struct s_program*	(*cleaner)(struct s_program*);
+	struct s_program*	(*next)(struct s_program*);
 	struct s_process	*processes;
 	struct s_program	*left;
 	struct s_program	*right;
@@ -134,6 +135,10 @@ struct s_server {
 	struct s_socket		socket;
 	struct s_program	*program_tree;
 	struct s_server*	(*cleaner)(struct s_server*);
+	bool				(*insert)(struct s_server*, struct s_program*);
+	void				(*delete_tree)(struct s_server *);
+	struct s_program*	(*begin)(struct s_server*);
+
 };
 
 struct s_server*	parse_config(char* config_file);
