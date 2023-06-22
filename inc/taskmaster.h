@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/06/21 20:47:50 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/06/22 17:33:55 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -43,6 +43,26 @@ enum log_level {
 	DEBUG = 4
 };
 
+enum parsed_type {
+	PROGRAM = 0,
+	SOCKET = 1,
+	SERVER = 2
+};
+
+struct s_report {
+	bool				critical;
+	char				buffer[512];
+	int					report_fd;
+	enum parsed_type	parsed_type;
+	char*				name;
+};
+
+struct s_env {
+	char*			key;
+	char*			value;
+	struct s_env*	next;
+};
+
 struct s_logger {
 	char*	logfile;
 	int		logfile_maxbytes;
@@ -77,7 +97,7 @@ struct s_program {
 	struct s_logger		stdout_logger;
 	bool				stderrlog;
 	struct s_logger		stderr_logger;
-	char				**env;
+	struct s_env*		env;
 	char				*workingdir;
 	int					umask;
 	char				*user;
@@ -109,7 +129,7 @@ struct s_server {
 	char				*user;
 	char				*group;
 	int					umask;
-	char				**env;
+	struct s_env*		env;
 	bool				daemon;
 	struct s_socket		socket;
 	struct s_program	*program_tree;
@@ -125,5 +145,7 @@ bool 				add_char(char const *program_name, char const *field_name, char **targe
 bool				add_number(char const *program_name, char const *field_name, int *target, yaml_node_t *value, long min, long max);
 bool				add_octal(char const *program_name, char const *field_name, int *target, yaml_node_t *value, long min, long max);
 void				add_bool(char const *program_name, char const *field_name, bool *target, yaml_node_t *value);
+struct s_env*		free_s_env(struct s_env *start);
+bool				parse_env(yaml_node_t *map, yaml_document_t *document, struct s_env **dest);
 
 #endif

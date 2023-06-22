@@ -37,3 +37,5 @@ server:
     umask: 022                        # umask, ranges from 000 to 777 in octal, default value 022
     daemon: true                      # starts taskmaster as daemon if true, default false
     loglevel: CRITICAL
+    env:
+        kk: cool

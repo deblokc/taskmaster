@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 19:48:45 by bdetune           #+#    #+#             */
-/*   Updated: 2023/06/21 19:48:23 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/06/22 17:09:30 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,6 +29,8 @@ static struct s_server	*free_server(struct s_server *self)
 		free(self->user);
 	if (self->group)
 		free(self->group);
+	if (self->env)
+		free_s_env(self->env);
 	free(self);
 	return (NULL);
 }
@@ -89,6 +91,8 @@ static bool add_value(struct s_server *server, yaml_document_t *document, char* 
 		add_bool(NULL, "daemon", &server->daemon, value);
 	else if (!strcmp("loglevel", key))
 		add_loglevel(server, value);
+	else if (!strcmp("env", key))
+		parse_env(value, document, &server->env);
 	else
 		printf("Unknown field %s in server\n", key);
 	return (ret) ;	

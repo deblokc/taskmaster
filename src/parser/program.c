@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/19 19:03:58 by bdetune           #+#    #+#             */
-/*   Updated: 2023/06/21 21:27:16 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/06/22 17:05:19 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,13 +34,7 @@ static struct s_program *cleaner(struct s_program *self)
 	if (self->exitcodes)
 		free(self->exitcodes);
 	if (self->env)
-	{
-		for (int i = 0; (self->env)[i]; i++)
-		{
-			free((self->env)[i]);
-		}
-		free(self->env);
-	}
+		free_s_env(self->env);
 	if (self->workingdir)
 		free(self->workingdir);
 	if (self->user)
@@ -205,6 +199,8 @@ static bool add_value(struct s_program *program, yaml_document_t *document, char
 		ret = add_char(program->name, "workingdir", &program->workingdir, value);
 	else if (!strcmp("umask", key))
 		add_octal(program->name, "umask", &program->umask, value, 0, 0777);
+	else if (!strcmp("env", key))
+		parse_env(value, document, &program->env);
 	else if (!strcmp("user", key))
 		ret = add_char(program->name, "user", &program->user, value);
 	else if (!strcmp("group", key))
