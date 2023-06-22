@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/06/22 18:48:25 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/06/22 20:09:47 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -78,6 +78,11 @@ struct s_socket {
 	char	*password;
 };
 
+struct s_priority {
+	int					priority;
+	struct s_program*	begin;
+	struct s_priority*	next;
+};
 
 struct s_program {
 	char				*name;
@@ -104,6 +109,7 @@ struct s_program {
 	char				*group;
 	struct s_program*	(*cleaner)(struct s_program*);
 	struct s_program*	(*itnext)(struct s_program*);
+	void				(*print)(struct s_program*);
 	struct s_process	*processes;
 	struct s_program	*left;
 	struct s_program	*right;
@@ -134,10 +140,12 @@ struct s_server {
 	bool				daemon;
 	struct s_socket		socket;
 	struct s_program	*program_tree;
+	struct s_priority*	priorities;
 	struct s_server*	(*cleaner)(struct s_server*);
 	bool				(*insert)(struct s_server*, struct s_program*);
-	void				(*delete_tree)(struct s_server *);
+	void				(*delete_tree)(struct s_server*);
 	struct s_program*	(*begin)(struct s_server*);
+	void				(*print_tree)(struct s_server*);
 
 };
 

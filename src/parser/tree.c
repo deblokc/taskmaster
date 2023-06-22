@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 17:17:11 by bdetune           #+#    #+#             */
-/*   Updated: 2023/06/22 18:53:05 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/06/22 19:18:03 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -89,6 +89,7 @@ static void	delete_tree(struct s_server* server)
 	current = free_next_node(server->program_tree);
 	while (current)
 		current = free_next_node(server->program_tree);
+	server->program_tree = NULL;
 }
 
 static struct s_program* find_location(struct s_program *begin, struct s_program *to_insert)
@@ -152,6 +153,11 @@ static bool	insert(struct s_server* server, struct s_program* program)
 		diff = strcmp(target->name, program->name);
 		if (!diff)
 		{
+			if (server->program_tree == target)
+			{
+				printf("WE ARE CHANGING OUR ROOT\n");
+				server->program_tree = program;
+			}
 			replace_node(target, program);
 			ret = true;
 		}
@@ -169,11 +175,22 @@ static bool	insert(struct s_server* server, struct s_program* program)
 	return (ret);
 }
 
+static void	print_tree(struct s_server* self)
+{
+	printf("############# Program Tree #############");
+	for (struct s_program* current = self->begin(self); current; current = current->itnext(current))
+	{
+		printf("\t");
+		current->print(current);
+	}
+}
+
 void	register_treefn_serv(struct s_server *self)
 {
 	self->insert = insert;
 	self->delete_tree = delete_tree;
 	self->begin = begin;
+	self->print_tree = print_tree;
 }
 
 void	register_treefn_prog(struct s_program *self)

@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/19 19:03:58 by bdetune           #+#    #+#             */
-/*   Updated: 2023/06/22 18:51:51 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/06/22 19:59:56 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -47,9 +47,102 @@ static struct s_program *cleaner(struct s_program *self)
 	return (NULL);
 }
 
+static void	print(struct s_program* self)
+{
+	struct s_env	*current;
+
+	printf("\n************************** PROGRAM **************************\n");
+	printf("\tName                  :\t%s\n", self->name? self->name:"(NULL)");
+	printf("\tCommand               :\t%s\n", self->command? self->command:"(NULL)");
+	printf("\tNumprocs              :\t%d\n", self->numprocs);
+	printf("\tPriority              :\t%d\n", self->priority);
+	printf("\tAutostart             :\t%s\n", self->autostart ? "true" : "false");
+	printf("\tStartsecs             :\t%d\n", self->startsecs);
+	printf("\tStartretries          :\t%d\n", self->startretries);
+	printf("\tAutorestart           :\t%s\n", self->autorestart == NEVER ? "never": (self->autorestart == ONERROR? "onerror" : "always"));
+	if (self->exitcodes)
+	{
+		printf("\tExitcodes             :\n");
+		for (int i = 0; self->exitcodes[i] != -1; i++)
+		{
+			printf("\t                       \t- %d\n", self->exitcodes[i]);
+		}
+	}
+	else
+	{
+		printf("\tExitcodes             :\n\t                       \t- 0\n");
+	}
+	switch (self->stopsignal){
+		case SIGHUP:
+			printf("\tStopsignal            :\tSIGHUP\n");
+			break;
+		case SIGINT:
+			printf("\tStopsignal            :\tSIGINT\n");
+			break;
+		case SIGQUIT:
+			printf("\tStopsignal            :\tSIGQUIT\n");
+			break;
+		case SIGKILL:
+			printf("\tStopsignal            :\tSIGKILL\n");
+			break;
+		case SIGUSR1:
+			printf("\tStopsignal            :\tSIGUSR1\n");
+			break;
+		case SIGUSR2:
+			printf("\tStopsignal            :\tSIGUSR2\n");
+			break;
+		default:
+			printf("\tStopsignal            :\tSIGTERM\n");
+			break;
+	}
+	printf("\tStopwaitsecs          :\t%d\n", self->stopwaitsecs);
+	printf("\tStopasgroup           :\t%s\n", self->stopasgroup ? "true" : "false");
+	if (self->stdoutlog)
+	{
+		printf("\tStdoutlog             :\ttrue\n");
+		printf("\tStdoutlogfile         :\t%s\n", self->stdout_logger.logfile ? self->stdout_logger.logfile: "(default location)");
+		printf("\tStdoutlogfile_maxbytes:\t%d\n", self->stdout_logger.logfile_maxbytes);
+		printf("\tStdoutlogfile_backups :\t%d\n", self->stdout_logger.logfile_backups);
+	}
+	else
+	{
+		printf("\tStdoutlog             :\tfalse\n");
+	}
+	if (self->stderrlog)
+	{
+		printf("\tStderrlog             :\ttrue\n");
+		printf("\tStderrlogfile         :\t%s\n", self->stderr_logger.logfile ? self->stderr_logger.logfile: "(default location)");
+		printf("\tStderrlogfile_maxbytes:\t%d\n", self->stderr_logger.logfile_maxbytes);
+		printf("\tStderrlogfile_backups :\t%d\n", self->stderr_logger.logfile_backups);
+	}
+	else
+	{
+		printf("\tStderrlog             :\tfalse\n");
+	}
+	if (self->env)
+	{
+		printf("\tenv                   :\t\n");
+		current = self->env;
+		while (current)
+		{
+			printf("\t                       \t- %s = %s\n", current->key, current->value);
+			current = current->next;
+		}
+	}
+	else
+	{
+		printf("\tenv                   :\t(NULL)\n");
+	}
+	printf("\tworkingdir            :\t%s\n", self->workingdir ? self->workingdir : "(default location)");
+	printf("\tumask                 :\t%o\n", (unsigned int)self->umask);
+	printf("\tuser                  :\t%s\n", self->user ? self->user : "(default user)");
+	printf("\tgroup                 :\t%s\n", self->group ? self->group : "(default group)");
+}
+
 static void	init_program(struct s_program *program)
 {
 	register_treefn_prog(program);
+	program->print = print;
 	program->numprocs = 1;
 	program->priority = 999;
 	program->autostart = true;

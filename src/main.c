@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/06/16 20:35:43 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/06/22 19:12:15 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,11 +28,13 @@ int main(int ac, char **av) {
 		server = parse_config(av[1]);
 		if (!server)
 		{
+			printf("Could not make server from configuration file\n");
 			ret = 1;
 		}
 		else
 		{
 			printf("We have a server\n");
+			server->print_tree(server);
 			server = server->cleaner(server);
 		}
 	}

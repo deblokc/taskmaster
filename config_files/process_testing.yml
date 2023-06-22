@@ -1,6 +1,25 @@
 programs:
+    infinity&beyond:
+        command: cat
+        retry: 0
+        autorestart: never
+        startsecs: 3
+    echoeing:
+        command: pwd
+        stopsignal: HUP
+        retry: 3
+        umask: 727
+        user: bdetune
+        workingdir: /
+        env:
+            PATH: ""
+            PATH: "/\""
+            pwd: ~
+        autorestart: never
+        startsecs: 0
+        bs: true
     exception:
-        command: ls
+        command: bash -c "./taskmaster \"Hey\""
         numprocs: 000000000005
         retry: 3
         umask: 777
@@ -11,26 +30,14 @@ programs:
         autostart: true
         autorestart: always
         startsecs: 0
-        stopsignal: HUP
+        stopsignal: HUPS
         priority: 0
-    echoeing:
-        command: pwd
-        retry: 3
-        umask: 727
-        user: bdetune
-        workingdir: /
-        env:
-            PATH: ""
-            PATH: "/"
-            pwd: "~"
-        autorestart: never
-        startsecs: 0
-        bs: true
     infinity&beyond:
-        command: cat
-        retry: 0
+        command: suprise I changed
+        startretries: 0
         autorestart: never
         startsecs: 3
+
 server:
     connection: Unix
     user: bdetune
