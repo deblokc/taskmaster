@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/19 19:03:58 by bdetune           #+#    #+#             */
-/*   Updated: 2023/06/22 17:05:19 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/06/22 18:51:51 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -49,6 +49,7 @@ static struct s_program *cleaner(struct s_program *self)
 
 static void	init_program(struct s_program *program)
 {
+	register_treefn_prog(program);
 	program->numprocs = 1;
 	program->priority = 999;
 	program->autostart = true;
@@ -240,7 +241,6 @@ static bool	add_program(struct s_server *server, yaml_document_t *document, yaml
 	bool				ret = true;
 	struct s_program	*program = NULL;
 
-	(void)server;
 	if (params->type != YAML_MAPPING_NODE)
 	{
 		printf("Wrong node type for program %s, expected map, encountered: %s\n", name->data.scalar.value, params->tag);
@@ -269,12 +269,13 @@ static bool	add_program(struct s_server *server, yaml_document_t *document, yaml
 				init_program(program);
 				if (!parse_values(program, document, params))
 				{
+					printf("***** ***** ERROR ***** *****\n");
 					program->cleaner(program);
 				}
 				else
 				{
+					server->insert(server, program);
 					printf("Valid program %s\n", program->name);
-					program->cleaner(program);
 				}
 			}
 		}

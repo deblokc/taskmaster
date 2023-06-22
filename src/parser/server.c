@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 19:48:45 by bdetune           #+#    #+#             */
-/*   Updated: 2023/06/22 17:09:30 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/06/22 18:49:03 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,12 +31,14 @@ static struct s_server	*free_server(struct s_server *self)
 		free(self->group);
 	if (self->env)
 		free_s_env(self->env);
+	self->delete_tree(self);
 	free(self);
 	return (NULL);
 }
 
 void	init_server(struct s_server * server)
 {
+	register_treefn_serv(server);
 	server->cleaner = free_server;
 	server->loglevel = WARN;
 	server->umask = 022;
