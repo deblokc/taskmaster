@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/06/22 19:12:15 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/07/04 19:18:34 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,6 +16,7 @@
 int main(int ac, char **av) {
 	int					ret = 0;
 	struct s_server*	server = NULL;
+	struct s_priority*	priorities = NULL;
 
 	if (ac != 2)
 	{
@@ -35,6 +36,15 @@ int main(int ac, char **av) {
 		{
 			printf("We have a server\n");
 			server->print_tree(server);
+			priorities = create_priorities(server);
+			if (!priorities)
+				printf("No priorities\n");
+			else
+			{
+				printf("Got priorities\n");
+				priorities->print_priorities(priorities);
+				priorities->destructor(priorities);
+			}
 			server = server->cleaner(server);
 		}
 	}

@@ -6,7 +6,7 @@
 #    By: tnaton <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/06/16 11:17:59 by tnaton            #+#    #+#              #
-#    Updated: 2023/06/22 18:42:25 by bdetune          ###   ########.fr        #
+#    Updated: 2023/07/04 18:33:39 by bdetune          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -25,6 +25,7 @@ SRCS = main.c \
 	   parser/program.c \
 	   parser/tree.c \
 	   parser/utils.c \
+	   parser/priorities.c \
 	   parser/free_errors.c
 
 INC = taskmaster.h

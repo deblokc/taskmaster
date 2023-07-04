@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/06/22 20:09:47 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/07/04 19:18:03 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -82,6 +82,10 @@ struct s_priority {
 	int					priority;
 	struct s_program*	begin;
 	struct s_priority*	next;
+	struct s_priority*	(*itnext)(struct s_priority*);
+	void				(*print_priority)(struct s_priority*);
+	void				(*print_priorities)(struct s_priority*);
+	void				(*destructor)(struct s_priority*);
 };
 
 struct s_program {
@@ -162,5 +166,6 @@ bool				add_octal(char const *program_name, char const *field_name, int *target,
 void				add_bool(char const *program_name, char const *field_name, bool *target, yaml_node_t *value);
 struct s_env*		free_s_env(struct s_env *start);
 bool				parse_env(yaml_node_t *map, yaml_document_t *document, struct s_env **dest);
+struct s_priority*	create_priorities(struct s_server* server);
 
 #endif
