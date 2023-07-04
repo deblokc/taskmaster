@@ -7,3 +7,4 @@ taskmaster
 yaml-0.2.5/
 *.so
 yaml.h
+taskmasterctl/taskmasterctl
