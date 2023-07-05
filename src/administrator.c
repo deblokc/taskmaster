@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/06/21 19:28:25 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/05 19:28:25 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,8 +34,8 @@ char *getcmd(struct s_process *proc) {
 				char *path;
 				path = strtok(envpath, ":");
 				while (path) {// size of path + '/'    +    size of command   +   '\0'
-					int size = (strlen(path) + 1 + strlen(proc->program->command) + 1);
-					command = (char *)calloc(sizeof(char), size);
+					size_t size = (strlen(path) + 1 + strlen(proc->program->command) + 1);
+					command = (char *)calloc(size, sizeof(char));
 					if (!command) {
 						break ;
 					}
@@ -69,10 +69,20 @@ void child_exec(struct s_process *proc) {
 		close(proc->com[1]);
 	
 		if (proc->program->env) {
-			char **tmp = proc->program->env;
-			while (tmp && *tmp) {
-				putenv(*tmp);
-				tmp++;
+			struct s_env*	begin;
+
+			begin = proc->program->env;
+			while (begin)
+			{
+				char*	string = calloc(strlen(begin->key) + strlen(begin->value) + 2, sizeof(char));
+				if (string)
+				{
+					strcpy(string, begin->key);
+					string[strlen(begin->key)] = '=';
+					strcpy(&string[strlen(begin->key) + 1], begin->value);
+					putenv(string);
+				}
+				begin = begin->next;
 			}
 		}
 		char *command = getcmd(proc);
@@ -226,18 +236,18 @@ void *administrator(void *arg) {
 				return NULL;
 			}
 
-			unsigned long start_micro = ((process->start.tv_sec * 1000) + (process->start.tv_usec / 1000));
-			unsigned long tmp_micro = ((tmp.tv_sec * 1000) + (tmp.tv_usec / 1000));
+			long long start_micro = ((process->start.tv_sec * 1000) + (process->start.tv_usec / 1000));
+			long long tmp_micro = ((tmp.tv_sec * 1000) + (tmp.tv_usec / 1000));
 
-			if ((process->program->startsecs * 1000) - (tmp_micro - start_micro) <= 0) {
+			if (((long long)process->program->startsecs * 1000) <= (tmp_micro - start_micro)) {
 				process->status = RUNNING;
 				printf("NOW RUNNING\n");
 				// need to epoll_wait 0 to return instantly
-				tmp_micro = (process->program->startsecs * 1000);
+				tmp_micro = ((long long)process->program->startsecs * 1000);
 				start_micro = 0;
 			}
-			printf("time to wait : %ld\n", (process->program->startsecs * 1000) - (tmp_micro - start_micro));
-			nfds = epoll_wait(epollfd, events, 3, ((process->program->startsecs * 1000) - (tmp_micro - start_micro)));
+			printf("time to wait : %lld\n", ((long long)process->program->startsecs * 1000) - (tmp_micro - start_micro));
+			nfds = epoll_wait(epollfd, events, 3, (int)(((long long)process->program->startsecs * 1000) - (tmp_micro - start_micro)));
 			if (nfds) { // if not timeout
 				printf("GOT EVENT\n");
 				for (int i = 0; i < nfds; i++) {
@@ -304,8 +314,8 @@ void *administrator(void *arg) {
 					bzero(buf, 4096);
 					if (read(0, buf, 4095) > 0) {
 						printf("send : >%s<\n", buf);
-						int ret =  (write(process->stdin[1], buf, strlen(buf)));
-						printf("Wrote to pipe stdin %d chars out of %ld\n", ret, strlen(buf));
+						ssize_t ret =  (write(process->stdin[1], buf, strlen(buf)));
+						printf("Wrote to pipe stdin %ld chars out of %ld\n", ret, strlen(buf));
 					}
 				}
 			}
@@ -316,10 +326,10 @@ void *administrator(void *arg) {
 				return NULL;
 			}
 
-			unsigned long start_micro = ((stop.tv_sec * 1000) + (stop.tv_usec / 1000));
-			unsigned long tmp_micro = ((tmp.tv_sec * 1000) + (tmp.tv_usec / 1000));
+			long long start_micro = ((stop.tv_sec * 1000) + (stop.tv_usec / 1000));
+			long long tmp_micro = ((tmp.tv_sec * 1000) + (tmp.tv_usec / 1000));
 
-			if ((process->program->stopwaitsecs * 1000) - (tmp_micro - start_micro) <= 0) {
+			if ((process->program->stopwaitsecs * 1000) <= (tmp_micro - start_micro)) {
 				process->status = STOPPED;
 				printf("FORCED STOPPED\n");
 				// kill(process->pid, SIGKILL);
@@ -327,8 +337,8 @@ void *administrator(void *arg) {
 				tmp_micro = (process->program->stopwaitsecs * 1000);
 				start_micro = 0;
 			}
-			printf("time to wait : %ld\n", (process->program->stopwaitsecs * 1000) - (tmp_micro - start_micro));
-			nfds = epoll_wait(epollfd, events, 3, ((process->program->stopwaitsecs * 1000) - (tmp_micro - start_micro)));
+			printf("time to wait : %lld\n", (process->program->stopwaitsecs * 1000) - (tmp_micro - start_micro));
+			nfds = epoll_wait(epollfd, events, 3, (int)((process->program->stopwaitsecs * 1000) - (tmp_micro - start_micro)));
 			if (nfds) { // if not timeout
 				printf("GOT EVENT\n");
 				for (int i = 0; i < nfds; i++) {
@@ -380,13 +390,13 @@ void *administrator(void *arg) {
 }
 
 char *getname(char *name, int num) {
-	int size = strlen(name) + 2;
-	char *ret = (char *)calloc(sizeof(char), size);
+	size_t size = strlen(name) + 2;
+	char *ret = (char *)calloc(size, sizeof(char));
 	if (!ret) {
 		return NULL;
 	}
 	strlcpy(ret, name, size);
-	ret[size - 1] = '0' + num + 1;
+	ret[size - 1] = '0' + (char)num + 1;
 	return (ret);
 }
 
@@ -416,7 +426,7 @@ void create_process(struct s_program **lst) {
 
 	for (int i = 0; lst[i]; i++) {
 		printf("creating processes for %s\n", lst[i]->name);
-		lst[i]->processes = (struct s_process *)calloc(sizeof(struct s_process), lst[i]->numprocs);
+		lst[i]->processes = (struct s_process *)calloc(sizeof(struct s_process), (size_t)lst[i]->numprocs);
 		if (!lst[i]->processes) {
 			printf("FATAL ERROR CALLOC PROCESS\n");
 		}
@@ -453,6 +463,7 @@ void create_process(struct s_program **lst) {
 	wait_process(lst);
 }
 
+/*
 void test(void) {
 	struct s_program prog;
 	char *cmd = "bash";
@@ -521,5 +532,5 @@ void test(void) {
 	bzero(proc.stdout, 2);
 	bzero(proc.stderr, 2);
 	create_process(lst);
-	//administrator(&proc);
-}
+	administrator(&proc);
+}*/
