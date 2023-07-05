@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 15:17:03 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/05 14:51:00 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/05 16:31:27 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -61,19 +61,50 @@ int init_readline(struct s_readline* global) {
 
 struct s_readline *get_global(void) {
 	static struct s_readline global = {
-.buf = NULL
+.line = NULL
 	};
-	if (global.buf == NULL) {
+	if (global.line == NULL) {
 		init_readline(&global);
-		global.buf = (char *)calloc(sizeof(char), 4097);
+		global.line = (char *)calloc(sizeof(char), 4096);
 	}
 
 	return (&global);
 }
 
+int	handle_line(struct s_readline *global) {
+	size_t size;
+	size_t line_len = 0;
+	char buf[BUF_SIZE];
+
+	bzero(buf, BUF_SIZE);
+	while (buf[0] != '\n') {
+		size = read(0, buf, 4096);
+		for (size_t i = 0; i < size; i++) {
+			if (buf[i] >= ' ' && buf[i] <= '~') {
+				global->line[line_len] = buf[i];
+				line_len++;
+				if (write(1, &buf[i], 1) < 0) {
+					return (-1);
+				}
+			} else if (buf[i] == 0x7f) {
+				global->line[line_len] = '\0';
+				line_len--;
+				if (write(1, "\b \b", 3) < 0) {
+					return (-1);
+				}
+			} else {
+				printf("%x", buf[i]);
+			}
+		}
+		fflush(stdout);
+	}
+	printf("\n\n>%s<\n\n", global->line);
+	return (0);
+
+}
+
 char *ft_readline(char *prompt) {
 	struct s_readline *global = get_global();
-	size_t size;
 
 	if (readline_setattr(global)) {
 		return NULL;
@@ -83,12 +114,8 @@ char *ft_readline(char *prompt) {
 			return NULL;
 		}
 	}
-	while (global->buf[0] != 'q') {
-		size = read(0, global->buf, 4096);
-		for (size_t i = 0; i < size; i++) {
-			printf("%x", global->buf[i]);
-		}
-		fflush(stdout);
+	if (handle_line(global)) {
+		return NULL;
 	}
 	if (write(1, "\n", 1) < 0) {
 		return NULL;
