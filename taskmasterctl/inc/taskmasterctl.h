@@ -6,14 +6,16 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 16:45:18 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/04 19:51:02 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/05 16:12:58 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <termios.h>
 
+#define BUF_SIZE 4096
+
 struct s_readline {
-	char *buf;
+	char *line;
 	struct termios	base;
 	struct termios	term;
 };
