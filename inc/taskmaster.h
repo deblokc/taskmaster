@@ -6,13 +6,15 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/06/16 15:32:33 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/07/04 19:18:03 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef TASKMASTER_H
 # define TASKMASTER_H
-
+# define _GNU_SOURCE
+# include <errno.h>
+# include <limits.h>
 # include <stdbool.h>
 # include <sys/time.h>
 # include "yaml.h"
@@ -33,27 +35,90 @@ enum status {
 	FATAL = 6
 };
 
-struct s_program {
-	char	*name;
-	char	*command;
-	char	**args;
-	int		numprocs;
-	int		priority;
-	bool	autostart;
-	int		startsecs;
-	int		startretries;
-	int		autorestart;
-	int		*exitcodes;
-	int		stopsignal;
-	int		stopwaitsecs;
-	bool	stdoutlog;
-	char	*stdoutlogpath;
-	bool	stderrlog;
-	char	*stderrlogpath;
-	char	**env;
-	char	*workingdir;
-	int		umask;
+enum log_level {
+	CRITICAL = 0,
+	ERROR = 1,
+	WARN = 2,
+	INFO = 3,
+	DEBUG = 4
+};
+
+enum parsed_type {
+	PROGRAM = 0,
+	SOCKET = 1,
+	SERVER = 2
+};
+
+struct s_report {
+	bool				critical;
+	char				buffer[512];
+	int					report_fd;
+	enum parsed_type	parsed_type;
+	char*				name;
+};
+
+struct s_env {
+	char*			key;
+	char*			value;
+	struct s_env*	next;
+};
+
+struct s_logger {
+	char*	logfile;
+	int		logfile_maxbytes;
+	int		logfile_backups;
+};
+
+struct s_socket {
+	char	*socketpath;
+	int		chmod;
+	char	*uid;
+	char	*gid;
 	char	*user;
+	char	*password;
+};
+
+struct s_priority {
+	int					priority;
+	struct s_program*	begin;
+	struct s_priority*	next;
+	struct s_priority*	(*itnext)(struct s_priority*);
+	void				(*print_priority)(struct s_priority*);
+	void				(*print_priorities)(struct s_priority*);
+	void				(*destructor)(struct s_priority*);
+};
+
+struct s_program {
+	char				*name;
+	char				*command;
+	char				**args;
+	int					numprocs;
+	int					priority;
+	bool				autostart;
+	int					startsecs;
+	int					startretries;
+	enum restart_state	autorestart;
+	int					*exitcodes;
+	int					stopsignal;
+	int					stopwaitsecs;
+	bool				stopasgroup;
+	bool				stdoutlog;
+	struct s_logger		stdout_logger;
+	bool				stderrlog;
+	struct s_logger		stderr_logger;
+	struct s_env*		env;
+	char				*workingdir;
+	int					umask;
+	char				*user;
+	char				*group;
+	struct s_program*	(*cleaner)(struct s_program*);
+	struct s_program*	(*itnext)(struct s_program*);
+	void				(*print)(struct s_program*);
+	struct s_process	*processes;
+	struct s_program	*left;
+	struct s_program	*right;
+	struct s_program	*parent;
+	struct s_program	*next;
 };
 
 struct s_process {
@@ -64,5 +129,43 @@ struct s_process {
 	struct s_program	*program;
 	int					count_restart;
 };
+
+
+struct s_server {
+	char *				config_file;
+	int					log_pipe[2];
+	enum log_level		loglevel;
+	struct s_logger		logger;
+	char				*pidfile;
+	char				*user;
+	char				*group;
+	int					umask;
+	struct s_env*		env;
+	bool				daemon;
+	struct s_socket		socket;
+	struct s_program	*program_tree;
+	struct s_priority*	priorities;
+	struct s_server*	(*cleaner)(struct s_server*);
+	bool				(*insert)(struct s_server*, struct s_program*);
+	void				(*delete_tree)(struct s_server*);
+	struct s_program*	(*begin)(struct s_server*);
+	void				(*print_tree)(struct s_server*);
+
+};
+
+struct s_server*	parse_config(char* config_file);
+void				init_server(struct s_server * server);
+void				register_treefn_serv(struct s_server *self);
+void				register_treefn_prog(struct s_program *self);
+void				default_logger(struct s_logger *logger);
+bool				parse_server(struct s_server *server, yaml_document_t *document, int value_index);
+bool				parse_programs(struct s_server *server, yaml_document_t *document, int value_index);
+bool 				add_char(char const *program_name, char const *field_name, char **target, yaml_node_t *value);
+bool				add_number(char const *program_name, char const *field_name, int *target, yaml_node_t *value, long min, long max);
+bool				add_octal(char const *program_name, char const *field_name, int *target, yaml_node_t *value, long min, long max);
+void				add_bool(char const *program_name, char const *field_name, bool *target, yaml_node_t *value);
+struct s_env*		free_s_env(struct s_env *start);
+bool				parse_env(yaml_node_t *map, yaml_document_t *document, struct s_env **dest);
+struct s_priority*	create_priorities(struct s_server* server);
 
 #endif
