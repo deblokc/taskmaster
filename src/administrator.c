@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/05 19:28:25 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/07/05 19:36:15 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -247,7 +247,11 @@ void *administrator(void *arg) {
 				start_micro = 0;
 			}
 			printf("time to wait : %lld\n", ((long long)process->program->startsecs * 1000) - (tmp_micro - start_micro));
-			nfds = epoll_wait(epollfd, events, 3, (int)(((long long)process->program->startsecs * 1000) - (tmp_micro - start_micro)));
+			if (((long long)process->program->startsecs * 1000) - (tmp_micro - start_micro) > INT_MAX) {
+				nfds = epoll_wait(epollfd, events, 3, INT_MAX);
+			} else {
+				nfds = epoll_wait(epollfd, events, 3, (int)(((long long)process->program->startsecs * 1000) - (tmp_micro - start_micro)));
+			}
 			if (nfds) { // if not timeout
 				printf("GOT EVENT\n");
 				for (int i = 0; i < nfds; i++) {
