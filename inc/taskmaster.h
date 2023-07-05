@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/04 19:18:03 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/07/05 18:33:10 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,7 +31,7 @@ enum restart_state {
 	ALWAYS = 2
 };
 
-_Atomic enum status {
+enum status {
 	STOPPED = 0,
 	STARTING = 1,
 	RUNNING = 2,
