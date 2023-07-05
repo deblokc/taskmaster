@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 15:17:03 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/04 20:16:45 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/05 14:51:00 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,6 +25,21 @@ int checkterm(void) {
 	if (strcmp(term, "xterm") && strcmp(term, "xterm-256color")) {
 		return (-1);
 	}
+	return (0);
+}
+
+int readline_setattr(struct s_readline* global) {
+	if (tcsetattr(0, TCSADRAIN, &(global->term))) {
+		return (-1);
+	}
+	return (0);
+}
+
+int readline_resetattr(struct s_readline* global) {
+	if (tcsetattr(0, TCSADRAIN, &(global->base))) {
+		return (-1);
+	}
+	return (0);
 }
 
 int init_readline(struct s_readline* global) {
@@ -41,9 +56,6 @@ int init_readline(struct s_readline* global) {
 	global->term.c_lflag |= ISIG; // cancel signal
 	global->term.c_cc[VMIN] = 1; // need only one char to do smg
 	global->term.c_cc[VTIME] = 0; // doesnt need timeout AKA busy wait 4ever
-	if (tcsetattr(0, TCSADRAIN, &(global->term))) {
-		return (-1);
-	}
 	return (0);
 }
 
@@ -61,7 +73,30 @@ struct s_readline *get_global(void) {
 
 char *ft_readline(char *prompt) {
 	struct s_readline *global = get_global();
+	size_t size;
 
+	if (readline_setattr(global)) {
+		return NULL;
+	}
+	if (prompt) {
+		if (write(1, prompt, strlen(prompt)) < 0) {
+			return NULL;
+		}
+	}
+	while (global->buf[0] != 'q') {
+		size = read(0, global->buf, 4096);
+		for (size_t i = 0; i < size; i++) {
+			printf("%x", global->buf[i]);
+		}
+		fflush(stdout);
+	}
+	if (write(1, "\n", 1) < 0) {
+		return NULL;
+	}
+	if (readline_resetattr(global)) {
+		return NULL;
+	}
+	return NULL;
 }
 
 int main(int ac, char **av) {
@@ -70,6 +105,8 @@ int main(int ac, char **av) {
 
 	printf("%s\n", ctermid(NULL));
 	printf("%s\n", ttyname(0));
+
+	(void)ft_readline("test>");
 
 	FILE *file = fopen_history();
 	add_old_history(file);
