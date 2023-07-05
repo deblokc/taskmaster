@@ -2,3 +2,8 @@ vscode/
 /obj
 *.o
 taskmaster
+.*.swp
+.nfs*
+yaml-0.2.5/
+*.so
+yaml.h

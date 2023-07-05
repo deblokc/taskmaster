@@ -6,7 +6,7 @@
 #    By: tnaton <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/06/16 11:17:59 by tnaton            #+#    #+#              #
-#    Updated: 2023/06/21 12:50:48 by tnaton           ###   ########.fr        #
+#    Updated: 2023/07/04 18:33:39 by bdetune          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -18,7 +18,16 @@ NAME = taskmaster
 
 OBJDIR := obj
 
-SRCS = main.c administrator.c
+SRCS = main.c \
+	   parser/parser.c \
+	   parser/server.c \
+	   parser/logger.c \
+	   parser/program.c \
+	   parser/tree.c \
+	   parser/utils.c \
+	   parser/priorities.c \
+	   parser/free_errors.c \
+	   administrator.c
 
 INC = taskmaster.h
 
@@ -28,7 +37,8 @@ MOREFLAGS = -Wformat=2				\
 			-Wstringop-overflow=4	\
 			-Winit-self				\
 			-ftrapv					\
-			-Wdate-time
+			-Wdate-time				\
+			-Wconversion
 
 #	-Wformat=2						Check format when call to printf/scanf...
 #	-Wformat-overflow=2				Check overflow of buffer with sprintf/vsprintf
@@ -45,7 +55,7 @@ CC = gcc
 OBJS := $(patsubst %.c,$(OBJDIR)/%.o,$(SRCS))
 
 $(NAME) : $(OBJS) $(INC)
-	$(CC) $(CFLAGS) $(OBJS) -lbsd -o $@
+	$(CC) $(CFLAGS) $(OBJS) -L libs -lbsd -lyaml -o $@
 
 $(OBJS): $(INC)
 

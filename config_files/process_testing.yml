@@ -1,31 +1,48 @@
 programs:
-    exception:
-        command: ls
-        numprocs: 2
-        retry: 3
-        umask: 0o022
-        exitcodes:
-            - 1
-        autorestart: never
-        startsecs: 0
-        stopsignal: USR2
-        priority: 3
-    echoeing:
-        command: pwd
-        retry: 3
-        umask: 0o027
-        user: bdetune
-        workingdir: /
-        env:
-            PATH: ""
-            PATH: "/"
-            pwd: "~"
-        autorestart: never
-        startsecs: 0
     infinity&beyond:
         command: cat
         retry: 0
         autorestart: never
         startsecs: 3
+    echoeing:
+        command: pwd
+        stopsignal: HUP
+        retry: 3
+        umask: 727
+        user: bdetune
+        workingdir: /
+        env:
+            PATH: ""
+            PATH: "/\""
+            pwd: ~
+        autorestart: never
+        startsecs: 0
+        bs: true
+    exception:
+        command: bash -c "./taskmaster \"Hey\""
+        numprocs: 000000000005
+        retry: 3
+        umask: 777
+        exitcodes:
+            - 1
+            - 2
+            - 1000000
+        autostart: true
+        autorestart: always
+        startsecs: 0
+        stopsignal: HUPS
+        priority: 0
+    infinity&beyond:
+        command: suprise I changed
+        startretries: 0
+        autorestart: never
+        startsecs: 3
+
 server:
     connection: Unix
+    user: bdetune
+    umask: 022                        # umask, ranges from 000 to 777 in octal, default value 022
+    daemon: true                      # starts taskmaster as daemon if true, default false
+    loglevel: CRITICAL
+    env:
+        kk: cool
