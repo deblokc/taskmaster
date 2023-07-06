@@ -55,7 +55,7 @@ CC = gcc
 OBJS := $(patsubst %.c,$(OBJDIR)/%.o,$(SRCS))
 
 $(NAME) : $(OBJS) $(INC)
-	$(CC) $(CFLAGS) $(OBJS) -L libs -lbsd -lyaml -o $@
+	$(CC) $(CFLAGS) $(OBJS) -L libs -lyaml -o $@
 
 $(OBJS): $(INC)
 

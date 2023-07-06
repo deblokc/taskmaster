@@ -39,9 +39,9 @@ char *getcmd(struct s_process *proc) {
 					if (!command) {
 						break ;
 					}
-					strlcat(command, path, size);
-					strlcat(command, "/", size);
-					strlcat(command, proc->program->command, size);
+					strncat(command, path, strlen(path));
+					strncat(command, "/", 1);
+					strncat(command, proc->program->command, strlen(proc->program->command));
 					if (!access(command, X_OK)) {
 						free(envpath);
 						break ;
@@ -399,7 +399,7 @@ char *getname(char *name, int num) {
 	if (!ret) {
 		return NULL;
 	}
-	strlcpy(ret, name, size);
+	strncpy(ret, name, strlen(name));
 	ret[size - 1] = '0' + (char)num + 1;
 	return (ret);
 }
