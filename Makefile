@@ -55,7 +55,7 @@ CC = gcc
 OBJS := $(patsubst %.c,$(OBJDIR)/%.o,$(SRCS))
 
 $(NAME) : $(OBJS) $(INC)
-	$(CC) $(CFLAGS) $(OBJS) -L libs -lyaml -o $@
+	$(CC) $(CFLAGS) $(OBJS) -L libs -lyaml -lpthread -o $@
 
 $(OBJS): $(INC)
 
@@ -65,7 +65,7 @@ $(OBJDIR)/%.o: %.c
 	$(CC) $(CFLAGS) -I inc -o $@ -c $<
 
 $(OBJDIR) :
-	mkdir $(OBJDIR)
+	mkdir -p $(OBJDIR)/parser
 
 .SECONDARY: $(OBJS)
 

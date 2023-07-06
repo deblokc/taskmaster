@@ -14,7 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <bsd/string.h>
+#include <string.h>
 #include <sys/epoll.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -39,9 +39,9 @@ char *getcmd(struct s_process *proc) {
 					if (!command) {
 						break ;
 					}
-					strncat(command, path, strlen(path));
-					strncat(command, "/", 1);
-					strncat(command, proc->program->command, strlen(proc->program->command));
+					strcat(command, path);
+					strcat(command, "/");
+					strcat(command, proc->program->command);
 					if (!access(command, X_OK)) {
 						free(envpath);
 						break ;
@@ -399,7 +399,7 @@ char *getname(char *name, int num) {
 	if (!ret) {
 		return NULL;
 	}
-	strncpy(ret, name, strlen(name));
+	strcpy(ret, name);
 	ret[size - 1] = '0' + (char)num + 1;
 	return (ret);
 }
