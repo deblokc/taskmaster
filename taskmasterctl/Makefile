@@ -45,7 +45,7 @@ CC = gcc
 OBJS := $(patsubst %.c,$(OBJDIR)/%.o,$(SRCS))
 
 $(NAME) : $(OBJS) $(INC)
-	$(CC) $(CFLAGS) $(OBJS) -lbsd -lreadline -o $@
+	$(CC) $(CFLAGS) $(OBJS) -lreadline -o $@
 
 $(OBJS): $(INC)
 

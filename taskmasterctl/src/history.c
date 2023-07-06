@@ -10,12 +10,12 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include <bsd/string.h>
 #include <fcntl.h>
-#include <readline/history.h>
 #include <stdio.h>
+#include <readline/history.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 
 
 char *strjoin(const char* s1, const char* s2)
@@ -42,8 +42,8 @@ FILE *fopen_history(void) {
 	}
 	int size = (strlen(home) + strlen(history) + 1);
 	path = (char *)calloc(sizeof(char), size);
-	strlcpy(path, home, size);
-	strlcat(path, history, size);
+	strcpy(path, home);
+	strcat(path, history);
 	if (access(path, F_OK)) {
 		close(open(path, O_CREAT | O_RDWR, 0644));
 	}
