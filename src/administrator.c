@@ -247,7 +247,7 @@ void *administrator(void *arg) {
 				start_micro = 0;
 			}
 			printf("time to wait : %lld\n", ((long long)process->program->startsecs * 1000) - (tmp_micro - start_micro));
-			if (((long long)process->program->startsecs * 1000) - (tmp_micro - start_micro) > INT_MAX) {
+			if (((long long)process->program->startsecs * 1000) - (tmp_micro - start_micro) > INT_MAX) { // if time to wait is bigger than an int, we wait as much as possible and come again if we got no event
 				nfds = epoll_wait(epollfd, events, 3, INT_MAX);
 			} else {
 				nfds = epoll_wait(epollfd, events, 3, (int)(((long long)process->program->startsecs * 1000) - (tmp_micro - start_micro)));
@@ -279,7 +279,7 @@ void *administrator(void *arg) {
 						}
 					}
 				}
-			} else { // if timeout
+			} else if (((long long)process->program->startsecs * 1000) - (tmp_micro - start_micro) > INT_MAX) { // if timeout and not because time to wait is bigger than an int
 				process->status = RUNNING;
 				printf("%s IS NOW RUNNING\n", process->name);
 			}
@@ -333,7 +333,7 @@ void *administrator(void *arg) {
 			long long start_micro = ((stop.tv_sec * 1000) + (stop.tv_usec / 1000));
 			long long tmp_micro = ((tmp.tv_sec * 1000) + (tmp.tv_usec / 1000));
 
-			if ((process->program->stopwaitsecs * 1000) <= (tmp_micro - start_micro)) {
+			if ((long long)(process->program->stopwaitsecs * 1000) <= (long long)(tmp_micro - start_micro)) {
 				process->status = STOPPED;
 				printf("FORCED STOPPED\n");
 				// kill(process->pid, SIGKILL);
