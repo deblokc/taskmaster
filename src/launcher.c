@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/07 10:59:08 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/07 12:50:47 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/07 13:29:59 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,13 +30,9 @@ void wait_process(struct s_program *lst) {
 			printf("NO PROCESSES ???\n");
 		}
 		if (lst->numprocs == 1) {
-				printf("========================================================>waiting %d of %s at %p\n", 0, lst->name, (void *)&lst->processes);
 			pthread_join(lst->processes[0].handle, NULL);
 		} else {
-			printf("waiting %d proc for %s\n", lst->numprocs, lst->name);
 			for (int j = 0; j < lst->numprocs; j++) {
-				if (write(1, "TEST", 4) < 0){}
-				printf("========================================================>waiting %d of %s at %p\n", j, lst->name, (void *)&lst->processes[j]);
 				pthread_join(lst->processes[j].handle, NULL);
 			}
 		}
