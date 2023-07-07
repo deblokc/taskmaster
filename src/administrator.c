@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/05 19:36:15 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/07 12:18:04 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,6 +18,7 @@
 #include <sys/epoll.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include "taskmaster.h"
 #include <pthread.h>
@@ -88,8 +89,9 @@ void child_exec(struct s_process *proc) {
 		char *command = getcmd(proc);
 
 		if (!command) {
-			printf("FATAL ERROR");
+			printf("FATAL ERROR IN GETCMD");
 		} else {
+			printf("command %s\n", command);
 			execve(command, proc->program->args, environ);
 			perror("execve");
 		}
@@ -191,6 +193,7 @@ void closeall(struct s_process *process, int epollfd) {
 	close(process->stdin[1]);
 	close(process->stdout[0]);
 	close(process->stderr[0]);
+	waitpid(process->pid, NULL, -1);
 }
 
 void *administrator(void *arg) {
@@ -220,6 +223,18 @@ void *administrator(void *arg) {
 			if (should_start(process) || start) {
 				start = false;
 				printf("starting %s\n", process->name);
+				printf("with raw cmd %s\n", process->program->command);
+				if (process->program->args) {
+					printf("with args ");
+					char **tmp = process->program->args;
+					while (*tmp) {
+						printf("%s ", *tmp);
+						tmp++;
+					}
+					printf("\n");
+				} else {
+					printf("with args NULL\n");
+				}
 				if (exec(process, epollfd)) {
 					printf("FATAL ERROR\n");
 					return NULL;
@@ -391,80 +406,6 @@ void *administrator(void *arg) {
 	}
 	printf("Exiting administrator\n");
 	return NULL;
-}
-
-char *getname(char *name, int num) {
-	size_t size = strlen(name) + 2;
-	char *ret = (char *)calloc(size, sizeof(char));
-	if (!ret) {
-		return NULL;
-	}
-	strcpy(ret, name);
-	ret[size - 1] = '0' + (char)num + 1;
-	return (ret);
-}
-
-void wait_process(struct s_program **lst) {
-	for (int i = 0; lst[i]; i++) {
-		if (!lst[i]->processes) {
-			printf("NO PROCESSES ???\n");
-		}
-		if (lst[i]->numprocs == 1) {
-			pthread_join(lst[i]->processes[0].handle, NULL);
-		} else {
-			for (int j = 0; j < lst[i]->numprocs; j++) {
-				pthread_join(lst[i]->processes[j].handle, NULL);
-			}
-		}
-	}
-}
-
-void create_process(struct s_program **lst) {
-	if (!lst) {
-		return;
-	}
-
-	/*
-	 * NEED TO GIVE LOGGER TO THE PROCESS
-	 */
-
-	for (int i = 0; lst[i]; i++) {
-		printf("creating processes for %s\n", lst[i]->name);
-		lst[i]->processes = (struct s_process *)calloc(sizeof(struct s_process), (size_t)lst[i]->numprocs);
-		if (!lst[i]->processes) {
-			printf("FATAL ERROR CALLOC PROCESS\n");
-		}
-		if (lst[i]->numprocs == 1) {
-			lst[i]->processes[0].name = strdup(lst[i]->name);
-			if (!lst[i]->processes[0].name) {
-				printf("FATAL ERROR STRDUP FAILED\n");
-			}
-			lst[i]->processes[0].status = STOPPED;
-			lst[i]->processes[0].program = lst[i];
-			if (pipe(lst[i]->processes[0].com)) {
-				perror("pipe");
-			}
-			if (pthread_create(&(lst[i]->processes[0].handle), NULL, administrator, &(lst[i]->processes[0]))) {
-				printf("FATAL ERROR PTHREAD_CREATE\n");
-			}
-		} else {
-			for (int j = 0; j < lst[i]->numprocs; j++) {
-				lst[i]->processes[j].name = getname(lst[i]->name, j);
-				if (!lst[i]->processes[j].name) {
-					printf("FATAL ERROR GETNAME FAILED\n");
-				}
-				lst[i]->processes[j].status = STOPPED;
-				lst[i]->processes[j].program = lst[i];
-				if (pipe(lst[i]->processes[j].com)) {
-					perror("pipe");
-				}
-				if (pthread_create(&(lst[i]->processes[j].handle), NULL, administrator, &(lst[i]->processes[j]))) {
-					printf("FATAL ERROR PTHREAD_CREATE\n");
-				}
-			}
-		}
-	}
-	wait_process(lst);
 }
 
 /*

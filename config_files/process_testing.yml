@@ -28,7 +28,7 @@ programs:
             - 2
             - 1000000
         autostart: true
-        autorestart: always
+        autorestart: onerror
         startsecs: 0
         stopsignal: HUPS
         priority: 0

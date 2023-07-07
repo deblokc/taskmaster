@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/05 18:33:10 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/07 11:24:04 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -178,5 +178,8 @@ void				add_bool(char const *program_name, char const *field_name, bool *target,
 struct s_env*		free_s_env(struct s_env *start);
 bool				parse_env(yaml_node_t *map, yaml_document_t *document, struct s_env **dest);
 struct s_priority*	create_priorities(struct s_server* server);
+void				*administrator(void *arg);
+void				launch(struct s_priority *lst);
+void				wait_priorities(struct s_priority *lst);
 
 #endif

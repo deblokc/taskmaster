@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/04 19:18:34 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/07/07 11:27:31 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,6 +44,11 @@ int main(int ac, char **av) {
 			{
 				printf("Got priorities\n");
 				priorities->print_priorities(priorities);
+				printf("=-=-=-=-=-=-=-=-= LAUNCHING PRIORITIES =-=-=-=-=-=-=-=-=\n");
+				launch(priorities);
+				// todo
+				printf("=-=-=-=-=-=-=-=-= WAITING PRIORITIES =-=-=-=-=-=-=-=-=\n");
+				wait_priorities(priorities);
 				priorities->destructor(priorities);
 			}
 			server = server->cleaner(server);

@@ -1,0 +1,10 @@
+programs:
+  test:
+    command: cat
+    numprocs: 1
+    retry: 3
+    autorestart: onerror
+    priority: 1
+
+server:
+  loglevel: INFO
