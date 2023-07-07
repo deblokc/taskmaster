@@ -25,7 +25,7 @@ char *getname(char *name, int num) {
 }
 
 void wait_process(struct s_program *lst) {
-	for (int i = 0; lst; i++, lst = lst->itnext(lst)) {
+	for (int i = 0; lst; i++, lst = lst->next) {
 		if (!lst->processes) {
 			printf("NO PROCESSES ???\n");
 		}
