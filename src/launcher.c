@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/07 10:59:08 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/07 13:29:59 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/10 14:52:50 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,7 +41,6 @@ void wait_process(struct s_program *lst) {
 
 void wait_priorities(struct s_priority *lst) {
 	while (lst) {
-		lst->print_priorities(lst);
 		wait_process(lst->begin);
 		lst = lst->itnext(lst);
 	}
