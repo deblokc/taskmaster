@@ -6,7 +6,7 @@
 #    By: tnaton <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/06/16 11:17:59 by tnaton            #+#    #+#              #
-#    Updated: 2023/07/04 18:33:39 by bdetune          ###   ########.fr        #
+#    Updated: 2023/07/07 11:00:33 by tnaton           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -26,7 +26,9 @@ SRCS = main.c \
 	   parser/tree.c \
 	   parser/utils.c \
 	   parser/priorities.c \
-	   parser/free_errors.c
+	   parser/free_errors.c \
+	   administrator.c \
+	   launcher.c
 
 INC = taskmaster.h
 
@@ -54,7 +56,7 @@ CC = gcc
 OBJS := $(patsubst %.c,$(OBJDIR)/%.o,$(SRCS))
 
 $(NAME) : $(OBJS) $(INC)
-	$(CC) $(CFLAGS) $(OBJS) -L libs -lyaml -o $@
+	$(CC) $(CFLAGS) $(OBJS) -L libs -lyaml -lpthread -o $@
 
 $(OBJS): $(INC)
 
@@ -64,7 +66,7 @@ $(OBJDIR)/%.o: %.c
 	$(CC) $(CFLAGS) -I inc -o $@ -c $<
 
 $(OBJDIR) :
-	mkdir $(OBJDIR)
+	mkdir -p $(OBJDIR)/parser
 
 .SECONDARY: $(OBJS)
 

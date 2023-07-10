@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/04 19:18:03 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/07/07 11:24:04 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,7 +17,13 @@
 # include <limits.h>
 # include <stdbool.h>
 # include <sys/time.h>
+# include <pthread.h>
+# include <stdatomic.h>
 # include "yaml.h"
+
+/*
+ * ENUM
+*/
 
 enum restart_state {
 	NEVER = 0,
@@ -125,11 +131,16 @@ struct s_process {
 	char				*name;
 	int					pid;
 	struct timeval		start;
-	int					status;
+	_Atomic int			status;
 	struct s_program	*program;
 	int					count_restart;
+	int					stdin[2];
+	int					stdout[2];
+	int					stderr[2];
+	int					log;
+	int					com[2];
+	pthread_t			handle;
 };
-
 
 struct s_server {
 	char *				config_file;
@@ -167,5 +178,8 @@ void				add_bool(char const *program_name, char const *field_name, bool *target,
 struct s_env*		free_s_env(struct s_env *start);
 bool				parse_env(yaml_node_t *map, yaml_document_t *document, struct s_env **dest);
 struct s_priority*	create_priorities(struct s_server* server);
+void				*administrator(void *arg);
+void				launch(struct s_priority *lst);
+void				wait_priorities(struct s_priority *lst);
 
 #endif
