@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 15:17:03 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/05 16:31:27 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/10 19:23:52 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -72,12 +72,68 @@ struct s_readline *get_global(void) {
 	return (&global);
 }
 
+int getkey(char *buf) {
+	for (int i = 0; buf[i]; i++) {
+		switch (buf[i]) {
+			case 0x1b: {
+				if (buf[i + 1] == ']') {
+					switch (buf[i + 2]) {
+						case 'A': {
+							return (K_ARROW_UP);
+						}
+						case 'B': {
+							return (K_ARROW_DOWN);
+						}
+						case 'C': {
+							return (K_ARROW_RIGHT);
+						}
+						case 'D': {
+							return (K_ARROW_LEFT);
+						}
+						case '3': {
+							if (buf[i + 3] == '~') {
+								return (K_DELETE);
+							}
+						}
+						default: {}
+					}
+				} else {
+					break ;
+				}
+			}
+			case 0x7f: {
+				return (K_BACKSPACE);
+			}
+			case 0x1: {
+				return (K_CTRL_A);
+			}
+			case 0x5: {
+				return (K_CTRL_E);
+			}
+			case 0xc: {
+				return (K_CTRL_L);
+			}
+			case 0xd: {
+				return (K_ENTER);
+			}
+			case 0x9: {
+				return (K_TAB);
+			}
+			default: {}
+		}
+	}
+	return (0);
+}
+
 int	handle_line(struct s_readline *global) {
 	size_t size;
 	size_t line_len = 0;
+	int j = 0;
 	char buf[BUF_SIZE];
+	char total[BUF_SIZE];
 
 	bzero(buf, BUF_SIZE);
+	bzero(total, BUF_SIZE);
 	while (buf[0] != '\n') {
 		size = read(0, buf, 4096);
 		for (size_t i = 0; i < size; i++) {
@@ -96,10 +152,20 @@ int	handle_line(struct s_readline *global) {
 			} else {
 				printf("%x", buf[i]);
 			}
+			total[j] = buf[i];
+			j++;
 		}
 		fflush(stdout);
 	}
 	printf("\n\n>%s<\n\n", global->line);
+	for (int i = 0; total[i]; i++) {
+		if (total[i] >= ' ' && total[i] <= '~') {
+			printf("%c", total[i]);
+		} else {
+			printf("0x%x", total[i]);
+		}
+	}
+	printf("\n");
 	return (0);
 
 }
