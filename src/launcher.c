@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/07 10:59:08 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/10 14:52:50 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/10 17:07:38 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -58,7 +58,6 @@ void create_process(struct s_program *lst) {
 	for (int i = 0; lst; i++, lst = lst->itnext(lst)) {
 		printf("creating processes for %s\n", lst->name);
 		lst->processes = (struct s_process *)calloc(sizeof(struct s_process), (size_t)lst->numprocs);
-		printf("ALLOCATED %p to %p\n", (void*)&lst->processes, (void*)&lst->processes[lst->numprocs]);
 		if (!lst->processes) {
 			printf("FATAL ERROR CALLOC PROCESS\n");
 		}

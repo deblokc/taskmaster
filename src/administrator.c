@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/07 12:18:04 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/10 16:03:20 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,13 +44,16 @@ char *getcmd(struct s_process *proc) {
 					strcat(command, "/");
 					strcat(command, proc->program->command);
 					if (!access(command, X_OK)) {
-						free(envpath);
 						break ;
 					}
 					free(command);
 					command = NULL;
 					path = strtok(NULL, ":");
 				}
+				free(envpath);
+			} else {
+				free(command);
+				return (NULL);
 			}
 		}
 		return (command);
@@ -89,18 +92,20 @@ void child_exec(struct s_process *proc) {
 		char *command = getcmd(proc);
 
 		if (!command) {
-			printf("FATAL ERROR IN GETCMD");
+			printf("FATAL ERROR IN GETCMD WILL JOIN %p\n", (void *)&proc->handle);
 		} else {
 			printf("command %s\n", command);
 			execve(command, proc->program->args, environ);
 			perror("execve");
 		}
 		// one error dont leak fds
+		printf("%p | %p", (void *)proc->handle, (void *)*(&(proc->handle)));
 		close(proc->log);
 		close(proc->stdin[0]);
 		close(proc->stdout[1]);
 		close(proc->stderr[1]);
 		free(command);
+		free(proc->name);
 		exit(1);
 }
 

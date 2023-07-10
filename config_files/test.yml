@@ -1,8 +1,8 @@
 programs:
   test:
-    command: cat
+    command: cacat
     numprocs: 1
-    retry: 3
+    startretries: 0
     autorestart: onerror
     priority: 1
 
