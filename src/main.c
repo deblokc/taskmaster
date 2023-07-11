@@ -6,31 +6,42 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/07 11:27:31 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/11 19:30:05 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
+#include "taskmaster.h"
+#include <fcntl.h>
 #include <unistd.h>
 #include <stdio.h>
-#include "taskmaster.h"
 
 int main(int ac, char **av) {
 	int					ret = 0;
+	int					reporter_pipe[2];
+	struct s_report		reporter;
 	struct s_server*	server = NULL;
 	struct s_priority*	priorities = NULL;
 
 	if (ac != 2)
 	{
-		if (write(2, "Usage: ./taskmaster CONFIGURATION-FILE\n",
-					strlen("Usage: ./taskmaster CONFIGURATION-FILE\n")) == -1) {}
+		if (write(2, "Usage: ", strlen("Usage: ")) == -1
+				|| write(2, av[0], strlen(av[0])) == -1
+				|| write(2, " CONFIGURATION-FILE\n", strlen(" CONFIGURATION-FILE\n")) == -1) {}
+		ret = 1;
+	}
+	else if (pipe2(reporter_pipe, O_DIRECT | O_NONBLOCK) == -1)
+	{
 		ret = 1;
 	}
 	else
 	{
-		server = parse_config(av[1]);
-		if (!server)
+		reporter.critical = false;
+		reporter.report_fd = reporter_pipe[1];
+		bzero(reporter.buffer, PIPE_BUF + 1);
+		server = parse_config(av[1], &reporter);
+		if (!server || reporter.critical)
 		{
-			printf("Could not make server from configuration file\n");
+			if (write(2, "CRITICAL: Could not start taskmasterd, exiting process\n", strlen("CRITICAL: Could not start taskmasterd, exiting process\n")) == -1) {}
 			ret = 1;
 		}
 		else

@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 19:48:45 by bdetune           #+#    #+#             */
-/*   Updated: 2023/06/22 18:49:03 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/07/11 20:09:35 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,6 +31,8 @@ static struct s_server	*free_server(struct s_server *self)
 		free(self->group);
 	if (self->env)
 		free_s_env(self->env);
+	if (self->config_file)
+		free(self->config_file);
 	self->delete_tree(self);
 	free(self);
 	return (NULL);

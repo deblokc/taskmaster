@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/07 11:24:04 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/11 19:43:29 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -57,10 +57,8 @@ enum parsed_type {
 
 struct s_report {
 	bool				critical;
-	char				buffer[512];
+	char				buffer[PIPE_BUF + 1];
 	int					report_fd;
-	enum parsed_type	parsed_type;
-	char*				name;
 };
 
 struct s_env {
@@ -164,7 +162,8 @@ struct s_server {
 
 };
 
-struct s_server*	parse_config(char* config_file);
+struct s_server*	parse_config(char* config_file, struct s_report *reporter);
+void				report(struct s_report* reporter, bool critical);
 void				init_server(struct s_server * server);
 void				register_treefn_serv(struct s_server *self);
 void				register_treefn_prog(struct s_program *self);
