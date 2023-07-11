@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 16:45:18 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/10 18:03:56 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/11 20:18:41 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,7 +30,11 @@ enum	key {
 };
 
 struct s_readline {
-	char *line;
+	char			*line;
+	size_t			cursor;
+	size_t			len;
+	char			*prompt;
+	size_t			prompt_len;
 	struct termios	base;
 	struct termios	term;
 };

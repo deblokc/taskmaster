@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 15:17:03 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/10 19:23:52 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/11 20:26:16 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,9 +14,22 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <stdlib.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <termios.h>
 #include "taskmasterctl.h"
+
+int log_fd;
+
+void hexdump(char *buf) {
+	dprintf(log_fd, ">");
+	for (size_t i = 0; buf[i]; i++) {
+		dprintf(log_fd, "%x", buf[i]);
+	}
+	dprintf(log_fd, "<\n");
+}
 
 int checkterm(void) {
 	char *term = getenv("TERM");
@@ -62,7 +75,11 @@ int init_readline(struct s_readline* global) {
 
 struct s_readline *get_global(void) {
 	static struct s_readline global = {
-.line = NULL
+		.cursor = 0,
+		.line = NULL,
+		.len = 0,
+		.prompt = NULL,
+		.prompt_len = 0,
 	};
 	if (global.line == NULL) {
 		init_readline(&global);
@@ -76,22 +93,27 @@ int getkey(char *buf) {
 	for (int i = 0; buf[i]; i++) {
 		switch (buf[i]) {
 			case 0x1b: {
-				if (buf[i + 1] == ']') {
+				if (buf[i + 1] == '[') {
 					switch (buf[i + 2]) {
 						case 'A': {
+							memcpy(buf, buf + 3, strlen(buf + 3) + 1 + 1);
 							return (K_ARROW_UP);
 						}
 						case 'B': {
+							memcpy(buf, buf + 3, strlen(buf + 3) + 1);
 							return (K_ARROW_DOWN);
 						}
 						case 'C': {
+							memcpy(buf, buf + 3, strlen(buf + 3) + 1);
 							return (K_ARROW_RIGHT);
 						}
 						case 'D': {
+							memcpy(buf, buf + 3, strlen(buf + 3) + 1);
 							return (K_ARROW_LEFT);
 						}
 						case '3': {
 							if (buf[i + 3] == '~') {
+								memcpy(buf, buf + 4, strlen(buf + 4) + 1);
 								return (K_DELETE);
 							}
 						}
@@ -102,21 +124,27 @@ int getkey(char *buf) {
 				}
 			}
 			case 0x7f: {
+				memcpy(buf, buf + 1, strlen(buf + 1));
 				return (K_BACKSPACE);
 			}
 			case 0x1: {
+				memcpy(buf, buf + 1, strlen(buf + 1));
 				return (K_CTRL_A);
 			}
 			case 0x5: {
+				memcpy(buf, buf + 1, strlen(buf + 1));
 				return (K_CTRL_E);
 			}
 			case 0xc: {
+				memcpy(buf, buf + 1, strlen(buf + 1));
 				return (K_CTRL_L);
 			}
 			case 0xd: {
+				memcpy(buf, buf + 1, strlen(buf + 1));
 				return (K_ENTER);
 			}
 			case 0x9: {
+				memcpy(buf, buf + 1, strlen(buf + 1));
 				return (K_TAB);
 			}
 			default: {}
@@ -125,9 +153,114 @@ int getkey(char *buf) {
 	return (0);
 }
 
+void cursor_right(struct s_readline *global) {
+	if (global->cursor == global->len) {
+		return ;
+	}
+	if (write(1, "\33[C", 3)) {}
+	global->cursor++;
+}
+
+void cursor_left(struct s_readline *global) {
+	if (global->cursor == 0) {
+		return ;
+	}
+	if (write(1, "\33[D", 3)) {}
+	global->cursor--;
+}
+
+void cursor_save(void) {
+	if (write(1, "\33[s", 3)) {} // save position
+}
+
+void cursor_restore(void) {
+	if (write(1, "\33[u", 3)) {} // bring back
+}
+
+void cursor_clear_endline(void) {
+	if (write(1, "\33[K", 3)) {} // clear line from cursor
+}
+
+void exec_key(int keycode, struct s_readline *global) {
+	switch (keycode) {
+		case K_ARROW_UP: {
+			// history up
+			break;
+		}
+		case K_ARROW_DOWN: {
+			// history down
+			break;
+		}
+		case K_ARROW_RIGHT: {
+			cursor_right(global);
+			break;
+		}
+		case K_ARROW_LEFT: {
+			cursor_left(global);
+			break;
+		}
+		case K_BACKSPACE: {
+			if (global->cursor == 0) {
+				return ;
+			}
+			cursor_left(global);
+			cursor_save();
+			memcpy(global->line + global->cursor, global->line + global->cursor + 1, global->len - global->cursor + 1); // move everything after deleted char one to the left
+			cursor_clear_endline();
+			if (write(1, global->line + global->cursor, strlen(global->line + global->cursor))) {} // reprint end of line
+			cursor_restore();
+			global->len--;
+			break;
+		}
+		case K_DELETE: {
+			if (global->cursor == global->len) {
+				return ;
+			}
+			cursor_save();
+			memcpy(global->line + global->cursor, global->line + global->cursor + 1, global->len - global->cursor + 1); // move everything after deleted char one to the left
+			cursor_clear_endline();
+			if (write(1, global->line + global->cursor, strlen(global->line + global->cursor))) {} // reprint end of line
+			cursor_restore();
+			global->len--;
+			break;
+		}
+		case K_CTRL_A: {
+			for (size_t i = 0; global->cursor; i++) {
+				cursor_left(global);
+			}
+			break;
+		}
+		case K_CTRL_E: {
+			for (size_t i = 0; global->cursor < global->len; i++) {
+				cursor_right(global);
+			}
+			break;
+		}
+		case K_CTRL_L: {
+			if (write(1, "\33[2J", 4)) {} // clear screen
+			printf("\33[0;%ldH", global->prompt_len + global->cursor + 1); // move cursor to first row
+			cursor_save();
+			if (write(1, "\33[H", 3)) {} // go to left corner
+			if (global->prompt) {
+				if (write(1, global->prompt, global->prompt_len)) {} // reprint line
+			}
+			if (write(1, global->line, global->len)) {}
+			cursor_restore();
+			break;
+		}
+		case K_ENTER: {
+			break;
+		}
+		case K_TAB: {
+			// autocomplete T.T
+			break;
+		}
+		default: {}
+	}
+}
+
 int	handle_line(struct s_readline *global) {
 	size_t size;
-	size_t line_len = 0;
 	int j = 0;
 	char buf[BUF_SIZE];
 	char total[BUF_SIZE];
@@ -136,26 +269,38 @@ int	handle_line(struct s_readline *global) {
 	bzero(total, BUF_SIZE);
 	while (buf[0] != '\n') {
 		size = read(0, buf, 4096);
+		dprintf(log_fd, "before getkey : ");
+		hexdump(buf);
+		int tmp = getkey(buf);
+		exec_key(tmp, global);
+		dprintf(log_fd, "after getkey  : ");
+		hexdump(buf);
+		size = strlen(buf);
+		dprintf(log_fd, "len : %ld\ncursor : %ld\n", global->len, global->cursor);
 		for (size_t i = 0; i < size; i++) {
 			if (buf[i] >= ' ' && buf[i] <= '~') {
-				global->line[line_len] = buf[i];
-				line_len++;
-				if (write(1, &buf[i], 1) < 0) {
-					return (-1);
+				if (global->cursor != global->len) {
+					memcpy(global->line + global->cursor + 1, global->line + global->cursor, global->len - global->cursor + 1);
+					global->line[global->cursor] = buf[i];
+					global->len++;
+					cursor_save();
+					if (write(1, global->line + global->cursor, strlen(global->line + global->cursor))) {} // reprint line with the character
+					cursor_restore();
+					cursor_right(global);
+				} else {
+					global->line[global->len] = buf[i];
+					global->len++;
+					global->cursor++;
+					if (write(1, &buf[i], 1) < 0) {
+						return (-1);
+					}
 				}
-			} else if (buf[i] == 0x7f) {
-				global->line[line_len] = '\0';
-				line_len--;
-				if (write(1, "\b \b", 3) < 0) {
-					return (-1);
-				}
-			} else {
-				printf("%x", buf[i]);
 			}
 			total[j] = buf[i];
 			j++;
 		}
 		fflush(stdout);
+		bzero(buf + strlen(buf), BUF_SIZE - strlen(buf));
 	}
 	printf("\n\n>%s<\n\n", global->line);
 	for (int i = 0; total[i]; i++) {
@@ -177,6 +322,8 @@ char *ft_readline(char *prompt) {
 		return NULL;
 	}
 	if (prompt) {
+		global->prompt = prompt;
+		global->prompt_len = strlen(prompt);
 		if (write(1, prompt, strlen(prompt)) < 0) {
 			return NULL;
 		}
@@ -196,6 +343,10 @@ char *ft_readline(char *prompt) {
 int main(int ac, char **av) {
 	(void)ac;
 	(void)av;
+
+	log_fd = open("./log", O_CREAT | O_TRUNC | O_RDWR, 0644);
+	printf("%d\n", log_fd);
+	if (write(log_fd, "=-=-=-=-=LOG=-=-=-=-=\n", strlen("=-=-=-=-=LOG=-=-=-=-=\n"))){}
 
 	printf("%s\n", ctermid(NULL));
 	printf("%s\n", ttyname(0));
