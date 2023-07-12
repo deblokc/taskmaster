@@ -6,7 +6,7 @@
 #    By: tnaton <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/06/16 11:17:59 by tnaton            #+#    #+#              #
-#    Updated: 2023/06/22 16:47:25 by tnaton           ###   ########.fr        #
+#    Updated: 2023/07/12 16:06:55 by tnaton           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -19,6 +19,8 @@ NAME = taskmasterctl
 OBJDIR := obj
 
 SRCS = main.c history.c
+
+READLINE = lib/readline.a
 
 INC = taskmasterctl.h
 
@@ -44,8 +46,8 @@ CC = gcc
 
 OBJS := $(patsubst %.c,$(OBJDIR)/%.o,$(SRCS))
 
-$(NAME) : $(OBJS) $(INC)
-	$(CC) $(CFLAGS) $(OBJS) -lreadline -o $@
+$(NAME) : $(READLINE) $(OBJS) $(INC)
+	$(CC) $(CFLAGS) $(OBJS) $(READLINE) -lreadline -o $@
 
 $(OBJS): $(INC)
 
@@ -56,6 +58,9 @@ $(OBJDIR)/%.o: %.c
 
 $(OBJDIR) :
 	mkdir $(OBJDIR)
+
+$(READLINE) :
+	$(MAKE) -C lib
 
 .SECONDARY: $(OBJS)
 
