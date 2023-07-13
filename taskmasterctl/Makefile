@@ -18,7 +18,7 @@ NAME = taskmasterctl
 
 OBJDIR := obj
 
-SRCS = main.c history.c
+SRCS = main.c file_history.c
 
 READLINE = lib/readline.a
 
