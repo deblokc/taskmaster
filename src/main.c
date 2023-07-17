@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/11 19:30:05 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/07/17 19:49:44 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,6 +14,18 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdio.h>
+
+void	print_log(int fd)
+{
+	ssize_t	ret;
+	char	buffer[PIPE_BUF];
+
+	while ((ret = read(fd, buffer, PIPE_BUF)) > 0)
+	{
+		if (write(2, buffer, (size_t)ret) == -1)
+			break ;
+	}
+}
 
 int main(int ac, char **av) {
 	int					ret = 0;
@@ -38,7 +50,11 @@ int main(int ac, char **av) {
 		reporter.critical = false;
 		reporter.report_fd = reporter_pipe[1];
 		bzero(reporter.buffer, PIPE_BUF + 1);
+		bzero(reporter.stamp, 22);
 		server = parse_config(av[1], &reporter);
+		print_log(reporter_pipe[0]);
+		close(reporter_pipe[0]);
+		close(reporter_pipe[1]);
 		if (!server || reporter.critical)
 		{
 			if (write(2, "CRITICAL: Could not start taskmasterd, exiting process\n", strlen("CRITICAL: Could not start taskmasterd, exiting process\n")) == -1) {}
