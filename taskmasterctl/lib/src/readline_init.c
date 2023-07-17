@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/12 15:54:52 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/17 13:58:45 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/17 19:00:56 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -52,6 +52,7 @@ struct s_readline *get_global(void) {
 		.first = NULL,
 		.last = NULL,
 		.init = false,
+		.tab_complete = NULL,
 	};
 	if (global.init == false) {
 		init_readline(&global);

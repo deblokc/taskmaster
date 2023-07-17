@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 15:17:03 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/17 16:54:30 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/17 19:16:19 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,13 +19,17 @@
 #include "taskmasterctl.h"
 
 void print_history(void);
+void complete_init(char **tab);
 
 int main(int ac, char **av) {
 	(void)ac;
 	(void)av;
+	char *tab[] = {"Salut", "La", "Team", NULL};
 
 	printf("%s\n", ctermid(NULL));
 	printf("%s\n", ttyname(0));
+
+	complete_init(tab);
 
 	FILE *file = fopen_history();
 	add_old_history(file);

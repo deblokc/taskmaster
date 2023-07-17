@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/12 15:48:57 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/17 16:00:38 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/17 19:17:53 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,6 +41,7 @@ struct s_readline {
 	struct termios		term;
 	struct s_history	*first; // oldest line added in history
 	struct s_history	*last; // newest line added in history
+	char				**tab_complete;
 };
 
 struct s_history {
@@ -63,3 +64,6 @@ void exec_key(char *buf, struct s_readline *global);
 
 void print_line_history(struct s_readline *global);
 void print_history(void);
+
+void complete_init(char **tab);
+char **complete(char *line);

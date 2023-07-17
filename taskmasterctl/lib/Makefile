@@ -6,7 +6,7 @@
 #    By: tnaton <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/07/12 15:42:00 by tnaton            #+#    #+#              #
-#    Updated: 2023/07/17 15:48:40 by tnaton           ###   ########.fr        #
+#    Updated: 2023/07/17 19:13:25 by tnaton           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -18,7 +18,7 @@ READLINE = readline.a
 
 OBJDIR := obj
 
-SRCS = readline.c readline_cursor.c readline_init.c readline_key.c history.c
+SRCS = readline.c readline_cursor.c readline_init.c readline_key.c history.c complete.c
 
 INC = readline.h
 
