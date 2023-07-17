@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/12 16:00:16 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/12 16:00:58 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/17 14:11:03 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,7 +15,7 @@
 #include <unistd.h>
 
 void cursor_right(struct s_readline *global) {
-	if (global->cursor == strlen(global->line)) {
+	if (global->cursor == strlen(global->current->line)) {
 		return ;
 	}
 	if (write(1, "\33[C", 3)) {}
@@ -42,3 +42,6 @@ void cursor_clear_endline(void) {
 	if (write(1, "\33[K", 3)) {} // clear line from cursor
 }
 
+void cursor_at_line_begin(void) {
+	if (write(1, "\33[G", 3)) {} // go at column 1 on this line
+}

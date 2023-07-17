@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 15:17:03 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/12 18:12:55 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/17 16:54:30 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,6 +18,8 @@
 #include <unistd.h>
 #include "taskmasterctl.h"
 
+void print_history(void);
+
 int main(int ac, char **av) {
 	(void)ac;
 	(void)av;
@@ -25,12 +27,11 @@ int main(int ac, char **av) {
 	printf("%s\n", ctermid(NULL));
 	printf("%s\n", ttyname(0));
 
-	char *test = ft_readline("test>");
-	free(test);
-
 	FILE *file = fopen_history();
 	add_old_history(file);
-	char *line = readline("$>");
+	add_history("je suis historique !");
+
+	char *line = ft_readline("$>");
 	while (line != NULL) {
 		// process line (remove space n sht)
 
@@ -38,9 +39,9 @@ int main(int ac, char **av) {
 		add_history(line);
 		add_file_history(line, file);
 		free(line);
-		line = readline("$>");
+		line = ft_readline("$>");
 	}
-	rl_clear_history();
+	clear_history();
 	if (file) {
 		fclose(file);
 	}

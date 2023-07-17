@@ -6,7 +6,7 @@
 #    By: tnaton <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/06/16 11:17:59 by tnaton            #+#    #+#              #
-#    Updated: 2023/07/12 16:06:55 by tnaton           ###   ########.fr        #
+#    Updated: 2023/07/17 17:03:40 by tnaton           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -73,7 +73,12 @@ clean :
 
 .PHONY: fclean
 fclean:
+	$(MAKE) fclean -C lib
 	rm -rf $(NAME) $(OBJS) $(OBJDIR)
 
+.PHONY: relib
+relib:
+	$(MAKE) re -C lib
+
 .PHONY: re
-re: fclean all
+re: relib fclean all

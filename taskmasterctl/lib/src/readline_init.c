@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/12 15:54:52 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/12 17:23:04 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/17 13:58:45 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,9 +44,9 @@ static int init_readline(struct s_readline* global) {
 
 struct s_readline *get_global(void) {
 	static struct s_readline global = {
+		.new = NULL,
+		.current = NULL,
 		.cursor = 0,
-		.line = NULL,
-		.len = 0,
 		.prompt = NULL,
 		.prompt_len = 0,
 		.first = NULL,
@@ -56,8 +56,6 @@ struct s_readline *get_global(void) {
 	if (global.init == false) {
 		init_readline(&global);
 		global.init = true;
-		global.line = (char *)calloc(sizeof(char), BUF_SIZE);
-		global.len = BUF_SIZE;
 	}
 
 	return (&global);

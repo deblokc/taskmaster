@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/12 16:03:22 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/12 16:05:14 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/17 16:52:21 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -82,10 +82,30 @@ static int getkey(char *buf) {
 void exec_key(char *buf, struct s_readline *global) {
 	switch (getkey(buf)) {
 		case K_ARROW_UP: {
+			if (global->current == global->new) {
+				if (global->last) {
+					global->current = global->last;
+					print_line_history(global);
+					global->cursor = strlen(global->current->line);
+				}
+			} else if (global->current->prev) {
+				global->current = global->current->prev;
+				print_line_history(global);
+				global->cursor = strlen(global->current->line);
+			}
 			// history up
 			break;
 		}
 		case K_ARROW_DOWN: {
+			if (global->current == global->last) {
+				global->current = global->new;
+				print_line_history(global);
+				global->cursor = strlen(global->current->line);
+			} else if (global->current->next) {
+				global->current = global->current->next;
+				print_line_history(global);
+				global->cursor = strlen(global->current->line);
+			}
 			// history down
 			break;
 		}
@@ -103,20 +123,20 @@ void exec_key(char *buf, struct s_readline *global) {
 			}
 			cursor_left(global);
 			cursor_save();
-			memcpy(global->line + global->cursor, global->line + global->cursor + 1, strlen(global->line) - global->cursor + 1); // move everything after deleted char one to the left
+			memcpy(global->current->line + global->cursor, global->current->line + global->cursor + 1, strlen(global->current->line) - global->cursor + 1); // move everything after deleted char one to the left
 			cursor_clear_endline();
-			if (write(1, global->line + global->cursor, strlen(global->line + global->cursor))) {} // reprint end of line
+			if (write(1, global->current->line + global->cursor, strlen(global->current->line + global->cursor))) {} // reprint end of line
 			cursor_restore();
 			break;
 		}
 		case K_DELETE: {
-			if (global->cursor == strlen(global->line)) {
+			if (global->cursor == strlen(global->current->line)) {
 				return ;
 			}
 			cursor_save();
-			memcpy(global->line + global->cursor, global->line + global->cursor + 1, strlen(global->line) - global->cursor + 1); // move everything after deleted char one to the left
+			memcpy(global->current->line + global->cursor, global->current->line + global->cursor + 1, strlen(global->current->line) - global->cursor + 1); // move everything after deleted char one to the left
 			cursor_clear_endline();
-			if (write(1, global->line + global->cursor, strlen(global->line + global->cursor))) {} // reprint end of line
+			if (write(1, global->current->line + global->cursor, strlen(global->current->line + global->cursor))) {} // reprint end of line
 			cursor_restore();
 			break;
 		}
@@ -127,7 +147,7 @@ void exec_key(char *buf, struct s_readline *global) {
 			break;
 		}
 		case K_CTRL_E: {
-			for (size_t i = 0; global->cursor < strlen(global->line); i++) {
+			for (size_t i = 0; global->cursor < strlen(global->current->line); i++) {
 				cursor_right(global);
 			}
 			break;
@@ -140,7 +160,7 @@ void exec_key(char *buf, struct s_readline *global) {
 			if (global->prompt) {
 				if (write(1, global->prompt, global->prompt_len)) {} // reprint line
 			}
-			if (write(1, global->line, strlen(global->line))) {}
+			if (write(1, global->current->line, strlen(global->current->line))) {}
 			cursor_restore();
 			break;
 		}
