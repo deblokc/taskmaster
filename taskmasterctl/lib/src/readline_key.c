@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/12 16:03:22 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/17 19:42:07 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/18 14:57:07 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -174,17 +174,23 @@ void exec_key(char *buf, struct s_readline *global) {
 			int i = 0;
 
 			if (lst) {
-				if (write(1, "\r\n", 2)) {} // cursor at beginning of next line
-				while (lst[i]) {
-					printf("%s   ", lst[i]);
-					i++;
+				if (lst[0] && lst[1]) {
+					if (write(1, "\r\n", 2)) {} // cursor at beginning of next line
+					while (lst[i]) {
+						printf("%s   ", lst[i]);
+						i++;
+					}
+					fflush(stdout);
+					if (write(1, "\r\n", 2)) {} // cursor at beginning of next line
+					if (global->prompt) {
+						if (write(1, global->prompt, global->prompt_len)) {} // reprint line
+					}
+					if (write(1, global->current->line, strlen(global->current->line))) {}
+
+				} else {
+					printf("%s ", lst[0] + strlen(global->current->line));
+					fflush(stdout);
 				}
-				fflush(stdout);
-				if (write(1, "\r\n", 2)) {} // cursor at beginning of next line
-				if (global->prompt) {
-					if (write(1, global->prompt, global->prompt_len)) {} // reprint line
-				}
-				if (write(1, global->current->line, strlen(global->current->line))) {}
 				i = 0;
 				while (lst[i]) {
 					free(lst[i]);
