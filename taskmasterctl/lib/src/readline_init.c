@@ -6,13 +6,13 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/12 15:54:52 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/17 19:00:56 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/18 15:14:54 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <string.h>
 #include <stdlib.h>
-#include "readline.h"
+#include "readline_private.h"
 
 static int checkterm(void) {
 	char *term = getenv("TERM");

@@ -6,12 +6,12 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/17 18:49:49 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/17 19:30:40 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/18 15:13:54 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <string.h>
-#include "readline.h"
+#include "readline_private.h"
 #include <stdlib.h>
 
 void complete_init(char **tab_complete) {

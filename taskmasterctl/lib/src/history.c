@@ -6,11 +6,11 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/12 16:46:05 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/17 17:02:30 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/18 15:14:26 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "readline.h"
+#include "readline_private.h"
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>

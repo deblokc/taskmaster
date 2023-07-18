@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/12 15:28:41 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/17 16:46:30 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/18 15:14:43 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,7 +18,7 @@
 #include <termios.h>
 #include <string.h>
 #include <stdio.h>
-#include "readline.h"
+#include "readline_private.h"
 
 int readline_setattr(struct s_readline* global) {
 	if (tcsetattr(0, TCSADRAIN, &(global->term))) {

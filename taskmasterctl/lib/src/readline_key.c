@@ -6,11 +6,11 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/12 16:03:22 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/18 14:57:07 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/18 15:24:48 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "readline.h"
+#include "readline_private.h"
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
@@ -187,9 +187,12 @@ void exec_key(char *buf, struct s_readline *global) {
 					}
 					if (write(1, global->current->line, strlen(global->current->line))) {}
 
-				} else {
+				} else if (lst[0]) {
 					printf("%s ", lst[0] + strlen(global->current->line));
 					fflush(stdout);
+					global->cursor += strlen(lst[0] + strlen(global->current->line)) + 1;
+					memcpy(global->current->line + strlen(global->current->line), lst[0] + strlen(global->current->line), strlen(lst[0] + strlen(global->current->line)));
+					global->current->line[strlen(global->current->line)] = ' ';
 				}
 				i = 0;
 				while (lst[i]) {
