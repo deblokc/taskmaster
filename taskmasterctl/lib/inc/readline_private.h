@@ -1,20 +1,23 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   readline.h                                         :+:      :+:    :+:   */
+/*   readline_private.h                                 :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/12 15:48:57 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/18 15:08:48 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/18 15:27:11 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include <stdbool.h>
-#include <termios.h>
-#include <stdio.h>
+#ifndef READLINE_PRIVATE_H
+# define READLINE_PRIVATE_H
 
-#define BUF_SIZE 4096
+# include <stdbool.h>
+# include <termios.h>
+# include <stdio.h>
+
+# define BUF_SIZE 4096
 
 enum	key {
 	K_ARROW_UP = 1,    //0x1b[A    UP IN HISTORY
@@ -67,3 +70,5 @@ void print_history(void);
 
 void complete_init(char **tab);
 char **complete(char *line);
+
+#endif

@@ -6,20 +6,16 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 15:17:03 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/17 19:16:19 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/18 15:32:19 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <stdio.h>
-#include <readline/readline.h>
-#include <readline/history.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
 #include "taskmasterctl.h"
-
-void print_history(void);
-void complete_init(char **tab);
+#include "readline.h"
 
 int main(int ac, char **av) {
 	(void)ac;

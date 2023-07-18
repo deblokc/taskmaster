@@ -6,7 +6,7 @@
 #    By: tnaton <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/06/16 11:17:59 by tnaton            #+#    #+#              #
-#    Updated: 2023/07/17 17:03:40 by tnaton           ###   ########.fr        #
+#    Updated: 2023/07/18 15:32:34 by tnaton           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -47,7 +47,7 @@ CC = gcc
 OBJS := $(patsubst %.c,$(OBJDIR)/%.o,$(SRCS))
 
 $(NAME) : $(READLINE) $(OBJS) $(INC)
-	$(CC) $(CFLAGS) $(OBJS) $(READLINE) -lreadline -o $@
+	$(CC) $(CFLAGS) $(OBJS) $(READLINE) -o $@
 
 $(OBJS): $(INC)
 
