@@ -6,9 +6,14 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 16:45:18 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/12 15:54:33 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/19 16:33:19 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
+
+struct s_command {
+	char	*cmd;
+	char	**arg;
+};
 
 FILE *fopen_history(void);
 void add_old_history(FILE *file);

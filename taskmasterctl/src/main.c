@@ -6,13 +6,14 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 15:17:03 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/18 15:55:57 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/19 18:17:31 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 #include "taskmasterctl.h"
 #include "readline.h"
@@ -97,6 +98,73 @@ update <gname> [...]	Update specific groups
 
 * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+void help(char **arg) {
+	if (!arg) {
+		printf("default commands (type help <command>):\n");
+		printf("=======================================\n");
+		printf("TOUTES LES COMMANDES QUON AURA\n");
+	} else {
+		if (!strcmp(arg[0], "help")) {
+			printf("help\t\t\tPrint a list of available commands\n");
+			printf("help <command>\t\tPrint help for <command>\n");
+		} else {
+			printf("*** No help on %s\n", arg[0]);
+		}
+	}
+}
+
+int exec(struct s_command *cmd) {
+	int ret = 0;
+
+	printf("cmd : %s\n", cmd->cmd);
+	if (cmd->arg) {
+		printf("arg :");
+
+		int i = 0;
+		while (cmd->arg[i]) {
+			printf(" %s", cmd->arg[i]);
+			i++;
+		}
+		printf("\n");
+	}
+
+	if (!strcmp(cmd->cmd, "help")) {
+		help(cmd->arg);
+	} else if (!strcmp(cmd->cmd, "exit") || !strcmp(cmd->cmd, "quit")) {
+		ret = 1;
+	}
+	free(cmd->arg);
+	free(cmd);
+	return (ret);
+}
+
+struct s_command *process_line(char *line) {
+	char *ret = strtok(line, " \t");
+	if (ret) {
+		struct s_command *cmd = (struct s_command *)calloc(sizeof(struct s_command), 1);
+		cmd->cmd = ret;
+		int i = 0;
+		while (ret) {
+			ret = strtok(NULL, " \t");
+			if (ret) {
+				if (!cmd->arg) {
+					cmd->arg = (char **)calloc(sizeof(char *), 2);
+					cmd->arg[0] = ret;
+					cmd->arg[1] = NULL;
+				} else {
+					i++;
+					cmd->arg = (char **)realloc(cmd->arg, (sizeof(char *) * (i + 1)));
+					cmd->arg[i - 1] = ret;
+					cmd->arg[i] = NULL;
+				}
+			}
+		}
+		return cmd;
+	} else {
+		return NULL;
+	}
+}
+
 int main(int ac, char **av) {
 	(void)ac;
 	(void)av;
@@ -113,12 +181,19 @@ int main(int ac, char **av) {
 	add_old_history(file);
 
 	char *line = ft_readline("taskmasterctl>");
+	struct s_command *cmd = NULL;
 	while (line != NULL) {
 		// process line (remove space n sht)
-
-		// add to history and read another line
-		add_history(line);
-		add_file_history(line, file);
+		cmd = process_line(line);
+		if (cmd) {
+			if (exec(cmd)) {
+				free(line);
+				break ;
+			}
+			// add to history and read another line
+			add_history(line);
+			add_file_history(line, file);
+		}
 		free(line);
 		line = ft_readline("taskmasterctl>");
 	}
