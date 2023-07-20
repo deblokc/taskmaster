@@ -104,9 +104,18 @@ void help(char **arg) {
 		printf("=======================================\n");
 		printf("TOUTES LES COMMANDES QUON AURA\n");
 	} else {
-		if (!strcmp(arg[0], "help")) {
+		if (!strcmp(arg[0], "add")) {
+		} else if (!strcmp(arg[0], "exit")) {
+			printf("exit\tExit the supervisor shell.\n");
+		} else if (!strcmp(arg[0], "help")) {
 			printf("help\t\t\tPrint a list of available commands\n");
 			printf("help <command>\t\tPrint help for <command>\n");
+		} else if (!strcmp(arg[0], "maintail")) {
+			printf("maintail -f\t\tContinuous tail of supervisor main log file (Ctrl-C to exit)\n");
+			printf("maintail -100\t\tlast 100 *bytes* of supervisor main log file\n");
+			printf("maintail\t\t\tlast 1600 *bytes* of supervisor main log file\n");
+		} else if (!strcmp(arg[0], "quit")) {
+			printf("quit\tExit the supervisor shell.\n");
 		} else {
 			printf("*** No help on %s\n", arg[0]);
 		}
