@@ -53,7 +53,7 @@ static bool parse_document(struct s_server *server, yaml_document_t * document, 
 					{
 						snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Parsing 'server' block\n");
 						report(reporter, false);
-						if (!parse_server(server, document, (current_node->data.mapping.pairs.start + i)->value))
+						if (!parse_server(server, document, (current_node->data.mapping.pairs.start + i)->value, reporter))
 						{
 							ret = false;
 							break ;

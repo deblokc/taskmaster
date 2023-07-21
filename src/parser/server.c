@@ -72,7 +72,7 @@ static void add_loglevel(struct s_server *server, yaml_node_t *value)
 	}
 }
 
-static bool add_value(struct s_server *server, yaml_document_t *document, char* key, yaml_node_t *value)
+static bool add_value(struct s_server *server, yaml_document_t *document, char* key, yaml_node_t *value, struct s_report *reporter)
 {
 	bool	ret = true;
 
@@ -98,29 +98,35 @@ static bool add_value(struct s_server *server, yaml_document_t *document, char* 
 	else if (!strcmp("env", key))
 		parse_env(value, document, &server->env);
 	else
-		printf("Unknown field %s in server\n", key);
+	{
+		snprintf(reporter->buffer, PIPE_BUF, "WARNING: Encountered unknown key '%s' in server configuration\n", key);
+		report(reporter, false);
+	}
 	return (ret) ;	
 }
 
-bool	parse_server(struct s_server *server, yaml_document_t *document, int value_index)
+bool	parse_server(struct s_server *server, yaml_document_t *document, int value_index, struct s_report *reporter)
 {
-	static bool	duplicate = false;
+	static bool duplicate = false;
 	bool		ret = true;
 	yaml_node_t	*params_node = NULL;
 	yaml_node_t	*key_node = NULL;
 	yaml_node_t	*value_node = NULL;
 
+	snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Parsing server\n");
+	report(reporter, false);
 	if (duplicate)
 	{
-		printf("Error, encountered block server twice in configuration file\n");
-		return (false);
+		snprintf(reporter->buffer, PIPE_BUF, "WARNING: Encountered two blocks server in configuration file\n");
+		report(reporter, false);
 	}
 	duplicate = true;
-	printf("Parsing server\n");
 	params_node = yaml_document_get_node(document, value_index);
 	if (params_node->type != YAML_MAPPING_NODE)
 	{
-		printf("Unexpected format for block server, expected map, encountered %s\n", params_node->tag);
+
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Unexpected format for block server, expected map, encountered %s\n", params_node->tag);
+		report(reporter, true);
 		ret = false;
 	}
 	else
@@ -131,7 +137,7 @@ bool	parse_server(struct s_server *server, yaml_document_t *document, int value_
 			if (key_node->type == YAML_SCALAR_NODE)
 			{
 				value_node = yaml_document_get_node(document, (params_node->data.mapping.pairs.start + i)->value);
-				if (!add_value(server, document, (char*)key_node->data.scalar.value, value_node))
+				if (!add_value(server, document, (char*)key_node->data.scalar.value, value_node, reporter))
 				{
 					ret = false;
 					break ;
@@ -139,7 +145,8 @@ bool	parse_server(struct s_server *server, yaml_document_t *document, int value_
 			}
 			else
 			{
-				printf("Incorrect format detected in server block\n");
+				snprintf(reporter->buffer, PIPE_BUF, "ERROR: Incorrect format detected in server block, expected key to be a scalar, encountered: %s\n" , key_node->tag);
+				report(reporter, false);
 			}
 		}
 	}

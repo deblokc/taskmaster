@@ -170,7 +170,7 @@ void				init_server(struct s_server * server);
 void				register_treefn_serv(struct s_server *self);
 void				register_treefn_prog(struct s_program *self);
 void				default_logger(struct s_logger *logger);
-bool				parse_server(struct s_server *server, yaml_document_t *document, int value_index);
+bool				parse_server(struct s_server *server, yaml_document_t *document, int value_index, struct s_report *reporter);
 bool				parse_programs(struct s_server *server, yaml_document_t *document, int value_index);
 bool 				add_char(char const *program_name, char const *field_name, char **target, yaml_node_t *value);
 bool				add_number(char const *program_name, char const *field_name, int *target, yaml_node_t *value, long min, long max);
