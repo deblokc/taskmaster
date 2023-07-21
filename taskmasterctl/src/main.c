@@ -6,97 +6,24 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 15:17:03 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/21 12:32:19 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/21 16:21:59 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
+#include <errno.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <unistd.h>
 #include "taskmasterctl.h"
 #include "readline.h"
 
-/* * * * * LIST OF COMMAND IN taskmasterCTL * * * * 
-
-add <name> [...]	Activates any updates in config for process/group
-
-exit	Exit the taskmaster shell.
-
-maintail -f 	Continuous tail of taskmaster main log file (Ctrl-C to exit)
-maintail -100	last 100 *bytes* of taskmasterd main log file
-maintail	last 1600 *bytes* of taskmaster main log file
-
-quit	Exit the taskmaster shell.
-
-reread 			Reload the daemon's configuration files without add/remove
-
-signal <signal name> <name>		Signal a process
-signal <signal name> <gname>:*		Signal all processes in a group
-signal <signal name> <name> <name>	Signal multiple processes or groups
-signal <signal name> all		Signal all processes
-
-stop <name>		Stop a process
-stop <gname>:*		Stop all processes in a group
-stop <name> <name>	Stop multiple processes or groups
-stop all		Stop all processes
-
-version			Show the version of the remote taskmasterd process
-
-avail			Display all configured processes
-
-fg <process>	Connect to a process in foreground mode
-		Ctrl-C to exit
-
-open <url>	Connect to a remote taskmasterd process.
-		(for UNIX domain socket, use unix:///socket/path)
-
-reload 		Restart the remote taskmasterd.
-
-restart <name>		Restart a process
-restart <gname>:*	Restart all processes in a group
-restart <name> <name>	Restart multiple processes or groups
-restart all		Restart all processes
-Note: restart does not reread config files. For that, see reread and update.
-
-start <name>		Start a process
-start <gname>:*		Start all processes in a group
-start <name> <name>	Start multiple processes or groups
-start all		Start all processes
-
-tail [-f] <name> [stdout|stderr] (default stdout)
-Ex:
-tail -f <name>		Continuous tail of named process stdout
-			Ctrl-C to exit.
-tail -100 <name>	last 100 *bytes* of process stdout
-tail <name> stderr	last 1600 *bytes* of process stderr
-
-clear <name>		Clear a process' log files.
-clear <name> <name>	Clear multiple process' log files
-clear all		Clear all process' log files
-
-help		Print a list of available actions
-help <action>	Print help for <action>
-
-pid			Get the PID of taskmasterd.
-pid <name>		Get the PID of a single child process by name.
-pid all			Get the PID of every child process, one per line.
-
-remove <name> [...]	Removes process/group from active config
-
-shutdown 	Shut the remote taskmasterd down.
-
-status <name>		Get status for a single process
-status <gname>:*	Get status for all processes in a group
-status <name> <name>	Get status for multiple named processes
-status			Get all process status info
-
-update			Reload config and add/remove as necessary, and will restart affected programs
-update all		Reload config and add/remove as necessary, and will restart affected programs
-update <gname> [...]	Update specific groups
-
-* * * * * * * * * * * * * * * * * * * * * * * * * * */
+int g_sig = 0;
 
 void help(char **arg) {
 	if (!arg) {
@@ -109,8 +36,8 @@ void help(char **arg) {
 		} else if (!strcmp(arg[0], "exit")) {
 			printf("exit\tExit the taskmaster shell.\n");
 		} else if (!strcmp(arg[0], "maintail")) {
-			printf("maintail -f\t\tContinuous tail of taskmaster main log file (Ctrl-C to exit)\n");
-			printf("maintail -100\t\tlast 100 *bytes* of taskmaster main log file\n");
+			printf("maintail -f\t\t\tContinuous tail of taskmaster main log file (Ctrl-C to exit)\n");
+			printf("maintail -100\t\t\tlast 100 *bytes* of taskmaster main log file\n");
 			printf("maintail\t\t\tlast 1600 *bytes* of taskmaster main log file\n");
 		} else if (!strcmp(arg[0], "quit")) {
 			printf("quit\tExit the taskmaster shell.\n");
@@ -141,16 +68,16 @@ void help(char **arg) {
 		} else if (!strcmp(arg[0], "start")) {
 			printf("start <name>\t\tStart a process\n");
 			printf("start <name> <name>\tStart multiple processes or groups\n");
-			printf("start all\t\t\tStart all processes\n");
+			printf("start all\t\tStart all processes\n");
 		} else if (!strcmp(arg[0], "tail")) {
 			printf("tail [-f] <name>\t[stdout|stderr] (default stdout)\n");
 			printf("Ex:\n");
-			printf("tail -f <name>\tContinuous tail of named process stdout\n");
+			printf("tail -f <name>\t\tContinuous tail of named process stdout\n");
 			printf("\t\t\tCtrl-C to exit\n");
 			printf("tail -100 <name>\tlast 100 *bytes* of process stdout\n");
 			printf("tail <name> stderr\tlast 1600 *bytes* of process stderr\n");
 		} else if (!strcmp(arg[0], "clear")) {
-			printf("clear <name>\t\tClear a process' log files\n");
+			printf("clear <name>\t\t\tClear a process' log files\n");
 			printf("clear <name> <name>\t\tClear multiple process' log files\n");
 			printf("clear all\t\t\tClear all process' log files\n");
 		} else if (!strcmp(arg[0], "help")) {
@@ -158,8 +85,8 @@ void help(char **arg) {
 			printf("help <command>\t\tPrint help for <command>\n");
 		} else if (!strcmp(arg[0], "pid")) {
 			printf("pid\t\t\tGet the PID of taskmasterd.\n");
-			printf("pid <name>\tGet the PID of a single child process by name.\n");
-			printf("pid all\t\tGet the PID of every child process, one per line.\n");
+			printf("pid <name>\t\tGet the PID of a single child process by name.\n");
+			printf("pid all\t\t\tGet the PID of every child process, one per line.\n");
 		} else if (!strcmp(arg[0], "remove")) {
 			printf("remove <name> [...] Removes process from active config\n");
 		} else if (!strcmp(arg[0], "shutdown")) {
@@ -179,7 +106,7 @@ void help(char **arg) {
 
 int exec(struct s_command *cmd) {
 	int ret = 0;
-
+/*
 	printf("cmd : %s\n", cmd->cmd);
 	if (cmd->arg) {
 		printf("arg :");
@@ -191,7 +118,7 @@ int exec(struct s_command *cmd) {
 		}
 		printf("\n");
 	}
-
+*/
 	if (!strcmp(cmd->cmd, "help")) {
 		help(cmd->arg);
 	} else if (!strcmp(cmd->cmd, "exit") || !strcmp(cmd->cmd, "quit")) {
@@ -229,16 +156,40 @@ struct s_command *process_line(char *line) {
 	}
 }
 
+
+void sig_handler(int sig) {
+	(void)sig;
+	g_sig = 1;
+}
+
+#define SOCK_PATH "/tmp/taskmaster.sock"
+
+int open_socket(void) {
+	int fd;
+	struct sockaddr_un addr;
+	
+	fd = socket(AF_UNIX, SOCK_STREAM, 0);
+	if (fd < 0) {
+		perror("socket");
+	}
+	bzero(&addr, sizeof(addr));
+	addr.sun_family = AF_UNIX;
+	strcpy(addr.sun_path, SOCK_PATH);
+	if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+		perror("connect");
+	}
+	return (fd);
+}
+
 int main(int ac, char **av) {
 	(void)ac;
 	(void)av;
 	char *tab[] = {"add", "exit", "maintail", "quit", "reread", "signal", "stop", "version",\
-		"avail", "fg", "reload", "restart", "start", "tail",\
+				"avail", "fg", "reload", "restart", "start", "tail",\
 			"clear", "help", "pid", "remove", "shutdown", "status", "update", NULL};
 
-	printf("%s\n", ctermid(NULL));
-	printf("%s\n", ttyname(0));
-
+	int socket = open_socket();
+	signal(SIGINT, &sig_handler);
 	complete_init(tab);
 
 	FILE *file = fopen_history();
@@ -246,19 +197,33 @@ int main(int ac, char **av) {
 
 	char *line = ft_readline("taskmasterctl>");
 	struct s_command *cmd = NULL;
+	int ret = 0;
+	char buf[4096];
 	while (line != NULL) {
+		bzero(buf, 4096);
+		ret = recv(socket, buf, 4095, MSG_DONTWAIT);
+		if (errno == EAGAIN || errno == EWOULDBLOCK) {
+			printf("nothing to read\n");
+		} else if (ret < 0) {
+			perror("recv");
+		} else {
+			printf("GOT >%s<\n", buf);
+		}
 		// process line (remove space n sht)
+		char *tmp = strdup(line);
 		cmd = process_line(line);
 		if (cmd) {
 			if (exec(cmd)) {
 				free(line);
+				free(tmp);
 				break ;
 			}
 			// add to history and read another line
-			add_history(line);
-			add_file_history(line, file);
+			add_history(tmp);
+			add_file_history(tmp, file);
 		}
 		free(line);
+		free(tmp);
 		line = ft_readline("taskmasterctl>");
 	}
 	clear_history();
