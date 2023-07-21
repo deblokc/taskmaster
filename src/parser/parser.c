@@ -21,12 +21,12 @@ static bool parse_document(struct s_server *server, yaml_document_t * document, 
 	yaml_node_t	*current_node;
 	yaml_node_t	*key_node;
 
-	snprintf(reporter->buffer, PIPE_BUF, "%s DEBUG: Parsing YAML document\n", add_stamp(reporter));
+	snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Parsing YAML document\n");
 	report(reporter, false);
 	current_node = yaml_document_get_root_node(document);
 	if (!current_node)
 	{
-		snprintf(reporter->buffer, PIPE_BUF, "%s WARN: empty YAML configuration file encountered\n", add_stamp(reporter));
+		snprintf(reporter->buffer, PIPE_BUF, "WARN: empty YAML configuration file encountered, taskmasterd will start with default server and no program\n");
 		report(reporter, false);
 	}
 	else
@@ -40,7 +40,7 @@ static bool parse_document(struct s_server *server, yaml_document_t * document, 
 				{
 					if (!strcmp((char *)key_node->data.scalar.value, "programs"))
 					{
-						snprintf(reporter->buffer, PIPE_BUF, "%s DEBUG: Parsing 'programs' block\n", add_stamp(reporter));
+						snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Parsing 'programs' block\n");
 						report(reporter, false);
 
 						if (!parse_programs(server, document, (current_node->data.mapping.pairs.start + i)->value))
@@ -51,7 +51,7 @@ static bool parse_document(struct s_server *server, yaml_document_t * document, 
 					}
 					else if (!strcmp((char*)key_node->data.scalar.value, "server"))
 					{
-						snprintf(reporter->buffer, PIPE_BUF, "%s DEBUG: Parsing 'server' block\n", add_stamp(reporter));
+						snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Parsing 'server' block\n");
 						report(reporter, false);
 						if (!parse_server(server, document, (current_node->data.mapping.pairs.start + i)->value))
 						{
@@ -61,20 +61,20 @@ static bool parse_document(struct s_server *server, yaml_document_t * document, 
 					}
 					else
 					{
-						snprintf(reporter->buffer, PIPE_BUF, "%s WARN: Unknown key encountered in configuration file: %s\n", add_stamp(reporter), key_node->data.scalar.value);
+						snprintf(reporter->buffer, PIPE_BUF, "WARN: Unknown key encountered in configuration file: %s\n", key_node->data.scalar.value);
 						report(reporter, false);
 					}
 				}
 				else
 				{
-					snprintf(reporter->buffer, PIPE_BUF, "%s ERROR: Wrong node format encountered in root YAML map: %s\n", add_stamp(reporter), key_node->data.scalar.value);
+					snprintf(reporter->buffer, PIPE_BUF, "ERROR: Wrong node format encountered in root YAML map: %s\n", key_node->data.scalar.value);
 					report(reporter, false);
 				}
 			}
 		}
 		else
 		{
-			snprintf(reporter->buffer, PIPE_BUF, "%s CRITICAL: Expected map at the root of yaml document, found: %s\n", add_stamp(reporter), current_node->tag);
+			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Expected map at the root of yaml document, found: %s\n", current_node->tag);
 			report(reporter, true);
 			ret = false;
 		}
@@ -91,7 +91,7 @@ static bool	parse_config_yaml(struct s_server * server, FILE *config_file_handle
 
 	if (!yaml_parser_initialize(&parser))
 	{
-		snprintf(reporter->buffer, PIPE_BUF, "%s CRITICAL: Could not initialize parser\n", add_stamp(reporter));
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not initialize parser\n");
 		report(reporter, true);
 		ret = false;
 	}
@@ -101,7 +101,7 @@ static bool	parse_config_yaml(struct s_server * server, FILE *config_file_handle
 		yaml_parser_set_input_file(&parser, config_file_handle);
 		if (!yaml_parser_load(&parser, &document))
 		{
-			snprintf(reporter->buffer, PIPE_BUF, "%s CRITICAL: Could not load configuration file, please verify YAML syntax\n", add_stamp(reporter));
+			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not load configuration file, please verify YAML syntax\n");
 			report(reporter, true);
 			ret = false;
 		}
@@ -132,7 +132,7 @@ static void	resolve_configfile_path(struct s_server* server, char* config_file, 
 		server->config_file = strdup(config_trimmed);
 		if (!server->config_file)
 		{
-			snprintf(reporter->buffer, PIPE_BUF, "%s CRITICAL: Could not allocate path for current working directory\n", add_stamp(reporter));
+			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not allocate path for current working directory\n");
 			report(reporter, true);
 		}
 	}
@@ -141,7 +141,7 @@ static void	resolve_configfile_path(struct s_server* server, char* config_file, 
 		cwd = getcwd(NULL, 4096);
 		if (!cwd)
 		{
-			snprintf(reporter->buffer, PIPE_BUF, "%s CRITICAL: Could not allocate path for current working directory\n", add_stamp(reporter));
+			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not allocate path for current working directory\n");
 			report(reporter, true);
 		}
 		else
@@ -149,7 +149,7 @@ static void	resolve_configfile_path(struct s_server* server, char* config_file, 
 			server->config_file = calloc((strlen(cwd) + strlen(config_trimmed) + 2), sizeof(char));
 			if (!server->config_file)
 			{
-				snprintf(reporter->buffer, PIPE_BUF, "%s CRITICAL: Could not allocate path for config file\n", add_stamp(reporter));
+				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not allocate path for config file\n");
 				report(reporter, true);
 			}
 			else
@@ -159,11 +159,12 @@ static void	resolve_configfile_path(struct s_server* server, char* config_file, 
 				server->config_file[len] = '/';
 				strcpy(&server->config_file[len + 1], config_trimmed);
 			}
+			free(cwd);
 		}
 	}
 	if (!reporter->critical)
 	{
-		snprintf(reporter->buffer, PIPE_BUF, "%s DEBUG: Path to configuration file resolved: %s\n", add_stamp(reporter), server->config_file);
+		snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Path to configuration file resolved: %s\n", server->config_file);
 		report(reporter, false);
 	}
 }
@@ -177,12 +178,12 @@ struct s_server*	parse_config(char* config_file, struct s_report* reporter)
 	if (server)
 	{
 		init_server(server);
-		snprintf(reporter->buffer, PIPE_BUF, "%s DEBUG: Buiding server\n", add_stamp(reporter));
+		snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Buiding server\n");
 		report(reporter, false);
 		config_file_handle = fopen(config_file, "r");	
 		if (!config_file_handle)
 		{
-			snprintf(reporter->buffer, PIPE_BUF, "%s CRITICAL: Could not open configuration file\n", add_stamp(reporter));
+			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not open configuration file\n");
 			report(reporter, true);
 			server = server->cleaner(server);
 		}
@@ -199,7 +200,7 @@ struct s_server*	parse_config(char* config_file, struct s_report* reporter)
 	}
 	else
 	{
-		snprintf(reporter->buffer, PIPE_BUF, "%s CRITICAL: Could not allocate server\n", add_stamp(reporter));
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not allocate server\n");
 		report(reporter, true);
 	}
 	return (server);
