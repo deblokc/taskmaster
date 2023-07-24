@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 15:17:03 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/21 16:21:59 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/24 19:22:11 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/epoll.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -156,7 +157,6 @@ struct s_command *process_line(char *line) {
 	}
 }
 
-
 void sig_handler(int sig) {
 	(void)sig;
 	g_sig = 1;
@@ -189,6 +189,15 @@ int main(int ac, char **av) {
 			"clear", "help", "pid", "remove", "shutdown", "status", "update", NULL};
 
 	int socket = open_socket();
+	struct epoll_event sock;
+	bzero(&sock, sizeof(sock));
+	sock.data.fd = socket;
+	sock.events = EPOLLIN | EPOLLOUT;
+	int efd = epoll_create(1);
+	epoll_ctl(efd, EPOLL_CTL_ADD, socket, &sock);
+
+	// SETUP EPOLL, IT CAN NOW BE CALLED IN NEEDED FUNCTION
+
 	signal(SIGINT, &sig_handler);
 	complete_init(tab);
 
@@ -197,18 +206,7 @@ int main(int ac, char **av) {
 
 	char *line = ft_readline("taskmasterctl>");
 	struct s_command *cmd = NULL;
-	int ret = 0;
-	char buf[4096];
 	while (line != NULL) {
-		bzero(buf, 4096);
-		ret = recv(socket, buf, 4095, MSG_DONTWAIT);
-		if (errno == EAGAIN || errno == EWOULDBLOCK) {
-			printf("nothing to read\n");
-		} else if (ret < 0) {
-			perror("recv");
-		} else {
-			printf("GOT >%s<\n", buf);
-		}
 		// process line (remove space n sht)
 		char *tmp = strdup(line);
 		cmd = process_line(line);
