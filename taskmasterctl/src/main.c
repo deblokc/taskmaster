@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 15:17:03 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/24 19:22:11 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/24 19:54:39 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -52,8 +52,6 @@ void help(char **arg) {
 			printf("stop <name>\t\tStop a process\n");
 			printf("stop <name> <name>\tStop multiple processes or groups\n");
 			printf("stop all\t\tStop all processes\n");
-		} else if (!strcmp(arg[0], "version")) {
-			printf("version\t\t\tShow the version of the remote taskmasterd process\n");
 		} else if (!strcmp(arg[0], "avail")) {
 			printf("avail\t\t\tDisplay all configured processes\n");
 		} else if (!strcmp(arg[0], "fg")) {
@@ -105,7 +103,46 @@ void help(char **arg) {
 	}
 }
 
-int exec(struct s_command *cmd) {
+void remote_exec(struct s_command *cmd, int efd, struct epoll_event sock) {
+	struct epoll_event tmp;
+
+	/*
+	 *  THE LOGIC WITH WHICH IVE MADE THIS CTL IS THAT IT IS AN EMPTY SHELL.
+	 *  THIS MEANS IT WILL ALWAYS FIRST `SEND A REQUEST` (OR MORE ACCURATELLY
+	 *  TRANSFER THE COMMAND) AND THEN `PRINT THE RESPONSE` WITHOUT ANY THOUGH */
+
+	sock.events = EPOLLIN;
+	epoll_ctl(efd, EPOLL_CTL_MOD, sock.data.fd, &sock);
+
+	int ret = epoll_wait(efd, &tmp, 1, 60 * 1000); // wait for max a minute
+	if (ret > 0) {
+		if (tmp.events & EPOLLIN) { // SEND PHASE
+			send(tmp.data.fd, cmd->cmd, strlen(cmd->cmd), 0);
+			for (int i = 0; cmd->arg[i]; i++) {
+				send(tmp.data.fd, cmd->arg[i], strlen(cmd->arg[i]), 0);
+			}
+		}
+	} else if (ret == 0) {
+		printf("SOCKET TIMED OUT\n");
+	} else {
+		perror("epoll_wait(EPOLLIN)");
+	}
+
+	sock.events = EPOLLOUT;
+	epoll_ctl(efd, EPOLL_CTL_MOD, sock.data.fd, &sock);
+
+	ret = epoll_wait(efd, &tmp, 1, 60 * 1000); // wait for max a minute
+	if (ret > 0) {
+		if (tmp.events & EPOLLOUT) { // RECV PHASE
+			char buf[4096];
+			bzero(buf, 4096);
+			recv(tmp.data.fd, buf, 4096, 0);
+			printf("%s\n", buf); // DUMBLY PRINT RESPONSE
+		}
+	}
+}
+
+int exec(struct s_command *cmd, int efd, struct epoll_event sock) {
 	int ret = 0;
 /*
 	printf("cmd : %s\n", cmd->cmd);
@@ -124,6 +161,8 @@ int exec(struct s_command *cmd) {
 		help(cmd->arg);
 	} else if (!strcmp(cmd->cmd, "exit") || !strcmp(cmd->cmd, "quit")) {
 		ret = 1;
+	} else {
+		remote_exec(cmd, efd, sock);
 	}
 	free(cmd->arg);
 	free(cmd);
@@ -184,7 +223,7 @@ int open_socket(void) {
 int main(int ac, char **av) {
 	(void)ac;
 	(void)av;
-	char *tab[] = {"add", "exit", "maintail", "quit", "reread", "signal", "stop", "version",\
+	char *tab[] = {"add", "exit", "maintail", "quit", "reread", "signal", "stop",\
 				"avail", "fg", "reload", "restart", "start", "tail",\
 			"clear", "help", "pid", "remove", "shutdown", "status", "update", NULL};
 
@@ -192,7 +231,7 @@ int main(int ac, char **av) {
 	struct epoll_event sock;
 	bzero(&sock, sizeof(sock));
 	sock.data.fd = socket;
-	sock.events = EPOLLIN | EPOLLOUT;
+	sock.events = 0;
 	int efd = epoll_create(1);
 	epoll_ctl(efd, EPOLL_CTL_ADD, socket, &sock);
 
@@ -211,7 +250,7 @@ int main(int ac, char **av) {
 		char *tmp = strdup(line);
 		cmd = process_line(line);
 		if (cmd) {
-			if (exec(cmd)) {
+			if (exec(cmd, efd, sock)) {
 				free(line);
 				free(tmp);
 				break ;
