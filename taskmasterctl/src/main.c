@@ -6,11 +6,12 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 15:17:03 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/24 20:15:39 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/25 12:56:40 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <errno.h>
+#include <limits.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -134,9 +135,9 @@ void remote_exec(struct s_command *cmd, int efd, struct epoll_event sock) {
 	ret = epoll_wait(efd, &tmp, 1, 60 * 1000); // wait for max a minute
 	if (ret > 0) {
 		if (tmp.events & EPOLLOUT) { // RECV PHASE
-			char buf[4096];
-			bzero(buf, 4096);
-			recv(tmp.data.fd, buf, 4095, 0);
+			char buf[PIPE_BUF + 1];
+			bzero(buf, PIPE_BUF + 1);
+			recv(tmp.data.fd, buf, PIPE_BUF, 0);
 			printf("%s\n", buf); // DUMBLY PRINT RESPONSE
 		}
 	}

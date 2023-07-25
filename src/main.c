@@ -6,11 +6,12 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/24 19:21:58 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/25 12:58:42 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "taskmaster.h"
+#include <limits.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <stdio.h>
@@ -60,7 +61,7 @@ struct s_client *new_client(struct s_client *list, int client_fd) {
 
 void check_server(int sock_fd, int efd) {
 	static struct s_client *list = NULL;
-	char				buf[4096];
+	char				buf[PIPE_BUF + 1];
 	struct epoll_event tmp;
 
 	bzero(&tmp, sizeof(tmp));
@@ -78,8 +79,8 @@ void check_server(int sock_fd, int efd) {
 			while (client) {
 				if (tmp.data.fd == client->poll.data.fd) {
 					if (tmp.events & EPOLLIN) {
-						bzero(buf, 4096);
-						if (read(client->poll.data.fd, buf, 4095)) {}
+						bzero(buf, PIPE_BUF + 1);
+						if (read(client->poll.data.fd, buf, PIPE_BUF)) {}
 						printf("GOT >%s<\n", buf);
 						// need to execute some action and probably send data back
 					} else if (tmp.events & EPOLLOUT) {
