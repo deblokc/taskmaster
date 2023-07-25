@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 18:00:54 by bdetune           #+#    #+#             */
-/*   Updated: 2023/07/17 19:50:53 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/07/25 14:53:48 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,8 +42,7 @@ static bool parse_document(struct s_server *server, yaml_document_t * document, 
 					{
 						snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Parsing 'programs' block\n");
 						report(reporter, false);
-
-						if (!parse_programs(server, document, (current_node->data.mapping.pairs.start + i)->value))
+						if (!parse_programs(server, document, (current_node->data.mapping.pairs.start + i)->value, reporter))
 						{
 							ret = false;
 							break ;

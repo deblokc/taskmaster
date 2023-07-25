@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 19:48:45 by bdetune           #+#    #+#             */
-/*   Updated: 2023/07/11 20:09:35 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/07/25 15:48:48 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -48,12 +48,14 @@ void	init_server(struct s_server * server)
 	default_logger(&server->logger);
 }
 
-static void add_loglevel(struct s_server *server, yaml_node_t *value)
+static void add_loglevel(struct s_server *server, yaml_node_t *value, struct s_report *reporter)
 {
-	printf("Parsing loglevel in server\n");
+	snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Parsing loglevel in 'server'\n");
+	report(reporter, false);
 	if (value->type != YAML_SCALAR_NODE)
 	{
-		printf("Wrong format for loglevel in server, falling back to default value WARN\n");
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Wrong format for loglevel in 'server', expected a scalar value, encountered %s\n", value->tag);
+		report(reporter, true);
 	}
 	else
 	{
@@ -68,41 +70,41 @@ static void add_loglevel(struct s_server *server, yaml_node_t *value)
 		else if (!strcmp((char *)value->data.scalar.value, "DEBUG"))
 			server->loglevel = DEBUG;
 		else
-			printf("Wrong format for loglevel in server, accepted values are:\n\t- CRITICAL\n\t- ERROR\n\t- WARN\n\t- INFO\n\t- DEBUG\nfalling back to default value WARN\n");
+		{
+			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Wrong value for loglevel in 'server', accepted values are:\n\t- CRITICAL\n\t- ERROR\n\t- WARN\n\t- INFO\n\t- DEBUG\n");
+			report(reporter, true);
+		}
 	}
 }
 
-static bool add_value(struct s_server *server, yaml_document_t *document, char* key, yaml_node_t *value, struct s_report *reporter)
+static void add_value(struct s_server *server, yaml_document_t *document, char* key, yaml_node_t *value, struct s_report *reporter)
 {
-	bool	ret = true;
-
 	(void) document;
 	if (!strcmp("logfile", key))
-		ret = add_char(NULL, "logfile", &server->logger.logfile, value);
+		add_char(NULL, "logfile", &server->logger.logfile, value, reporter);
 	else if (!strcmp("logfile_maxbytes", key))
-		add_number(NULL, "logfile_maxbytes", &server->logger.logfile_maxbytes, value, 100, 1024*1024*1024);
+		add_number(NULL, "logfile_maxbytes", &server->logger.logfile_maxbytes, value, 100, 1024*1024*1024, reporter);
 	else if (!strcmp("logfile_backups", key))
-		add_number(NULL, "logfile_backups", &server->logger.logfile_backups, value, 0, 100);
+		add_number(NULL, "logfile_backups", &server->logger.logfile_backups, value, 0, 100, reporter);
 	else if (!strcmp("pidfile", key))
-		ret = add_char(NULL, "pidfile", &server->pidfile, value);
+		add_char(NULL, "pidfile", &server->pidfile, value, reporter);
 	else if (!strcmp("user", key))
-		ret = add_char(NULL, "user", &server->user, value);
+		add_char(NULL, "user", &server->user, value, reporter);
 	else if (!strcmp("group", key))
-		ret = add_char(NULL, "group", &server->group, value);
+		add_char(NULL, "group", &server->group, value, reporter);
 	else if (!strcmp("umask", key))
-		add_octal(NULL, "umask", &server->umask, value, 0, 0777);
+		add_octal(NULL, "umask", &server->umask, value, 0, 0777, reporter);
 	else if (!strcmp("daemon", key))
-		add_bool(NULL, "daemon", &server->daemon, value);
+		add_bool(NULL, "daemon", &server->daemon, value, reporter);
 	else if (!strcmp("loglevel", key))
-		add_loglevel(server, value);
+		add_loglevel(server, value, reporter);
 	else if (!strcmp("env", key))
-		parse_env(value, document, &server->env);
+		parse_env(NULL, value, document, &server->env, reporter);
 	else
 	{
 		snprintf(reporter->buffer, PIPE_BUF, "WARNING: Encountered unknown key '%s' in server configuration\n", key);
 		report(reporter, false);
 	}
-	return (ret) ;	
 }
 
 bool	parse_server(struct s_server *server, yaml_document_t *document, int value_index, struct s_report *reporter)
@@ -113,8 +115,6 @@ bool	parse_server(struct s_server *server, yaml_document_t *document, int value_
 	yaml_node_t	*key_node = NULL;
 	yaml_node_t	*value_node = NULL;
 
-	snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Parsing server\n");
-	report(reporter, false);
 	if (duplicate)
 	{
 		snprintf(reporter->buffer, PIPE_BUF, "WARNING: Encountered two blocks server in configuration file\n");
@@ -124,7 +124,6 @@ bool	parse_server(struct s_server *server, yaml_document_t *document, int value_
 	params_node = yaml_document_get_node(document, value_index);
 	if (params_node->type != YAML_MAPPING_NODE)
 	{
-
 		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Unexpected format for block server, expected map, encountered %s\n", params_node->tag);
 		report(reporter, true);
 		ret = false;
@@ -137,7 +136,8 @@ bool	parse_server(struct s_server *server, yaml_document_t *document, int value_
 			if (key_node->type == YAML_SCALAR_NODE)
 			{
 				value_node = yaml_document_get_node(document, (params_node->data.mapping.pairs.start + i)->value);
-				if (!add_value(server, document, (char*)key_node->data.scalar.value, value_node, reporter))
+				add_value(server, document, (char*)key_node->data.scalar.value, value_node, reporter);
+				if (reporter->critical)
 				{
 					ret = false;
 					break ;
@@ -145,7 +145,7 @@ bool	parse_server(struct s_server *server, yaml_document_t *document, int value_
 			}
 			else
 			{
-				snprintf(reporter->buffer, PIPE_BUF, "ERROR: Incorrect format detected in server block, expected key to be a scalar, encountered: %s\n" , key_node->tag);
+				snprintf(reporter->buffer, PIPE_BUF, "WARNING: Incorrect format detected in server block, expected keys to be scalars, encountered: %s\n" , key_node->tag);
 				report(reporter, false);
 			}
 		}

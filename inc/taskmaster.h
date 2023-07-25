@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/17 19:19:44 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/07/25 15:49:12 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -171,13 +171,13 @@ void				register_treefn_serv(struct s_server *self);
 void				register_treefn_prog(struct s_program *self);
 void				default_logger(struct s_logger *logger);
 bool				parse_server(struct s_server *server, yaml_document_t *document, int value_index, struct s_report *reporter);
-bool				parse_programs(struct s_server *server, yaml_document_t *document, int value_index);
-bool 				add_char(char const *program_name, char const *field_name, char **target, yaml_node_t *value);
-bool				add_number(char const *program_name, char const *field_name, int *target, yaml_node_t *value, long min, long max);
-bool				add_octal(char const *program_name, char const *field_name, int *target, yaml_node_t *value, long min, long max);
-void				add_bool(char const *program_name, char const *field_name, bool *target, yaml_node_t *value);
+bool				parse_programs(struct s_server *server, yaml_document_t *document, int value_index, struct s_report *reporter);
+bool 				add_char(char const *program_name, char const *field_name, char **target, yaml_node_t *value, struct s_report *reporter);
+bool				add_number(char const *program_name, char const *field_name, int *target, yaml_node_t *value, long min, long max, struct s_report *reporter);
+bool				add_octal(char const *program_name, char const *field_name, int *target, yaml_node_t *value, long min, long max, struct s_report *reporter);
+bool				add_bool(char const *program_name, char const *field_name, bool *target, yaml_node_t *value, struct s_report *reporter);
 struct s_env*		free_s_env(struct s_env *start);
-bool				parse_env(yaml_node_t *map, yaml_document_t *document, struct s_env **dest);
+bool				parse_env(char const *program_name, yaml_node_t *map, yaml_document_t *document, struct s_env **dest, struct s_report *reporter);
 struct s_priority*	create_priorities(struct s_server* server);
 void				*administrator(void *arg);
 void				launch(struct s_priority *lst);
