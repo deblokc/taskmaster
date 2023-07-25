@@ -6,13 +6,13 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 16:45:18 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/19 16:33:19 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/25 15:45:45 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 struct s_command {
 	char	*cmd;
-	char	**arg;
+	char	*arg;
 };
 
 FILE *fopen_history(void);

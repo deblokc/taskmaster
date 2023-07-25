@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/25 12:58:42 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/25 19:16:15 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -59,29 +59,43 @@ struct s_client *new_client(struct s_client *list, int client_fd) {
 	}
 }
 
+struct s_command {
+	char	*cmd;
+	char	*arg;
+};
+
 void check_server(int sock_fd, int efd) {
-	static struct s_client *list = NULL;
-	char				buf[PIPE_BUF + 1];
-	struct epoll_event tmp;
+	static struct s_client	*list = NULL;
+	char					buf[PIPE_BUF + 1];
+	struct epoll_event		tmp;
+	struct s_command		cmd;
 
 	bzero(&tmp, sizeof(tmp));
+	bzero(&cmd, sizeof(cmd));
 	if (epoll_wait(efd, &tmp, 1, 0) > 0) { // for now only check one event every time, might change
 		if (tmp.data.fd == sock_fd) {
 			printf("NEW CONNECTION\n");
 			struct s_client *client = new_client(list, accept(sock_fd, NULL, NULL));
-			client->poll.events = EPOLLIN | EPOLLOUT;
+			client->poll.events = EPOLLIN;// | EPOLLOUT;
 			epoll_ctl(efd, EPOLL_CTL_ADD, client->poll.data.fd, &client->poll);
 			if (!list) {
 				list = client;
 			}
 		} else {
+			printf("GOT SMTH\n");
 			struct s_client *client = list;
 			while (client) {
 				if (tmp.data.fd == client->poll.data.fd) {
+					printf("client %d\n", tmp.data.fd);
 					if (tmp.events & EPOLLIN) {
 						bzero(buf, PIPE_BUF + 1);
-						if (read(client->poll.data.fd, buf, PIPE_BUF)) {}
-						printf("GOT >%s<\n", buf);
+						if (recv(client->poll.data.fd, buf, PIPE_BUF, MSG_DONTWAIT)) {}
+						cmd.cmd = strdup(buf);
+						bzero(buf, PIPE_BUF + 1);
+						if (recv(client->poll.data.fd, buf, PIPE_BUF, MSG_DONTWAIT)) {} // not quite sure it would work :x
+						cmd.arg = strdup(buf);
+						printf(">%s< >%s<\n", cmd.cmd, cmd.arg);
+
 						// need to execute some action and probably send data back
 					} else if (tmp.events & EPOLLOUT) {
 						if (0) { // if need to send data back

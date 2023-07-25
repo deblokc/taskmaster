@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 15:17:03 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/25 12:56:40 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/25 18:18:03 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,79 +27,79 @@
 
 int g_sig = 0;
 
-void help(char **arg) {
+void help(char *arg) {
 	if (!arg) {
 		printf("default commands (type help <command>):\n");
 		printf("=======================================\n");
 		printf("TOUTES LES COMMANDES QUON AURA\n");
 	} else {
-		if (!strcmp(arg[0], "add")) {
+		if (!strcmp(arg, "add")) {
 			printf("add <name> [...]\tActivates any updates in config for process/group\n");
-		} else if (!strcmp(arg[0], "exit")) {
+		} else if (!strcmp(arg, "exit")) {
 			printf("exit\tExit the taskmaster shell.\n");
-		} else if (!strcmp(arg[0], "maintail")) {
+		} else if (!strcmp(arg, "maintail")) {
 			printf("maintail -f\t\t\tContinuous tail of taskmaster main log file (Ctrl-C to exit)\n");
 			printf("maintail -100\t\t\tlast 100 *bytes* of taskmaster main log file\n");
 			printf("maintail\t\t\tlast 1600 *bytes* of taskmaster main log file\n");
-		} else if (!strcmp(arg[0], "quit")) {
+		} else if (!strcmp(arg, "quit")) {
 			printf("quit\tExit the taskmaster shell.\n");
-		} else if (!strcmp(arg[0], "reread")) {
+		} else if (!strcmp(arg, "reread")) {
 			printf("reread\t\t\tReload the daemon's configuration files without add/remove\n");
-		} else if (!strcmp(arg[0], "signal")) {
+		} else if (!strcmp(arg, "signal")) {
 			printf("signal <signal name> <name>\t\tSignal a process\n");
 			printf("signal <signal name> <name> <name>\tSignal multiple processes or groups\n");
 			printf("signal <signal name> all\t\tSignal all processes\n");
-		} else if (!strcmp(arg[0], "stop")) {
+		} else if (!strcmp(arg, "stop")) {
 			printf("stop <name>\t\tStop a process\n");
 			printf("stop <name> <name>\tStop multiple processes or groups\n");
 			printf("stop all\t\tStop all processes\n");
-		} else if (!strcmp(arg[0], "avail")) {
+		} else if (!strcmp(arg, "avail")) {
 			printf("avail\t\t\tDisplay all configured processes\n");
-		} else if (!strcmp(arg[0], "fg")) {
+		} else if (!strcmp(arg, "fg")) {
 			printf("fg <process>\tConnect to a process in foreground mode\n");
 			printf("\t\tCtrl-C to exit\n");
-		} else if (!strcmp(arg[0], "reload")) {
+		} else if (!strcmp(arg, "reload")) {
 			printf("reload\t\tRestart the remote taskmasterd.\n");
-		} else if (!strcmp(arg[0], "restart")) {
+		} else if (!strcmp(arg, "restart")) {
 			printf("restart <name>\t\tRestart a process\n");
 			printf("restart <name> <name>\tRestart multiple processes or groups\n");
 			printf("restart all\t\tRestart all processes\n");
 			printf("Note: restart does not reread config files. For that, see reread and update.\n");
-		} else if (!strcmp(arg[0], "start")) {
+		} else if (!strcmp(arg, "start")) {
 			printf("start <name>\t\tStart a process\n");
 			printf("start <name> <name>\tStart multiple processes or groups\n");
 			printf("start all\t\tStart all processes\n");
-		} else if (!strcmp(arg[0], "tail")) {
+		} else if (!strcmp(arg, "tail")) {
 			printf("tail [-f] <name>\t[stdout|stderr] (default stdout)\n");
 			printf("Ex:\n");
 			printf("tail -f <name>\t\tContinuous tail of named process stdout\n");
 			printf("\t\t\tCtrl-C to exit\n");
 			printf("tail -100 <name>\tlast 100 *bytes* of process stdout\n");
 			printf("tail <name> stderr\tlast 1600 *bytes* of process stderr\n");
-		} else if (!strcmp(arg[0], "clear")) {
+		} else if (!strcmp(arg, "clear")) {
 			printf("clear <name>\t\t\tClear a process' log files\n");
 			printf("clear <name> <name>\t\tClear multiple process' log files\n");
 			printf("clear all\t\t\tClear all process' log files\n");
-		} else if (!strcmp(arg[0], "help")) {
+		} else if (!strcmp(arg, "help")) {
 			printf("help\t\t\tPrint a list of available commands\n");
 			printf("help <command>\t\tPrint help for <command>\n");
-		} else if (!strcmp(arg[0], "pid")) {
+		} else if (!strcmp(arg, "pid")) {
 			printf("pid\t\t\tGet the PID of taskmasterd.\n");
 			printf("pid <name>\t\tGet the PID of a single child process by name.\n");
 			printf("pid all\t\t\tGet the PID of every child process, one per line.\n");
-		} else if (!strcmp(arg[0], "remove")) {
+		} else if (!strcmp(arg, "remove")) {
 			printf("remove <name> [...] Removes process from active config\n");
-		} else if (!strcmp(arg[0], "shutdown")) {
+		} else if (!strcmp(arg, "shutdown")) {
 			printf("shutdown\t\tShut the remote taskmasterd down.\n");
-		} else if (!strcmp(arg[0], "status")) {
+		} else if (!strcmp(arg, "status")) {
 			printf("status <name>\t\tGet status for a single process\n");
 			printf("status <name> <name>\tGet status for multiple named processes\n");
 			printf("status\t\t\tGet all process status info\n");
-		} else if (!strcmp(arg[0], "update")) {
+		} else if (!strcmp(arg, "update")) {
 			printf("update\t\t\tReload config and add/remove as necessary, and will restart affected programs\n");
 			printf("update all\t\tReload config and add/remove as necessary, and will restart affected programs\n");
 		} else {
-			printf("*** No help on %s\n", arg[0]);
+			printf("*** No help on %s\n", arg);
 		}
 	}
 }
@@ -110,54 +110,60 @@ void remote_exec(struct s_command *cmd, int efd, struct epoll_event sock) {
 	/*
 	 *  THE LOGIC WITH WHICH IVE MADE THIS CTL IS THAT IT IS AN EMPTY SHELL.
 	 *  THIS MEANS IT WILL ALWAYS FIRST `SEND A REQUEST` (OR MORE ACCURATELLY
-	 *  TRANSFER THE COMMAND) AND THEN `PRINT THE RESPONSE` WITHOUT ANY THOUGH */
+	 *  TRANSFER THE COMMAND) AND THEN `PRINT THE RESPONSE` WITHOUT ANY THOUGH
+	 */
 
-	sock.events = EPOLLIN;
+	printf("remote exec\n");
+
+	sock.events = EPOLLOUT;
 	epoll_ctl(efd, EPOLL_CTL_MOD, sock.data.fd, &sock);
 
 	int ret = epoll_wait(efd, &tmp, 1, 60 * 1000); // wait for max a minute
 	if (ret > 0) {
-		if (tmp.events & EPOLLIN) { // SEND PHASE
+		if (tmp.events & EPOLLOUT) { // SEND PHASE
 			send(tmp.data.fd, cmd->cmd, strlen(cmd->cmd), 0);
-			for (int i = 0; cmd->arg[i]; i++) {
-				send(tmp.data.fd, cmd->arg[i], strlen(cmd->arg[i]), 0);
+			printf("SENT %s\n", cmd->cmd);
+			if (cmd->arg) {
+				for (int i = 0; i < 10; i++) {
+					if (send(tmp.data.fd, cmd->arg, strlen(cmd->arg), 0) > 0) {
+						printf("SENT %s\n", cmd->arg);
+						break ;
+					}
+					usleep(10);
+				}
 			}
+		}
+	} else if (ret == 0) {
+		printf("SOCKET TIMED OUT\n");
+	} else {
+		perror("epoll_wait(EPOLLOUT)");
+	}
+
+	sock.events = EPOLLIN;
+	epoll_ctl(efd, EPOLL_CTL_MOD, sock.data.fd, &sock);
+
+	ret = epoll_wait(efd, &tmp, 1, 60 * 1000); // wait for max a minute
+	if (ret > 0) {
+		if (tmp.events & EPOLLIN) { // RECV PHASE
+			char buf[PIPE_BUF + 1];
+			bzero(buf, PIPE_BUF + 1);
+			recv(tmp.data.fd, buf, PIPE_BUF, 0);
+			printf("%s\n", buf); // DUMBLY PRINT RESPONSE
 		}
 	} else if (ret == 0) {
 		printf("SOCKET TIMED OUT\n");
 	} else {
 		perror("epoll_wait(EPOLLIN)");
 	}
-
-	sock.events = EPOLLOUT;
-	epoll_ctl(efd, EPOLL_CTL_MOD, sock.data.fd, &sock);
-
-	ret = epoll_wait(efd, &tmp, 1, 60 * 1000); // wait for max a minute
-	if (ret > 0) {
-		if (tmp.events & EPOLLOUT) { // RECV PHASE
-			char buf[PIPE_BUF + 1];
-			bzero(buf, PIPE_BUF + 1);
-			recv(tmp.data.fd, buf, PIPE_BUF, 0);
-			printf("%s\n", buf); // DUMBLY PRINT RESPONSE
-		}
-	}
 }
 
 int exec(struct s_command *cmd, int efd, struct epoll_event sock) {
 	int ret = 0;
-/*
+
 	printf("cmd : %s\n", cmd->cmd);
 	if (cmd->arg) {
-		printf("arg :");
-
-		int i = 0;
-		while (cmd->arg[i]) {
-			printf(" %s", cmd->arg[i]);
-			i++;
-		}
-		printf("\n");
+		printf("arg : %s\n", cmd->arg);
 	}
-*/
 	if (!strcmp(cmd->cmd, "help")) {
 		help(cmd->arg);
 	} else if (!strcmp(cmd->cmd, "exit") || !strcmp(cmd->cmd, "quit")) {
@@ -165,23 +171,41 @@ int exec(struct s_command *cmd, int efd, struct epoll_event sock) {
 	} else {
 		remote_exec(cmd, efd, sock);
 	}
+	free(cmd->cmd);
 	free(cmd->arg);
 	free(cmd);
 	return (ret);
 }
 
 struct s_command *process_line(char *line) {
-	char *ret = strtok(line, " \t");
+	int i = 0;
+	int j = 0;
+	while (line[i] && line[i] == ' ') {
+		i++;
+	}
+	j = i;
+	while (line[j] && line[j] != ' ') {
+		j++;
+	}
+	char *ret = (char *)calloc(sizeof(char), j - i + 1);
+	memcpy(ret, line + i, j - i);
 	if (ret) {
 		struct s_command *cmd = (struct s_command *)calloc(sizeof(struct s_command), 1);
 		cmd->cmd = ret;
+		if (strlen(line + j)) {
+			cmd->arg = (char *)calloc(sizeof(char), strlen(line + j) + 1);
+			cmd->arg = memcpy(cmd->arg, line + j, strlen(line + j));
+		} else {
+			cmd->arg = NULL;
+		}
+		/*
 		int i = 0;
 		while (ret) {
 			ret = strtok(NULL, " \t");
 			if (ret) {
 				if (!cmd->arg) {
 					cmd->arg = (char **)calloc(sizeof(char *), 2);
-					cmd->arg[0] = ret;
+					cmd->arg = ret;
 					cmd->arg[1] = NULL;
 				} else {
 					i++;
@@ -191,6 +215,7 @@ struct s_command *process_line(char *line) {
 				}
 			}
 		}
+		*/
 		return cmd;
 	} else {
 		return NULL;
