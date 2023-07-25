@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/17 19:49:44 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/07/25 13:14:15 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -59,7 +59,7 @@ int main(int ac, char **av) {
 			return (1);
 		}
 		server = parse_config(av[1], &reporter);
-		if (write(reporter_pipe[1], "LOG\n", 4) <= 0)
+		if (write(reporter_pipe[1], "ENDLOG\n", 7) <= 0)
 		{
 			if (write(2, "CRITICAL: Log error\n", strlen("CRITICAL: Log error\n")) <= 0) {}
 			pthread_join(initial_logger, &thread_ret);
