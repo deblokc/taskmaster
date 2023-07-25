@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/11 19:41:17 by bdetune           #+#    #+#             */
-/*   Updated: 2023/07/25 13:14:45 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/07/25 19:23:09 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,10 +29,41 @@ static char	*get_stamp(char* stamp_str)
 	return (stamp_str);
 }
 
-void	report(struct s_report* reporter, bool critical)
+bool	report(struct s_report* reporter, bool critical)
 {
+	bool	success = false;
+
 	reporter->critical = critical;
-	if (write(reporter->report_fd, reporter->buffer, strlen(reporter->buffer)) == -1) {}
+	for (int i = 0; i < 10; ++i)
+	{
+		if (write(reporter->report_fd, reporter->buffer, strlen(reporter->buffer)) != -1) {
+			success = true;
+			break ;
+		}
+		usleep(100);
+	}
+	if (!success)
+		perror("LOG ERROR");
+	return (success);
+}
+
+void	report_critical(int fd)
+{
+	char*	line = NULL;
+
+	if (lseek(fd, 0, SEEK_SET) == -1)
+		return ;
+	while ((line = get_next_line(fd)) != NULL)
+	{
+		if (strlen(line) > 22)
+		{
+			if (!strncmp(&line[22], "CRITICAL", 8))
+			{
+				if (write(2, line, strlen(line))) {}
+			}
+		}
+		free(line);
+	}
 }
 
 void	*initial_log(void *fds)
@@ -84,7 +115,6 @@ void	*initial_log(void *fds)
 				buffer[ret] = '\0';
 				if (!strncmp("ENDLOG\n", buffer, 7))
 				{
-					if (write(2, "########## Received signal to log all ##########\n", strlen("########## Received signal to log all ##########\n"))) {}
 					event.data.fd = reporter_pipe[0];
 					event.events = EPOLLIN;
 					epoll_ctl(epoll_fd, EPOLL_CTL_DEL, reporter_pipe[0], &event);

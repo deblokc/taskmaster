@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/19 19:03:58 by bdetune           #+#    #+#             */
-/*   Updated: 2023/07/25 15:48:33 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/07/25 19:29:31 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -125,7 +125,7 @@ static void	print(struct s_program* self)
 		current = self->env;
 		while (current)
 		{
-			printf("\t                       \t- %s = %s\n", current->key, current->value);
+			printf("\t                       \t- %s\n", current->value);
 			current = current->next;
 		}
 	}
@@ -263,7 +263,7 @@ static bool add_stopsignal(struct s_program *program, yaml_node_t *value, struct
 			program->stopsignal = SIGUSR2;
 		else
 		{
-			snprintf(reporter->buffer, PIPE_BUF, "ERROR: Wrong format for stopsignal in program '%s', accepted values are:\n\t- TERM\n\t- HUP\n\t- INT\n\t- QUIT\n\t- KILL\n\t- USR1\n\t- USR2\n", program->name);
+			snprintf(reporter->buffer, PIPE_BUF, "ERROR: Wrong format for stopsignal in program '%s', accepted values are: TERM ; HUP ; INT ; QUIT ; KILL ; USR1 ; USR2\n", program->name);
 			report(reporter, false);
 			ret = false;
 		}
@@ -401,7 +401,7 @@ static void	add_program(struct s_server *server, yaml_document_t *document, yaml
 				{
 					snprintf(reporter->buffer, PIPE_BUF, "DEBUG: inserting valid program '%s' in tree\n", name->data.scalar.value);
 					report(reporter, false);
-					server->insert(server, program);
+					server->insert(server, program, reporter);
 				}
 			}
 		}

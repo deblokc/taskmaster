@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/25 13:14:15 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/07/25 19:15:46 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -59,10 +59,10 @@ int main(int ac, char **av) {
 			return (1);
 		}
 		server = parse_config(av[1], &reporter);
-		if (write(reporter_pipe[1], "ENDLOG\n", 7) <= 0)
+		strcpy(reporter.buffer, "ENDLOG\n");
+		if (!report(&reporter, false))
 		{
 			if (write(2, "CRITICAL: Log error\n", strlen("CRITICAL: Log error\n")) <= 0) {}
-			pthread_join(initial_logger, &thread_ret);
 			if (server)
 				server = server->cleaner(server);
 			close(reporter_pipe[0]);
@@ -80,20 +80,25 @@ int main(int ac, char **av) {
 			close(reporter_pipe[2]);
 			return (1);
 		}
-		close(reporter_pipe[0]);
-		close(reporter_pipe[1]);
-		close(reporter_pipe[2]);
-		printf("Value received from logging thread: %d\n", *(int *)thread_ret);
 		if (!server || reporter.critical || *(int *)thread_ret == 1)
 		{
+			if (*(int *)thread_ret != 1)
+			{
+				report_critical(reporter_pipe[2]);
+			}
 			if (write(2, "CRITICAL: Could not start taskmasterd, exiting process\n", strlen("CRITICAL: Could not start taskmasterd, exiting process\n")) <= 0) {}
+			if (server)
+				server = server->cleaner(server);
+			close(reporter_pipe[0]);
+			close(reporter_pipe[1]);
+			close(reporter_pipe[2]);
 			ret = 1;
 		}
 		else
 		{
-			printf("We have a server\n");
-			server->print_tree(server);
-			priorities = create_priorities(server);
+			//prelude(server);
+			//	server->print_tree(server);
+			priorities = create_priorities(server, &reporter);
 			if (!priorities)
 				printf("No priorities\n");
 			else

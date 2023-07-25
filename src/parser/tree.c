@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 17:17:11 by bdetune           #+#    #+#             */
-/*   Updated: 2023/06/22 19:18:03 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/07/25 19:29:59 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -57,7 +57,6 @@ static struct s_program*	free_next_node(struct s_program* begin)
 {
 	struct s_program*	ret = NULL;
 
-	printf("Deleting node\n");
 	if (begin)
 	{
 		while (begin->left || begin->right)
@@ -84,7 +83,6 @@ static void	delete_tree(struct s_server* server)
 {
 	struct s_program *current;
 
-	printf("Called delete tree\n");
 	current = server->program_tree;
 	current = free_next_node(server->program_tree);
 	while (current)
@@ -139,10 +137,9 @@ static void	replace_node(struct s_program* target, struct s_program *to_insert)
 	target->cleaner(target);
 }
 
-static bool	insert(struct s_server* server, struct s_program* program)
+static void	insert(struct s_server* server, struct s_program* program, struct s_report *reporter)
 {
 	int					diff;
-	bool				ret = false;
 	struct s_program*	target = NULL;
 
 	if (!server->program_tree)
@@ -153,13 +150,15 @@ static bool	insert(struct s_server* server, struct s_program* program)
 		diff = strcmp(target->name, program->name);
 		if (!diff)
 		{
+			snprintf(reporter->buffer, PIPE_BUF, "WARNING: Redefinition of program %s, discarding previous definition in favor of the latest one\n", program->name);
+			report(reporter, false);
 			if (server->program_tree == target)
 			{
-				printf("WE ARE CHANGING OUR ROOT\n");
+				snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Switching root of program tree\n");
+				report(reporter, false);
 				server->program_tree = program;
 			}
 			replace_node(target, program);
-			ret = true;
 		}
 		else if (diff < 0)
 		{
@@ -172,7 +171,6 @@ static bool	insert(struct s_server* server, struct s_program* program)
 			program->parent = target;
 		}
 	}
-	return (ret);
 }
 
 static void	print_tree(struct s_server* self)

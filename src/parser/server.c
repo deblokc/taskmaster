@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 19:48:45 by bdetune           #+#    #+#             */
-/*   Updated: 2023/07/25 15:48:48 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/07/25 19:28:33 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,7 +16,6 @@
 
 static struct s_server	*free_server(struct s_server *self)
 {
-	printf("Called cleaner\n");
 	if (self->log_pipe[0] != 0)
 		close(self->log_pipe[0]);
 	if (self->log_pipe[1] != 0)
@@ -71,7 +70,7 @@ static void add_loglevel(struct s_server *server, yaml_node_t *value, struct s_r
 			server->loglevel = DEBUG;
 		else
 		{
-			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Wrong value for loglevel in 'server', accepted values are:\n\t- CRITICAL\n\t- ERROR\n\t- WARN\n\t- INFO\n\t- DEBUG\n");
+			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Wrong value for loglevel in 'server', accepted values are: CRITICAL ; ERROR ; WARN ; INFO ; DEBUG\n");
 			report(reporter, true);
 		}
 	}

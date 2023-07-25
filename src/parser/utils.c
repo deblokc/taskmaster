@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 17:17:31 by bdetune           #+#    #+#             */
-/*   Updated: 2023/07/25 15:49:40 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/07/25 18:40:58 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -169,7 +169,7 @@ bool	parse_env(char const *program_name, yaml_node_t *map, yaml_document_t *docu
 	struct s_env	*current = NULL;
 	struct s_env	*position = NULL;
 
-	snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Parsing environement in %s'%s'\n", program_name?"program ":"", program_name?program_name:"server");
+	snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Parsing environment in %s'%s'\n", program_name?"program ":"", program_name?program_name:"server");
 	report(reporter, false);
 	if (map->type != YAML_MAPPING_NODE)
 	{
@@ -196,9 +196,8 @@ bool	parse_env(char const *program_name, yaml_node_t *map, yaml_document_t *docu
 						*dest = free_s_env(*dest);
 						break ;
 					}
-					current->key = strdup((char *)key->data.scalar.value);
-					current->value = strdup((char *)value->data.scalar.value);
-					if (!current->key || !current->value)
+					current->value = calloc(strlen((char *)key->data.scalar.value) + strlen((char *)key->data.scalar.value) + 2, sizeof(*(current->value)));
+					if (!current->value)
 					{
 						snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not allocate environment node in %s'%s'\n", program_name?"program ":"", program_name?program_name:"server");
 						report(reporter, true);
@@ -206,6 +205,9 @@ bool	parse_env(char const *program_name, yaml_node_t *map, yaml_document_t *docu
 						*dest = free_s_env(*dest);
 						break ;
 					}
+					strcpy(current->value, (char*)key->data.scalar.value);
+					strcat(current->value, "=");
+					strcpy(current->value, (char*)value->data.scalar.value);
 					if (!position)
 						*dest = current;
 					else

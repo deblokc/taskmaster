@@ -6,7 +6,7 @@
 #    By: tnaton <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/06/16 11:17:59 by tnaton            #+#    #+#              #
-#    Updated: 2023/07/11 20:09:59 by bdetune          ###   ########.fr        #
+#    Updated: 2023/07/25 19:11:37 by bdetune          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -27,6 +27,8 @@ SRCS = main.c \
 	   parser/utils.c \
 	   parser/priorities.c \
 	   parser/free_errors.c \
+	   gnl/get_next_line.c \
+	   gnl/get_next_line_utils.c \
 	   report.c \
 	   administrator.c \
 	   launcher.c
