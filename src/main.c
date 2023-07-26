@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/26 17:18:04 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/26 18:34:56 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include "taskmaster.h"
 #include <limits.h>
+#include <signal.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <stdio.h>
@@ -23,6 +24,7 @@
 
 struct s_client {
 	struct epoll_event	poll;
+	char				cmd[PIPE_BUF + 1];
 	struct s_client		*next;
 };
 
@@ -53,10 +55,12 @@ struct s_client *new_client(struct s_client *list, int client_fd) {
 		}
 		tmp->next = (struct s_client *)calloc(sizeof(struct s_client), 1);
 		tmp->next->poll.data.fd = client_fd;
+		bzero(tmp->next->cmd, PIPE_BUF + 1);
 		return (tmp->next);
 	} else {
 		struct s_client *new = (struct s_client *)calloc(sizeof(struct s_client), 1);
 		new->poll.data.fd = client_fd;
+		bzero(new->cmd, PIPE_BUF + 1);
 		return (new);
 	}
 }
@@ -65,6 +69,13 @@ struct s_command {
 	char	*cmd;
 	char	*arg;
 };
+
+int g_sig = 0;
+
+void handle(int sig) {
+	(void)sig;
+	g_sig = 1;
+}
 
 void check_server(int sock_fd, int efd) {
 	static struct s_client	*list = NULL;
@@ -104,9 +115,11 @@ void check_server(int sock_fd, int efd) {
 								head->next = client->next;
 								free(client);
 							}
+							break ;
 						}
-						cmd = strdup(buf);
-						printf(">%s<\n", cmd);
+						printf(">%s<\n", buf);
+						bzero(client->cmd, PIPE_BUF + 1);
+						memcpy(client->cmd, buf, strlen(buf));
 						client->poll.events = EPOLLOUT;
 						epoll_ctl(efd, EPOLL_CTL_MOD, client->poll.data.fd, &client->poll);
 						// need to execute some action and probably send data back
@@ -138,6 +151,7 @@ int main(int ac, char **av) {
 	}
 	else
 	{
+		signal(SIGINT, &handle);
 		server = parse_config(av[1]);
 		if (!server)
 		{
@@ -172,7 +186,7 @@ int main(int ac, char **av) {
 				launch(priorities);
 
 				// todo
-				while (1) {
+				while (!g_sig) {
 					check_server(sock_fd, efd);
 				}
 

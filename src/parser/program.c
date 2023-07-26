@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/19 19:03:58 by bdetune           #+#    #+#             */
-/*   Updated: 2023/06/22 19:59:56 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/07/26 18:06:09 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,8 +17,9 @@
 
 static struct s_program *cleaner(struct s_program *self)
 {
-	if (self->processes)
+	if (self->processes) {
 		free(self->processes);
+	}
 	if (self->name)
 		free(self->name);
 	if (self->command)
