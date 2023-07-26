@@ -6,10 +6,12 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/26 15:33:19 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/26 17:18:04 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
+#include <unistd.h>
+#include <stdio.h>
 #include "taskmaster.h"
 #include <limits.h>
 #include <sys/socket.h>
@@ -90,6 +92,7 @@ void check_server(int sock_fd, int efd) {
 					if (tmp.events & EPOLLIN) {
 						bzero(buf, PIPE_BUF + 1);
 						if (recv(client->poll.data.fd, buf, PIPE_BUF, MSG_DONTWAIT) <= 0) {
+							epoll_ctl(efd, EPOLL_CTL_DEL, client->poll.data.fd, &client->poll);
 							if (client == list) {
 								list = client->next;
 								free(client);
@@ -123,28 +126,62 @@ void check_server(int sock_fd, int efd) {
 }
 
 int main(int ac, char **av) {
+	int					ret = 0;
+	struct s_server*	server = NULL;
+	struct s_priority*	priorities = NULL;
+
 	if (ac != 2)
 	{
-		if (write(2, "Usage: ./taskmaster CONFIGURATION-FILE", strlen("Usage: ./taskmaster CONFIGURATION-FILE"))) {}
-		return 0;
+		if (write(2, "Usage: ./taskmaster CONFIGURATION-FILE\n",
+					strlen("Usage: ./taskmaster CONFIGURATION-FILE\n")) == -1) {}
+		ret = 1;
 	}
-	(void)ac;
-	(void)av;
-	int	major, minor, patch;
+	else
+	{
+		server = parse_config(av[1]);
+		if (!server)
+		{
+			printf("Could not make server from configuration file\n");
+			ret = 1;
+		}
+		else
+		{
+			printf("We have a server\n");
+			server->print_tree(server);
 
-	int sock_fd = create_server();
 
-	struct epoll_event sock;
-	bzero(&sock, sizeof(sock));
-	sock.data.fd = sock_fd;
-	sock.events = EPOLLIN;
-	int efd = epoll_create(1);
-	epoll_ctl(efd, EPOLL_CTL_ADD, sock_fd, &sock);
+			int sock_fd = create_server();
+			struct epoll_event sock;
+			bzero(&sock, sizeof(sock));
+			sock.data.fd = sock_fd;
+			sock.events = EPOLLIN;
+			int efd = epoll_create(1);
+			epoll_ctl(efd, EPOLL_CTL_ADD, sock_fd, &sock);
 
-	while (1) {
-		check_server(sock_fd, efd);
+
+
+
+			priorities = create_priorities(server);
+			if (!priorities)
+				printf("No priorities\n");
+			else
+			{
+				printf("Got priorities\n");
+				priorities->print_priorities(priorities);
+				printf("=-=-=-=-=-=-=-=-= LAUNCHING PRIORITIES =-=-=-=-=-=-=-=-=\n");
+				launch(priorities);
+
+				// todo
+				while (1) {
+					check_server(sock_fd, efd);
+				}
+
+				printf("=-=-=-=-=-=-=-=-= WAITING PRIORITIES =-=-=-=-=-=-=-=-=\n");
+				wait_priorities(priorities);
+				priorities->destructor(priorities);
+			}
+			server = server->cleaner(server);
+		}
 	}
-	yaml_get_version(&major, &minor, &patch);
-	printf("Yaml version: %d.%d.%d", major, minor, patch);
-	return (0);
+	return (ret);
 }
