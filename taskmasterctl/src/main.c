@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 15:17:03 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/25 18:18:03 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/26 15:19:47 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,8 +27,18 @@
 
 int g_sig = 0;
 
-void help(char *arg) {
-	if (!arg) {
+void help(char *full_arg) {
+	char *arg = NULL;
+	int i = 0;
+	while (full_arg[i] && full_arg[i] != ' ') {
+		i++;
+	}
+	while (full_arg[i] && full_arg[i] == ' ') {
+		i++;
+	}
+	arg = full_arg + i;
+
+	if (!strlen(arg)) {
 		printf("default commands (type help <command>):\n");
 		printf("=======================================\n");
 		printf("TOUTES LES COMMANDES QUON AURA\n");
@@ -104,7 +114,7 @@ void help(char *arg) {
 	}
 }
 
-void remote_exec(struct s_command *cmd, int efd, struct epoll_event sock) {
+void remote_exec(char *cmd, int efd, struct epoll_event sock) {
 	struct epoll_event tmp;
 
 	/*
@@ -121,17 +131,7 @@ void remote_exec(struct s_command *cmd, int efd, struct epoll_event sock) {
 	int ret = epoll_wait(efd, &tmp, 1, 60 * 1000); // wait for max a minute
 	if (ret > 0) {
 		if (tmp.events & EPOLLOUT) { // SEND PHASE
-			send(tmp.data.fd, cmd->cmd, strlen(cmd->cmd), 0);
-			printf("SENT %s\n", cmd->cmd);
-			if (cmd->arg) {
-				for (int i = 0; i < 10; i++) {
-					if (send(tmp.data.fd, cmd->arg, strlen(cmd->arg), 0) > 0) {
-						printf("SENT %s\n", cmd->arg);
-						break ;
-					}
-					usleep(10);
-				}
-			}
+			send(tmp.data.fd, cmd, strlen(cmd), 0);
 		}
 	} else if (ret == 0) {
 		printf("SOCKET TIMED OUT\n");
@@ -157,65 +157,43 @@ void remote_exec(struct s_command *cmd, int efd, struct epoll_event sock) {
 	}
 }
 
-int exec(struct s_command *cmd, int efd, struct epoll_event sock) {
-	int ret = 0;
-
-	printf("cmd : %s\n", cmd->cmd);
-	if (cmd->arg) {
-		printf("arg : %s\n", cmd->arg);
-	}
-	if (!strcmp(cmd->cmd, "help")) {
-		help(cmd->arg);
-	} else if (!strcmp(cmd->cmd, "exit") || !strcmp(cmd->cmd, "quit")) {
-		ret = 1;
+void get_cmd(char *cmd, char *full_cmd) {
+	if (strlen(full_cmd) < 4) {
+		return ;
+	} else if (full_cmd[4] != ' ' && full_cmd[4] != '\0') {
+		return ;
 	} else {
-		remote_exec(cmd, efd, sock);
+		memcpy(cmd, full_cmd, 4);
 	}
-	free(cmd->cmd);
-	free(cmd->arg);
-	free(cmd);
+}
+
+int exec(char *full_cmd, int efd, struct epoll_event sock) {
+	int ret = 0;
+	char cmd[5];
+
+	bzero(cmd, 5);
+	get_cmd(cmd, full_cmd);
+	if (strlen(cmd)) {
+		if (!strcmp(cmd, "help")) {
+			help(full_cmd);
+		} else if (!strcmp(cmd, "exit") || !strcmp(cmd, "quit")) {
+			ret = 1;
+		} else {
+			remote_exec(full_cmd, efd, sock);
+		}
+	} else {
+		remote_exec(full_cmd, efd, sock);
+	}
 	return (ret);
 }
 
-struct s_command *process_line(char *line) {
+char *process_line(char *line) {
 	int i = 0;
-	int j = 0;
 	while (line[i] && line[i] == ' ') {
 		i++;
 	}
-	j = i;
-	while (line[j] && line[j] != ' ') {
-		j++;
-	}
-	char *ret = (char *)calloc(sizeof(char), j - i + 1);
-	memcpy(ret, line + i, j - i);
-	if (ret) {
-		struct s_command *cmd = (struct s_command *)calloc(sizeof(struct s_command), 1);
-		cmd->cmd = ret;
-		if (strlen(line + j)) {
-			cmd->arg = (char *)calloc(sizeof(char), strlen(line + j) + 1);
-			cmd->arg = memcpy(cmd->arg, line + j, strlen(line + j));
-		} else {
-			cmd->arg = NULL;
-		}
-		/*
-		int i = 0;
-		while (ret) {
-			ret = strtok(NULL, " \t");
-			if (ret) {
-				if (!cmd->arg) {
-					cmd->arg = (char **)calloc(sizeof(char *), 2);
-					cmd->arg = ret;
-					cmd->arg[1] = NULL;
-				} else {
-					i++;
-					cmd->arg = (char **)realloc(cmd->arg, (sizeof(char *) * (i + 1)));
-					cmd->arg[i - 1] = ret;
-					cmd->arg[i] = NULL;
-				}
-			}
-		}
-		*/
+	char *cmd = line + i;
+	if (strlen(cmd)) {
 		return cmd;
 	} else {
 		return NULL;
@@ -270,7 +248,7 @@ int main(int ac, char **av) {
 	add_old_history(file);
 
 	char *line = ft_readline("taskmasterctl>");
-	struct s_command *cmd = NULL;
+	char *cmd = NULL;
 	while (line != NULL) {
 		// process line (remove space n sht)
 		char *tmp = strdup(line);
