@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/25 19:16:15 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/26 15:33:19 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -68,7 +68,7 @@ void check_server(int sock_fd, int efd) {
 	static struct s_client	*list = NULL;
 	char					buf[PIPE_BUF + 1];
 	struct epoll_event		tmp;
-	struct s_command		cmd;
+	char *					cmd;
 
 	bzero(&tmp, sizeof(tmp));
 	bzero(&cmd, sizeof(cmd));
@@ -89,25 +89,36 @@ void check_server(int sock_fd, int efd) {
 					printf("client %d\n", tmp.data.fd);
 					if (tmp.events & EPOLLIN) {
 						bzero(buf, PIPE_BUF + 1);
-						if (recv(client->poll.data.fd, buf, PIPE_BUF, MSG_DONTWAIT)) {}
-						cmd.cmd = strdup(buf);
-						bzero(buf, PIPE_BUF + 1);
-						if (recv(client->poll.data.fd, buf, PIPE_BUF, MSG_DONTWAIT)) {} // not quite sure it would work :x
-						cmd.arg = strdup(buf);
-						printf(">%s< >%s<\n", cmd.cmd, cmd.arg);
-
+						if (recv(client->poll.data.fd, buf, PIPE_BUF, MSG_DONTWAIT) <= 0) {
+							if (client == list) {
+								list = client->next;
+								free(client);
+							} else {
+								struct s_client *head = list;
+								while (head->next != client) {
+									head = head->next;
+								}
+								head->next = client->next;
+								free(client);
+							}
+						}
+						cmd = strdup(buf);
+						printf(">%s<\n", cmd);
+						client->poll.events = EPOLLOUT;
+						epoll_ctl(efd, EPOLL_CTL_MOD, client->poll.data.fd, &client->poll);
 						// need to execute some action and probably send data back
 					} else if (tmp.events & EPOLLOUT) {
-						if (0) { // if need to send data back
-							printf("SENDING DATA\n");
-							send(tmp.data.fd, buf, strlen(buf), 0);
-						}
+						printf("SENDING DATA\n");
+						send(tmp.data.fd, "this is a response", strlen("this is a response"), 0);
+						client->poll.events = EPOLLIN;
+						epoll_ctl(efd, EPOLL_CTL_MOD, client->poll.data.fd, &client->poll);
 					}
 					return ;
 				}
 				client = client->next;
 			}
 		}
+	} else {
 	}
 }
 
