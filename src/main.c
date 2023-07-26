@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/25 19:15:46 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/07/26 18:46:40 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,6 +14,32 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdio.h>
+
+bool	end_initial_log(struct s_server *server, struct s_report *reporter, int *reporter_pipe, void **thread_ret, pthread_t initial_logger)
+{
+	strcpy(reporter->buffer, "ENDLOG\n");
+	if (!report(reporter, false))
+	{
+		if (write(2, "CRITICAL: Log error\n", strlen("CRITICAL: Log error\n")) <= 0) {}
+		if (server)
+			server = server->cleaner(server);
+		close(reporter_pipe[0]);
+		close(reporter_pipe[1]);
+		close(reporter_pipe[2]);
+		return (false);
+	}
+	if (pthread_join(initial_logger, thread_ret))
+	{
+		if (write(2, "CRITICAL: Could not join logging thread\n", strlen("CRITICAL: Could not join logging thread\n")) <= 0) {}
+		if (server)
+			server = server->cleaner(server);
+		close(reporter_pipe[0]);
+		close(reporter_pipe[1]);
+		close(reporter_pipe[2]);
+		return (false);
+	}
+	return (true);
+}
 
 int main(int ac, char **av) {
 	void				*thread_ret;
@@ -59,33 +85,15 @@ int main(int ac, char **av) {
 			return (1);
 		}
 		server = parse_config(av[1], &reporter);
-		strcpy(reporter.buffer, "ENDLOG\n");
-		if (!report(&reporter, false))
+		if (!server || reporter.critical)
 		{
-			if (write(2, "CRITICAL: Log error\n", strlen("CRITICAL: Log error\n")) <= 0) {}
-			if (server)
-				server = server->cleaner(server);
-			close(reporter_pipe[0]);
-			close(reporter_pipe[1]);
-			close(reporter_pipe[2]);
-			return (1);
-		}
-		if (pthread_join(initial_logger, &thread_ret))
-		{
-			if (write(2, "CRITICAL: Could not join logging thread\n", strlen("CRITICAL: Could not join logging thread\n")) <= 0) {}
-			if (server)
-				server = server->cleaner(server);
-			close(reporter_pipe[0]);
-			close(reporter_pipe[1]);
-			close(reporter_pipe[2]);
-			return (1);
-		}
-		if (!server || reporter.critical || *(int *)thread_ret == 1)
-		{
-			if (*(int *)thread_ret != 1)
+			if (!end_initial_log(server, &reporter, reporter_pipe, &thread_ret, initial_logger))
 			{
-				report_critical(reporter_pipe[2]);
+				if (write(2, "CRITICAL: Could not start taskmasterd, exiting process\n", strlen("CRITICAL: Could not start taskmasterd, exiting process\n")) <= 0) {}
+				return (1);
 			}
+			if (*(int *)thread_ret != 1)
+				report_critical(reporter_pipe[2]);
 			if (write(2, "CRITICAL: Could not start taskmasterd, exiting process\n", strlen("CRITICAL: Could not start taskmasterd, exiting process\n")) <= 0) {}
 			if (server)
 				server = server->cleaner(server);

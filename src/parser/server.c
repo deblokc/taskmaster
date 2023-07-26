@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 19:48:45 by bdetune           #+#    #+#             */
-/*   Updated: 2023/07/25 19:28:33 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/07/26 18:47:11 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,12 +22,14 @@ static struct s_server	*free_server(struct s_server *self)
 		close(self->log_pipe[1]);
 	if (self->logger.logfile)
 		free(self->logger.logfile);
+	if (self->logger.logfd != 0 && self->logger.logfd != -1)
+		close(self->logger.logfd);
 	if (self->pidfile)
 		free(self->pidfile);
 	if (self->user)
 		free(self->user);
-	if (self->group)
-		free(self->group);
+	if (self->workingdir)
+		free(self->workingdir);
 	if (self->env)
 		free_s_env(self->env);
 	if (self->config_file)
@@ -89,8 +91,8 @@ static void add_value(struct s_server *server, yaml_document_t *document, char* 
 		add_char(NULL, "pidfile", &server->pidfile, value, reporter);
 	else if (!strcmp("user", key))
 		add_char(NULL, "user", &server->user, value, reporter);
-	else if (!strcmp("group", key))
-		add_char(NULL, "group", &server->group, value, reporter);
+	else if (!strcmp("workingdir", key))
+		add_char(NULL, "workingdir", &server->workingdir, value, reporter);
 	else if (!strcmp("umask", key))
 		add_octal(NULL, "umask", &server->umask, value, 0, 0777, reporter);
 	else if (!strcmp("daemon", key))

@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/25 19:22:14 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/07/26 18:11:16 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -74,6 +74,7 @@ struct s_logger {
 	char*	logfile;
 	int		logfile_maxbytes;
 	int		logfile_backups;
+	int		logfd;
 };
 
 struct s_socket {
@@ -144,18 +145,18 @@ struct s_process {
 };
 
 struct s_server {
-	char *				config_file;
+	char*				config_file;
 	int					log_pipe[2];
 	enum log_level		loglevel;
 	struct s_logger		logger;
-	char				*pidfile;
-	char				*user;
-	char				*group;
+	char*				pidfile;
+	char*				user;
+	char*				workingdir;
 	int					umask;
 	struct s_env*		env;
 	bool				daemon;
 	struct s_socket		socket;
-	struct s_program	*program_tree;
+	struct s_program*	program_tree;
 	struct s_priority*	priorities;
 	struct s_server*	(*cleaner)(struct s_server*);
 	void				(*insert)(struct s_server*, struct s_program*, struct s_report *reporter);
