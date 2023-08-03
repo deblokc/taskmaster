@@ -30,6 +30,7 @@ SRCS = main.c \
 	   gnl/get_next_line.c \
 	   gnl/get_next_line_utils.c \
 	   report.c \
+	   prelude_server.c \
 	   administrator.c \
 	   launcher.c
 

@@ -17,6 +17,7 @@
 #include <pwd.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <fcntl.h>
 
 void	prelude(struct s_server *server, struct s_report *reporter)
 {
@@ -32,19 +33,19 @@ void	prelude(struct s_server *server, struct s_report *reporter)
 			if (errno == 0 || errno == ENOENT || errno == ESRCH || errno == EBADF || errno == EPERM)
 			{
 				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Unkown user %s\n", server->user);
-				report(reporter->true);
+				report(reporter, true);
 			}
 			else
 			{
 				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not get information on user %s\n", server->user);
-				report(reporter->true);
+				report(reporter, true);
 			}
 			return ;
 		}
 		if (setuid(ret->pw_uid) == -1)
 		{
 			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not change user to %s\n", server->user);
-			report(reporter->true);
+			report(reporter, true);
 			free(ret);
 			return ;
 		}
@@ -57,7 +58,7 @@ void	prelude(struct s_server *server, struct s_report *reporter)
 		if (!putenv(current->value))
 		{
 			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not update env in 'server'\n");
-			report(reporter->true);
+			report(reporter, true);
 			return ;
 		}
 		current = current->next;
@@ -65,12 +66,12 @@ void	prelude(struct s_server *server, struct s_report *reporter)
 	if (server->workingdir && chdir(server->workingdir) == -1)
 	{
 		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not change working directory of 'server' to %s\n", server->workingdir);
-		report(reporter->true);
+		report(reporter, true);
 		return ;
 	}
 	if (server->umask != 022)
 	{
-		umask(server->umask);
+		umask((mode_t)server->umask);
 	}
 	if (!server->logger.logfile)
 	{
@@ -78,14 +79,14 @@ void	prelude(struct s_server *server, struct s_report *reporter)
 		if (!server->logger.logfile)
 		{
 			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not allocate space\n");
-			report(reporter->true);
+			report(reporter, true);
 			return ;
 		}
 	}
-	if ((server->logger.logfd = open(server->logger.logfile, O_CREAT | O_APPEND | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP)) == -1)
+	if ((server->logger.logfd = open(server->logger.logfile, O_CREAT | O_APPEND | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP)) == -1)
 	{
 		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not open logfile\n");
-		report(reporter->true);
+		report(reporter, true);
 		return ;
 	}
 }

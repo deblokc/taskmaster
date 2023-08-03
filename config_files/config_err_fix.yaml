@@ -20,5 +20,6 @@ server:
         chmod: 0o744
         username: bdetune
         chown: :user
-    logfile: /mnt/nfs/homes/bdetune/taskmaster.log
+    logfile: taskmaster.log
     loglevel: ERROR
+    umask: 26

@@ -52,12 +52,6 @@ enum log_level {
 	DEBUG = 4
 };
 
-enum parsed_type {
-	PROGRAM = 0,
-	SOCKET = 1,
-	SERVER = 2
-};
-
 struct s_report {
 	bool				critical;
 	char				buffer[PIPE_BUF + 1];
@@ -186,5 +180,6 @@ struct s_priority*	create_priorities(struct s_server* server, struct s_report *r
 void				*administrator(void *arg);
 void				launch(struct s_priority *lst);
 void				wait_priorities(struct s_priority *lst);
+void				prelude(struct s_server *server, struct s_report *reporter);
 
 #endif

@@ -104,15 +104,32 @@ int main(int ac, char **av) {
 		}
 		else
 		{
-			//prelude(server);
-			//	server->print_tree(server);
+			prelude(server, &reporter);
+			if (reporter.critical)
+			{
+				if (!end_initial_log(server, &reporter, reporter_pipe, &thread_ret, initial_logger))
+				{
+					if (write(2, "CRITICAL: Could not start taskmasterd, exiting process\n", strlen("CRITICAL: Could not start taskmasterd, exiting process\n")) <= 0) {}
+					return (1);
+				}
+				if (*(int *)thread_ret != 1)
+					report_critical(reporter_pipe[2]);
+				if (write(2, "CRITICAL: Could not start taskmasterd, exiting process\n", strlen("CRITICAL: Could not start taskmasterd, exiting process\n")) <= 0) {}
+				if (server)
+					server = server->cleaner(server);
+				close(reporter_pipe[0]);
+				close(reporter_pipe[1]);
+				close(reporter_pipe[2]);
+				return (1);
+			}
+			write(2, "Ready to start\n", strlen("Ready to start\n"));
 			priorities = create_priorities(server, &reporter);
 			if (!priorities)
 				printf("No priorities\n");
 			else
 			{
 				printf("Got priorities\n");
-				priorities->print_priorities(priorities);
+				//priorities->print_priorities(priorities);
 				printf("=-=-=-=-=-=-=-=-= LAUNCHING PRIORITIES =-=-=-=-=-=-=-=-=\n");
 				launch(priorities);
 				// todo
