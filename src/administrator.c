@@ -11,6 +11,8 @@
 /* ************************************************************************** */
 
 //#define _GNU_SOURCE
+#include "taskmaster.h"
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,8 +22,6 @@
 #include <sys/socket.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include "taskmaster.h"
-#include <pthread.h>
 
 extern char **environ;
 
@@ -277,9 +277,9 @@ void *administrator(void *arg) {
 				for (int i = 0; i < nfds; i++) {
 				/* handles fds as needed */
 					if (events[i].data.fd == process->stdout[0]) { // if process print in stdout
-						char buf[4096];
-						bzero(buf, 4096);
-						if (read(process->stdout[0], buf, 4095) > 0) {
+						char buf[PIPE_BUF + 1];
+						bzero(buf, PIPE_BUF + 1);
+						if (read(process->stdout[0], buf, PIPE_BUF) > 0) {
 							printf("%s : >%s<\n", process->name, buf);
 						} else {
 							closeall(process, epollfd);
@@ -288,9 +288,9 @@ void *administrator(void *arg) {
 						}
 					}
 					if (events[i].data.fd == process->stderr[0]) { // if process print in stderr
-						char buf[4096];
-						bzero(buf, 4096);
-						if (read(process->stderr[0], buf, 4095) > 0) {
+						char buf[PIPE_BUF + 1];
+						bzero(buf, PIPE_BUF + 1);
+						if (read(process->stderr[0], buf, PIPE_BUF) > 0) {
 							printf("%s ERROR : >%s<\n", process->name, buf);
 						} else {
 							closeall(process, epollfd);
@@ -311,9 +311,9 @@ void *administrator(void *arg) {
 			/* handles fds as needed */
 				printf("GOT EVENT\n");
 				if (events[i].data.fd == process->stdout[0]) { // if process print in stdout
-					char buf[4096];
-					bzero(buf, 4096);
-					if (read(process->stdout[0], buf, 4095) > 0) {
+					char buf[PIPE_BUF + 1];
+					bzero(buf, PIPE_BUF + 1);
+					if (read(process->stdout[0], buf, PIPE_BUF) > 0) {
 						printf("%s : >%s<\n", process->name, buf);
 					} else {
 						closeall(process, epollfd);
@@ -322,9 +322,9 @@ void *administrator(void *arg) {
 					}
 				}
 				if (events[i].data.fd == process->stderr[0]) { // if process print in stderr
-					char buf[4096];
-					bzero(buf, 4096);
-					if (read(process->stderr[0], buf, 4095) > 0) {
+					char buf[PIPE_BUF + 1];
+					bzero(buf, PIPE_BUF + 1);
+					if (read(process->stderr[0], buf, PIPE_BUF) > 0) {
 						printf("%s ERROR : >%s<\n", process->name, buf);
 					} else {
 						closeall(process, epollfd);
@@ -334,9 +334,9 @@ void *administrator(void *arg) {
 				}
 				if (events[i].data.fd == 0) {
 					printf("READ STDIN AND WRITING\n");
-					char buf[4096];
-					bzero(buf, 4096);
-					if (read(0, buf, 4095) > 0) {
+					char buf[PIPE_BUF + 1];
+					bzero(buf, PIPE_BUF + 1);
+					if (read(0, buf, PIPE_BUF) > 0) {
 						printf("send : >%s<\n", buf);
 						ssize_t ret =  (write(process->stdin[1], buf, strlen(buf)));
 						printf("Wrote to pipe stdin %ld chars out of %ld\n", ret, strlen(buf));
@@ -368,9 +368,9 @@ void *administrator(void *arg) {
 				for (int i = 0; i < nfds; i++) {
 				/* handles fds as needed */
 					if (events[i].data.fd == process->stdout[0]) { // if process print in stdout
-						char buf[4096];
-						bzero(buf, 4096);
-						if (read(process->stdout[0], buf, 4095) > 0) {
+						char buf[PIPE_BUF + 1];
+						bzero(buf, PIPE_BUF + 1);
+						if (read(process->stdout[0], buf, PIPE_BUF) > 0) {
 							printf("%s : >%s<\n", process->name, buf);
 						} else {
 							closeall(process, epollfd);
@@ -381,9 +381,9 @@ void *administrator(void *arg) {
 						}
 					}
 					if (events[i].data.fd == process->stderr[0]) { // if process print in stderr
-						char buf[4096];
-						bzero(buf, 4096);
-						if (read(process->stderr[0], buf, 4095) > 0) {
+						char buf[PIPE_BUF + 1];
+						bzero(buf, PIPE_BUF + 1);
+						if (read(process->stderr[0], buf, PIPE_BUF) > 0) {
 							printf("%s ERROR : >%s<\n", process->name, buf);
 						} else {
 							closeall(process, epollfd);
@@ -412,75 +412,3 @@ void *administrator(void *arg) {
 	printf("Exiting administrator\n");
 	return NULL;
 }
-
-/*
-void test(void) {
-	struct s_program prog;
-	char *cmd = "bash";
-	char *args[] = {cmd, "salut", NULL};
-	char *args2[] = {"whoami", NULL};
-	char *env[] = {"USER=pasmoilol", "TEST=42", NULL};
-
-	prog.name = "bash";
-	prog.command = cmd;
-	prog.args = args;
-	prog.numprocs = 1;
-	prog.priority = 1;
-	prog.autostart = true;
-	prog.startsecs = 1;
-	prog.startretries = 0;
-	prog.autorestart = ONERROR;
-	prog.exitcodes = NULL;
-	prog.stopsignal = 0;
-	prog.stopwaitsecs = 5;
-	prog.stdoutlog = false;
-	prog.stdoutlogpath = NULL;
-	prog.stderrlog = false;
-	prog.stderrlogpath = NULL;
-	prog.env = env;
-	prog.workingdir = "/usr";
-	prog.umask = 0;
-	prog.user = NULL;
-
-	struct s_program prog2;
-
-	prog2.name = "quisuisje";
-	prog2.command = "whoami";
-	prog2.args = args2;
-	prog2.numprocs = 3;
-	prog2.priority = 1;
-	prog2.autostart = true;
-	prog2.startsecs = 1;
-	prog2.startretries = 0;
-	prog2.autorestart = ONERROR;
-	prog2.exitcodes = NULL;
-	prog2.stopsignal = 0;
-	prog2.stopwaitsecs = 5;
-	prog2.stdoutlog = false;
-	prog2.stdoutlogpath = NULL;
-	prog2.stderrlog = false;
-	prog2.stderrlogpath = NULL;
-	prog2.env = env;
-	prog2.workingdir = "/";
-	prog2.umask = 0;
-	prog2.user = NULL;
-
-
-	struct s_program **lst = (struct s_program **)calloc(sizeof(struct s_program *), 3);
-
-	lst[0] = &prog;
-	lst[1] = &prog2;
-
-	struct s_process proc;
-
-	proc.name = "listing";
-	proc.pid = 0;
-	proc.status = STOPPED;
-	proc.program = &prog;
-	proc.count_restart = 0;
-	bzero(proc.stdin, 2);
-	bzero(proc.stdout, 2);
-	bzero(proc.stderr, 2);
-	create_process(lst);
-	administrator(&proc);
-}*/

@@ -100,7 +100,7 @@ void check_server(int sock_fd, int efd) {
 	static struct s_client	*list = NULL;
 	char					buf[PIPE_BUF + 1];
 	struct epoll_event		tmp;
-	char *					cmd;
+	char					*cmd;
 
 	bzero(&tmp, sizeof(tmp));
 	bzero(&cmd, sizeof(cmd));
@@ -144,22 +144,23 @@ void check_server(int sock_fd, int efd) {
 							char *fatal_error = "Fatal Error in process_line\n";
 							memcpy(client->buf, fatal_error, strlen(fatal_error));
 						} else {
-							 if (!strcmp(cmd->cmd, "maintail")) {
-							} else if (!strcmp(cmd->cmd, "signal")) {
-							} else if (!strcmp(cmd->cmd, "stop")) {
-							} else if (!strcmp(cmd->cmd, "avail")) {
-							} else if (!strcmp(cmd->cmd, "fg")) {
-							} else if (!strcmp(cmd->cmd, "reload")) {
-							} else if (!strcmp(cmd->cmd, "restart")) {
-							} else if (!strcmp(cmd->cmd, "start")) {
-							} else if (!strcmp(cmd->cmd, "tail")) {
-							} else if (!strcmp(cmd->cmd, "clear")) {
-							} else if (!strcmp(cmd->cmd, "pid")) {
-							} else if (!strcmp(cmd->cmd, "shutdown")) {
-							} else if (!strcmp(cmd->cmd, "status")) {
-							} else if (!strcmp(cmd->cmd, "update")) {
+							 if (!strcmp(cmd->cmd, "maintail")) {      //send via logging thread
+							} else if (!strcmp(cmd->cmd, "signal")) {  //administrator send signal
+							} else if (!strcmp(cmd->cmd, "stop")) {    //administrator stop process
+							} else if (!strcmp(cmd->cmd, "avail")) {   //main thread return available process
+							} else if (!strcmp(cmd->cmd, "fg")) {      //administrator send logging and stdin
+							} else if (!strcmp(cmd->cmd, "reload")) {  //restart daemon
+							} else if (!strcmp(cmd->cmd, "restart")) { //administrator stop then start process
+							} else if (!strcmp(cmd->cmd, "start")) {   //administrator start process
+							} else if (!strcmp(cmd->cmd, "tail")) {    //administrator send logging
+							} else if (!strcmp(cmd->cmd, "clear")) {   //administrator clear logging
+							} else if (!strcmp(cmd->cmd, "pid")) {     //main thread send pid of process
+							} else if (!strcmp(cmd->cmd, "shutdown")) {//main thread stop all process & exit
+							} else if (!strcmp(cmd->cmd, "status")) {  //administrator send status
+							} else if (!strcmp(cmd->cmd, "update")) {  //reparse config file
 							} else {
-								char *unkown_cmd = "Unknown command\n";
+								char *unknown_cmd = "Unknown command\n";
+								memcpy(client->buf, unknown_cmd, strlen(unknown_cmd));
 							}
 							// execute cmd
 						}
