@@ -64,15 +64,37 @@ struct s_client *new_client(struct s_client *list, int client_fd) {
 	}
 }
 
+struct s_command *process_line(char *line) {
+	char *ret = strtok(line, " \t");
+	if (ret) {
+		struct s_command *cmd = (struct s_command *)calloc(sizeof(struct s_command), 1);
+		cmd->cmd = ret;
+		int i = 0;
+		while (ret) {
+			ret = strtok(NULL, " \t");
+			if (ret) {
+				if (!cmd->arg) {
+					cmd->arg = (char **)calloc(sizeof(char *), 2);
+					cmd->arg[0] = ret;
+					cmd->arg[1] = NULL;
+				} else {
+					i++;
+					cmd->arg = (char **)realloc(cmd->arg, (sizeof(char *) * (i + 1)));
+					cmd->arg[i - 1] = ret;
+					cmd->arg[i] = NULL;
+				}
+			}
+		}
+		return cmd;
+	} else {
+		return NULL;
+	}
+}
+
 struct s_command {
 	char	*cmd;
 	char	*arg;
 };
-
-void handle(int sig) {
-	(void)sig;
-	g_sig = 1;
-}
 
 void check_server(int sock_fd, int efd) {
 	static struct s_client	*list = NULL;
@@ -117,9 +139,13 @@ void check_server(int sock_fd, int efd) {
 						printf(">%s<\n", buf);
 						bzero(client->cmd, PIPE_BUF + 1);
 						memcpy(client->cmd, buf, strlen(buf));
+
 						client->poll.events = EPOLLOUT;
 						epoll_ctl(efd, EPOLL_CTL_MOD, client->poll.data.fd, &client->poll);
 						// need to execute some action and probably send data back
+						struct s_command *cmd = process_line(buf);
+						if (!cmd) {
+						}
 					} else if (tmp.events & EPOLLOUT) {
 						printf("SENDING DATA\n");
 						send(tmp.data.fd, "this is a response", strlen("this is a response"), 0);

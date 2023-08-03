@@ -22,6 +22,11 @@
 
 int g_sig = 0;
 
+void handle(int sig) {
+	(void)sig;
+	g_sig = 1;
+}
+
 int main(int ac, char **av) {
 	int					ret = 0;
 	struct s_server*	server = NULL;
