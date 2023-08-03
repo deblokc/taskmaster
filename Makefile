@@ -28,6 +28,7 @@ SRCS = main.c \
 	   parser/priorities.c \
 	   parser/free_errors.c \
 	   administrator.c \
+	   server.c \
 	   launcher.c
 
 INC = taskmaster.h

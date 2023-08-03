@@ -182,4 +182,10 @@ void				*administrator(void *arg);
 void				launch(struct s_priority *lst);
 void				wait_priorities(struct s_priority *lst);
 
+int create_server(void);
+void handle(int sig);
+void check_server(int sock_fd, int efd);
+
+extern int g_sig;
+
 #endif
