@@ -181,5 +181,7 @@ void				*administrator(void *arg);
 void				launch(struct s_priority *lst);
 void				wait_priorities(struct s_priority *lst);
 void				prelude(struct s_server *server, struct s_report *reporter);
+void				transfer_logs(int tmp_fd, struct s_server *server);
+bool				write_log(struct s_logger *logger, char* log_string);
 
 #endif

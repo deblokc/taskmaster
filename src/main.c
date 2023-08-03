@@ -122,6 +122,14 @@ int main(int ac, char **av) {
 				close(reporter_pipe[2]);
 				return (1);
 			}
+			if (!end_initial_log(server, &reporter, reporter_pipe, &thread_ret, initial_logger))
+			{
+				if (write(2, "CRITICAL: Could not start taskmasterd, exiting process\n", strlen("CRITICAL: Could not start taskmasterd, exiting process\n")) <= 0) {}
+				return (1);
+			}
+			close(reporter_pipe[0]);
+			close(reporter_pipe[1]);
+			transfer_logs(reporter_pipe[2], server);
 			write(2, "Ready to start\n", strlen("Ready to start\n"));
 			priorities = create_priorities(server, &reporter);
 			if (!priorities)
