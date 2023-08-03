@@ -21,9 +21,14 @@
 #include <sys/un.h>
 #define SOCK_PATH "/tmp/taskmaster.sock"
 
+struct s_command {
+	char	*cmd;
+	char	**arg;
+};
+
 struct s_client {
 	struct epoll_event	poll;
-	char				cmd[PIPE_BUF + 1];
+	char				buf[PIPE_BUF + 1];
 	struct s_client		*next;
 };
 
@@ -54,12 +59,12 @@ struct s_client *new_client(struct s_client *list, int client_fd) {
 		}
 		tmp->next = (struct s_client *)calloc(sizeof(struct s_client), 1);
 		tmp->next->poll.data.fd = client_fd;
-		bzero(tmp->next->cmd, PIPE_BUF + 1);
+		bzero(tmp->next->buf, PIPE_BUF + 1);
 		return (tmp->next);
 	} else {
 		struct s_client *new = (struct s_client *)calloc(sizeof(struct s_client), 1);
 		new->poll.data.fd = client_fd;
-		bzero(new->cmd, PIPE_BUF + 1);
+		bzero(new->buf, PIPE_BUF + 1);
 		return (new);
 	}
 }
@@ -69,7 +74,7 @@ struct s_command *process_line(char *line) {
 	if (ret) {
 		struct s_command *cmd = (struct s_command *)calloc(sizeof(struct s_command), 1);
 		cmd->cmd = ret;
-		int i = 0;
+		size_t i = 0;
 		while (ret) {
 			ret = strtok(NULL, " \t");
 			if (ret) {
@@ -90,11 +95,6 @@ struct s_command *process_line(char *line) {
 		return NULL;
 	}
 }
-
-struct s_command {
-	char	*cmd;
-	char	*arg;
-};
 
 void check_server(int sock_fd, int efd) {
 	static struct s_client	*list = NULL;
@@ -137,18 +137,36 @@ void check_server(int sock_fd, int efd) {
 							break ;
 						}
 						printf(">%s<\n", buf);
-						bzero(client->cmd, PIPE_BUF + 1);
-						memcpy(client->cmd, buf, strlen(buf));
-
 						client->poll.events = EPOLLOUT;
 						epoll_ctl(efd, EPOLL_CTL_MOD, client->poll.data.fd, &client->poll);
-						// need to execute some action and probably send data back
 						struct s_command *cmd = process_line(buf);
 						if (!cmd) {
+							char *fatal_error = "Fatal Error in process_line\n";
+							memcpy(client->buf, fatal_error, strlen(fatal_error));
+						} else {
+							 if (!strcmp(cmd->cmd, "maintail")) {
+							} else if (!strcmp(cmd->cmd, "signal")) {
+							} else if (!strcmp(cmd->cmd, "stop")) {
+							} else if (!strcmp(cmd->cmd, "avail")) {
+							} else if (!strcmp(cmd->cmd, "fg")) {
+							} else if (!strcmp(cmd->cmd, "reload")) {
+							} else if (!strcmp(cmd->cmd, "restart")) {
+							} else if (!strcmp(cmd->cmd, "start")) {
+							} else if (!strcmp(cmd->cmd, "tail")) {
+							} else if (!strcmp(cmd->cmd, "clear")) {
+							} else if (!strcmp(cmd->cmd, "pid")) {
+							} else if (!strcmp(cmd->cmd, "shutdown")) {
+							} else if (!strcmp(cmd->cmd, "status")) {
+							} else if (!strcmp(cmd->cmd, "update")) {
+							} else {
+								char *unkown_cmd = "Unknown command\n";
+							}
+							// execute cmd
 						}
 					} else if (tmp.events & EPOLLOUT) {
+						// send response located in client->buf
 						printf("SENDING DATA\n");
-						send(tmp.data.fd, "this is a response", strlen("this is a response"), 0);
+						send(tmp.data.fd, client->buf, strlen(client->buf), 0);
 						client->poll.events = EPOLLIN;
 						epoll_ctl(efd, EPOLL_CTL_MOD, client->poll.data.fd, &client->poll);
 					}

@@ -43,9 +43,7 @@ void help(char *full_arg) {
 		printf("=======================================\n");
 		printf("TOUTES LES COMMANDES QUON AURA\n");
 	} else {
-		if (!strcmp(arg, "add")) {
-			printf("add <name> [...]\tActivates any updates in config for process/group\n");
-		} else if (!strcmp(arg, "exit")) {
+		if (!strcmp(arg, "exit")) {
 			printf("exit\tExit the taskmaster shell.\n");
 		} else if (!strcmp(arg, "maintail")) {
 			printf("maintail -f\t\t\tContinuous tail of taskmaster main log file (Ctrl-C to exit)\n");
@@ -53,8 +51,6 @@ void help(char *full_arg) {
 			printf("maintail\t\t\tlast 1600 *bytes* of taskmaster main log file\n");
 		} else if (!strcmp(arg, "quit")) {
 			printf("quit\tExit the taskmaster shell.\n");
-		} else if (!strcmp(arg, "reread")) {
-			printf("reread\t\t\tReload the daemon's configuration files without add/remove\n");
 		} else if (!strcmp(arg, "signal")) {
 			printf("signal <signal name> <name>\t\tSignal a process\n");
 			printf("signal <signal name> <name> <name>\tSignal multiple processes or groups\n");
@@ -97,8 +93,6 @@ void help(char *full_arg) {
 			printf("pid\t\t\tGet the PID of taskmasterd.\n");
 			printf("pid <name>\t\tGet the PID of a single child process by name.\n");
 			printf("pid all\t\t\tGet the PID of every child process, one per line.\n");
-		} else if (!strcmp(arg, "remove")) {
-			printf("remove <name> [...] Removes process from active config\n");
 		} else if (!strcmp(arg, "shutdown")) {
 			printf("shutdown\t\tShut the remote taskmasterd down.\n");
 		} else if (!strcmp(arg, "status")) {
