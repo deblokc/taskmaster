@@ -72,7 +72,7 @@ int main(int ac, char **av) {
 				printf("Got priorities\n");
 				priorities->print_priorities(priorities);
 				printf("=-=-=-=-=-=-=-=-= LAUNCHING PRIORITIES =-=-=-=-=-=-=-=-=\n");
-				launch(priorities);
+				launch(priorities, 1);
 
 				// todo
 				while (!g_sig) {
