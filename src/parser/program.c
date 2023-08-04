@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/19 19:03:58 by bdetune           #+#    #+#             */
-/*   Updated: 2023/07/26 18:06:09 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/25 19:29:31 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -126,7 +126,7 @@ static void	print(struct s_program* self)
 		current = self->env;
 		while (current)
 		{
-			printf("\t                       \t- %s = %s\n", current->key, current->value);
+			printf("\t                       \t- %s\n", current->value);
 			current = current->next;
 		}
 	}
@@ -159,12 +159,17 @@ static void	init_program(struct s_program *program)
 	program->umask = 022;
 }
 
-static void add_autorestart(struct s_program *program, yaml_node_t *value)
+static bool add_autorestart(struct s_program *program, yaml_node_t *value, struct s_report *reporter)
 {
-	printf("Parsing autorestart in program %s\n", program->name);
+	bool	ret = true;
+
+	snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Parsing autorestart in program %s\n", program->name);
+	report(reporter, false);
 	if (value->type != YAML_SCALAR_NODE)
 	{
-		printf("Wrong format for autorestart in program %s, falling back to default value %s\n", program->name, program->autorestart==NEVER?"never":(program->autorestart==ONERROR?"onerror":"always"));
+		snprintf(reporter->buffer, PIPE_BUF, "ERROR: Wrong format for autorestart in program '%s', expected a scalar value, encountered %s\n", program->name, value->tag);
+		report(reporter, false);
+		ret = false;
 	}
 	else
 	{
@@ -175,21 +180,29 @@ static void add_autorestart(struct s_program *program, yaml_node_t *value)
 		else if (!strcmp((char *)value->data.scalar.value, "always"))
 			program->autorestart = ALWAYS;
 		else
-			printf("Wrong format for autorestart in program %s, accepted values are:\n\t- never\n\t- onerror\n\t- always\nfalling back to default value %s\n", program->name, program->autorestart==NEVER?"never":(program->autorestart==ONERROR?"onerror":"always"));
+		{
+			snprintf(reporter->buffer, PIPE_BUF, "ERROR: Wrong format for autorestart in program %s, accepted values are:\n\t- never\n\t- onerror\n\t- always\n", program->name);
+			report(reporter, false);
+			ret = false;
+		}
 	}
+	return (ret);
 }
 
-static bool	add_exitcodes(struct s_program *program, yaml_document_t *document, yaml_node_t *value)
+static bool	add_exitcodes(struct s_program *program, yaml_document_t *document, yaml_node_t *value, struct s_report *reporter)
 {
 	bool		isvalid = true;
 	bool		ret = true;
 	yaml_node_t	*current_exit_code_node;
 	long		number_exitcodes;
 
-	printf("Parsing exitcodes in program %s\n", program->name);
+	snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Parsing exitcodes in program %s\n", program->name);
+	report(reporter, false);
 	if (value->type != YAML_SEQUENCE_NODE)
 	{
-		printf("Wrong format for exitcodes list in program %s, expected array, encountered %s, falling back to default value 0\n", program->name, value->tag);
+		snprintf(reporter->buffer, PIPE_BUF, "ERROR: Wrong format for exitcodes list in program '%s', expected an array, encountered %s\n", program->name, value->tag);
+		report(reporter, false);
+		ret = false;
 	}
 	else
 	{
@@ -197,7 +210,8 @@ static bool	add_exitcodes(struct s_program *program, yaml_document_t *document, 
 		program->exitcodes = calloc((size_t)(number_exitcodes + 1), sizeof(*(program->exitcodes)));
 		if (!program->exitcodes)
 		{
-			printf("Could not allocate space for exitcodes in program %s\n", program->name);
+			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not allocate space for exitcodes in program '%s'\n", program->name);
+			report(reporter, true);
 			ret = false;
 		}
 		else
@@ -206,11 +220,12 @@ static bool	add_exitcodes(struct s_program *program, yaml_document_t *document, 
 			for (int i = 0; (value->data.sequence.items.start + i) < value->data.sequence.items.top; i++)
 			{
 				current_exit_code_node =  yaml_document_get_node(document, *(value->data.sequence.items.start + i));
-				isvalid = add_number(program->name, "exitcodes", &(program->exitcodes[i]), current_exit_code_node, 0, INT_MAX);
+				isvalid = add_number(program->name, "exitcodes", &(program->exitcodes[i]), current_exit_code_node, 0, INT_MAX, reporter);
 				if (!isvalid)
 				{
 					free(program->exitcodes);
 					program->exitcodes = NULL;
+					ret = false;
 					break ;
 				}
 			}
@@ -219,12 +234,17 @@ static bool	add_exitcodes(struct s_program *program, yaml_document_t *document, 
 	return (ret);
 }
 
-static void add_stopsignal(struct s_program *program, yaml_node_t *value)
+static bool add_stopsignal(struct s_program *program, yaml_node_t *value, struct s_report *reporter)
 {
-	printf("Parsing stopsignal in program %s\n", program->name);
+	bool	ret = true;
+
+	snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Parsing stopsignal in program %s\n", program->name);
+	report(reporter, false);
 	if (value->type != YAML_SCALAR_NODE)
 	{
-		printf("Wrong format for stopsignal in program %s, falling back to default value TERM\n", program->name);
+		snprintf(reporter->buffer, PIPE_BUF, "ERROR: Wrong format for stopsignal in program '%s', expected a scalar value, encountered %s\n", program->name, value->tag);
+		report(reporter, false);
+		ret = false;
 	}
 	else
 	{
@@ -243,84 +263,94 @@ static void add_stopsignal(struct s_program *program, yaml_node_t *value)
 		else if (!strcmp((char *)value->data.scalar.value, "USR2"))
 			program->stopsignal = SIGUSR2;
 		else
-			printf("Wrong format for stopsignal in program %s, accepted values are:\n\t- TERM\n\t- HUP\n\t- INT\n\t- QUIT\n\t- KILL\n\t- USR1\n\t- USR2\nfalling back to default value TERM\n", program->name);
+		{
+			snprintf(reporter->buffer, PIPE_BUF, "ERROR: Wrong format for stopsignal in program '%s', accepted values are: TERM ; HUP ; INT ; QUIT ; KILL ; USR1 ; USR2\n", program->name);
+			report(reporter, false);
+			ret = false;
+		}
 	}
+	return (ret);
 }
 
 
-static bool add_value(struct s_program *program, yaml_document_t *document, char *key, yaml_node_t *value)
+static bool add_value(struct s_program *program, yaml_document_t *document, char *key, yaml_node_t *value, struct s_report *reporter)
 {
 	bool	ret = true;
 
 	if (!strcmp("command", key))
-		ret = add_char(program->name, "command", &program->command, value);
+		ret = add_char(program->name, "command", &program->command, value, reporter);
 	else if (!strcmp("numprocs", key))
-		add_number(program->name, "numprocs", &program->numprocs, value, 1, 255);
+		ret = add_number(program->name, "numprocs", &program->numprocs, value, 1, 255, reporter);
 	else if (!strcmp("priority", key))
-		add_number(program->name, "priority", &program->priority, value, 0, 999);
+		ret = add_number(program->name, "priority", &program->priority, value, 0, 999, reporter);
 	else if (!strcmp("autostart", key))
-		add_bool(program->name, "autostart", &program->autostart, value);
+		ret = add_bool(program->name, "autostart", &program->autostart, value, reporter);
 	else if (!strcmp("startsecs", key))
-		add_number(program->name, "startsecs", &program->startsecs, value, 0, 300);
+		ret = add_number(program->name, "startsecs", &program->startsecs, value, 0, 300, reporter);
 	else if (!strcmp("startretries", key))
-		add_number(program->name, "startretries", &program->startretries, value, 0, 10);
+		ret = add_number(program->name, "startretries", &program->startretries, value, 0, 10, reporter);
 	else if (!strcmp("autorestart", key))
-		add_autorestart(program, value);
+		add_autorestart(program, value, reporter);
 	else if (!strcmp("exitcodes", key))
-		ret = add_exitcodes(program, document, value);
+		ret = add_exitcodes(program, document, value, reporter);
 	else if (!strcmp("stopsignal", key))
-		add_stopsignal(program, value);
+		add_stopsignal(program, value, reporter);
 	else if (!strcmp("stopwaitsecs", key))
-		add_number(program->name, "stopwaitsecs", &program->stopwaitsecs, value, 0, 300);
+		ret = add_number(program->name, "stopwaitsecs", &program->stopwaitsecs, value, 0, 300, reporter);
 	else if (!strcmp("stopasgroup", key))
-		add_bool(program->name, "stopasgroup", &program->stopasgroup, value);
+		ret = add_bool(program->name, "stopasgroup", &program->stopasgroup, value, reporter);
 	else if (!strcmp("stdoutlog", key))
-		add_bool(program->name, "stdoutlog", &program->stdoutlog, value);
+		ret = add_bool(program->name, "stdoutlog", &program->stdoutlog, value, reporter);
 	else if (!strcmp("stdout_logfile", key))
-		ret = add_char(program->name, "stdout_logfile", &program->stdout_logger.logfile, value);
+		ret = add_char(program->name, "stdout_logfile", &program->stdout_logger.logfile, value, reporter);
 	else if (!strcmp("stdout_logfile_maxbytes", key))
-		add_number(program->name, "stdout_logfile_maxbytes", &program->stdout_logger.logfile_maxbytes, value, 100, 1024*1024*1024);
+		ret = add_number(program->name, "stdout_logfile_maxbytes", &program->stdout_logger.logfile_maxbytes, value, 100, 1024*1024*1024, reporter);
 	else if (!strcmp("stdout_logfile_backups", key))
-		add_number(program->name, "stdout_logfile_backups", &program->stdout_logger.logfile_backups, value, 0, 100);
+		ret = add_number(program->name, "stdout_logfile_backups", &program->stdout_logger.logfile_backups, value, 0, 100, reporter);
 	else if (!strcmp("stderrlog", key))
-		add_bool(program->name, "stderrlog", &program->stderrlog, value);
+		ret = add_bool(program->name, "stderrlog", &program->stderrlog, value, reporter);
 	else if (!strcmp("stderr_logfile", key))
-		ret = add_char(program->name, "stderr_logfile", &program->stderr_logger.logfile, value);
+		ret = add_char(program->name, "stderr_logfile", &program->stderr_logger.logfile, value, reporter);
 	else if (!strcmp("stderr_logfile_maxbytes", key))
-		add_number(program->name, "stderr_logfile_maxbytes", &program->stderr_logger.logfile_maxbytes, value, 100, 1024*1024*1024);
+		ret = add_number(program->name, "stderr_logfile_maxbytes", &program->stderr_logger.logfile_maxbytes, value, 100, 1024*1024*1024, reporter);
 	else if (!strcmp("stderr_logfile_backups", key))
-		add_number(program->name, "stderr_logfile_backups", &program->stderr_logger.logfile_backups, value, 0, 100);
+		ret = add_number(program->name, "stderr_logfile_backups", &program->stderr_logger.logfile_backups, value, 0, 100, reporter);
 	else if (!strcmp("workingdir", key))
-		ret = add_char(program->name, "workingdir", &program->workingdir, value);
+		ret = add_char(program->name, "workingdir", &program->workingdir, value, reporter);
 	else if (!strcmp("umask", key))
-		add_octal(program->name, "umask", &program->umask, value, 0, 0777);
+		ret = add_octal(program->name, "umask", &program->umask, value, 0, 0777, reporter);
 	else if (!strcmp("env", key))
-		parse_env(value, document, &program->env);
+		ret = parse_env(program->name, value, document, &program->env, reporter);
 	else if (!strcmp("user", key))
-		ret = add_char(program->name, "user", &program->user, value);
+		ret = add_char(program->name, "user", &program->user, value, reporter);
 	else if (!strcmp("group", key))
-		ret = add_char(program->name, "group", &program->group, value);
+		ret = add_char(program->name, "group", &program->group, value, reporter);
 	else
-		printf("Unknown field %s in program %s\n", key, program->name);
+	{
+		snprintf(reporter->buffer, PIPE_BUF, "WARNING: Encountered unknown key '%s' in program '%s'\n", key, program->name);
+		report(reporter, false);
+	}
 	return (ret);
 }
 
-static bool parse_values(struct s_program *program, yaml_document_t *document, yaml_node_t *params)
+static bool parse_values(struct s_program *program, yaml_document_t *document, yaml_node_t *params, struct s_report *reporter)
 {
 	bool		ret = true;
 	yaml_node_t *key;
 	yaml_node_t *value;
+
 	for (int i = 0; (params->data.mapping.pairs.start + i) < params->data.mapping.pairs.top; i++)
 	{
 		key = yaml_document_get_node(document, (params->data.mapping.pairs.start + i)->key);
 		value = yaml_document_get_node(document, (params->data.mapping.pairs.start + i)->value);
 		if (key->type != YAML_SCALAR_NODE)
 		{
-			printf("Invalid key type encountered for parameters in program %s\n", program->name);
+			snprintf(reporter->buffer, PIPE_BUF, "ERROR: Incorrect format detected for parameters in program '%s', expected keys to be scalars, encountered: %s\n", program->name, key->tag);
+			report(reporter, false);
 			ret = false;
 			break ;
 		}
-		if (!add_value(program, document, (char *)key->data.scalar.value, value))
+		if (!add_value(program, document, (char *)key->data.scalar.value, value, reporter))
 		{
 			ret = false;
 			break ;
@@ -330,23 +360,24 @@ static bool parse_values(struct s_program *program, yaml_document_t *document, y
 	return (ret);
 }
 
-static bool	add_program(struct s_server *server, yaml_document_t *document, yaml_node_t *name, yaml_node_t *params)
+static void	add_program(struct s_server *server, yaml_document_t *document, yaml_node_t *name, yaml_node_t *params, struct s_report *reporter)
 {
-	bool				ret = true;
 	struct s_program	*program = NULL;
 
+	snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Parsing program '%s'\n", name->data.scalar.value);
+	report(reporter, false);
 	if (params->type != YAML_MAPPING_NODE)
 	{
-		printf("Wrong node type for program %s, expected map, encountered: %s\n", name->data.scalar.value, params->tag);
-		ret = false;
+		snprintf(reporter->buffer, PIPE_BUF, "ERROR: Wrong node type for program '%s', expected map, encountered: %s, ignoring entry\n", name->data.scalar.value, params->tag);
+		report(reporter, false);
 	}
 	else
 	{
 		program = calloc(1, sizeof(*program));
 		if (!program)
 		{
-			printf("Could not allocate program\n");
-			ret = false;
+			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: could not allocate node for program '%s'\n", name->data.scalar.value);
+			report(reporter, true);
 		}
 		else
 		{
@@ -354,41 +385,42 @@ static bool	add_program(struct s_server *server, yaml_document_t *document, yaml
 			program->name = strdup((char *)name->data.scalar.value);
 			if (!program->name)
 			{
-				printf("Could not allocate program name\n");
+				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: could not allocate spce for program name for program '%s'\n", name->data.scalar.value);
+				report(reporter, true);
 				program->cleaner(program);
-				ret = false;
 			}
 			else
 			{
 				init_program(program);
-				if (!parse_values(program, document, params))
+				if (!parse_values(program, document, params, reporter))
 				{
-					printf("***** ***** ERROR ***** *****\n");
+					snprintf(reporter->buffer, PIPE_BUF, "ERROR: ignoring program '%s'\n", name->data.scalar.value);
+					report(reporter, false);
 					program->cleaner(program);
 				}
 				else
 				{
-					server->insert(server, program);
-					printf("Valid program %s\n", program->name);
+					snprintf(reporter->buffer, PIPE_BUF, "DEBUG: inserting valid program '%s' in tree\n", name->data.scalar.value);
+					report(reporter, false);
+					server->insert(server, program, reporter);
 				}
 			}
 		}
 	}
-	return (ret);
 }
 
-bool	parse_programs(struct s_server *server, yaml_document_t *document, int value_index)
+bool	parse_programs(struct s_server *server, yaml_document_t *document, int value_index, struct s_report *reporter)
 {
 	bool		ret = true;
 	yaml_node_t	*value_node = NULL;
 	yaml_node_t	*key_node = NULL;
 	yaml_node_t	*program_node = NULL;
 
-	printf("Parsing programs\n");
 	value_node = yaml_document_get_node(document, value_index);
 	if (value_node->type != YAML_MAPPING_NODE)
 	{
-		printf("Unexpected format for block programs, expected map, encountered %s\n", value_node->tag);
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Unexpected format for block programs, expected map, encountered %s\n", value_node->tag);
+		report(reporter, true);
 		ret = false;
 	}
 	else
@@ -399,7 +431,8 @@ bool	parse_programs(struct s_server *server, yaml_document_t *document, int valu
 			if (key_node->type == YAML_SCALAR_NODE)
 			{
 				program_node = yaml_document_get_node(document, (value_node->data.mapping.pairs.start + i)->value);
-				if (!add_program(server, document, key_node, program_node))
+				add_program(server, document, key_node, program_node, reporter);
+				if (reporter->critical)
 				{
 					ret = false;
 					break ;
@@ -407,7 +440,8 @@ bool	parse_programs(struct s_server *server, yaml_document_t *document, int valu
 			}
 			else
 			{
-				printf("Incorrect format detected in programs block\n");
+				snprintf(reporter->buffer, PIPE_BUF, "WARNING: Incorrect format detected in programs block, expected keys to be scalars, encountered: %s\n" , key_node->tag);
+				report(reporter, false);
 			}
 		}
 	}

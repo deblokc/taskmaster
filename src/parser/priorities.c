@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/04 18:26:30 by bdetune           #+#    #+#             */
-/*   Updated: 2023/07/04 19:24:03 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/07/25 18:26:12 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -137,11 +137,10 @@ static void	insert_priority(struct s_priority** head, struct s_priority* locatio
 	}
 }
 
-static void	add_priority(struct s_priority** head, struct s_program *current)
+static void	add_priority(struct s_priority** head, struct s_program *current, struct s_report *reporter)
 {
 	struct s_priority*	location;
 	
-	printf("Adding priority\n");
 	if (head && current->autostart)
 	{
 		if (!*head)
@@ -149,7 +148,8 @@ static void	add_priority(struct s_priority** head, struct s_program *current)
 			*head = calloc(1, sizeof(**head));
 			if (!*head)
 			{
-				printf("Error during calloc");
+				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: could not allocate space for priority node\n");
+				report(reporter, true);
 				return ;
 			}
 			init_priority(*head);
@@ -168,7 +168,8 @@ static void	add_priority(struct s_priority** head, struct s_program *current)
 				location = calloc(1, sizeof(*location));
 				if (!location)
 				{
-					printf("Could not calloc priority\n");
+					snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: could not allocate space for priority node\n");
+					report(reporter, true);
 					return ;
 				}
 				init_priority(location);
@@ -180,13 +181,19 @@ static void	add_priority(struct s_priority** head, struct s_program *current)
 	}
 }
 
-struct s_priority*	create_priorities(struct s_server* server)
+struct s_priority*	create_priorities(struct s_server* server, struct s_report *reporter)
 {
 	struct s_priority*	head = NULL;
 	for (struct s_program* current = server->begin(server); current; current = current->itnext(current))
 	{
-		add_priority(&head, current);
-		printf("Program\n");
+		add_priority(&head, current, reporter);
+		if (reporter->critical)
+		{
+			if (head)
+				head->destructor(head);
+			head = NULL;
+			break ;
+		}
 	}
 	return (head);
 }

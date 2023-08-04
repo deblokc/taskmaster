@@ -6,7 +6,7 @@
 #    By: tnaton <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/06/16 11:17:59 by tnaton            #+#    #+#              #
-#    Updated: 2023/07/07 11:00:33 by tnaton           ###   ########.fr        #
+#    Updated: 2023/07/25 19:11:37 by bdetune          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -27,6 +27,11 @@ SRCS = main.c \
 	   parser/utils.c \
 	   parser/priorities.c \
 	   parser/free_errors.c \
+	   gnl/get_next_line.c \
+	   gnl/get_next_line_utils.c \
+	   report.c \
+	   prelude_server.c \
+	   log.c \
 	   administrator.c \
 	   server.c \
 	   launcher.c
@@ -67,7 +72,7 @@ $(OBJDIR)/%.o: %.c
 	$(CC) $(CFLAGS) -I inc -o $@ -c $<
 
 $(OBJDIR) :
-	mkdir -p $(OBJDIR)/parser
+	mkdir -p $(OBJDIR)/parser $(OBJDIR)/gnl
 
 .SECONDARY: $(OBJS)
 

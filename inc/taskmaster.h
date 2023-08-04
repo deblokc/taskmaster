@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/07 11:24:04 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/26 18:11:16 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,7 +19,10 @@
 # include <sys/time.h>
 # include <pthread.h>
 # include <stdatomic.h>
+# define BUFFER_SIZE PIPE_BUF
 # include "yaml.h"
+# include "get_next_line.h"
+
 
 /*
  * ENUM
@@ -49,22 +52,14 @@ enum log_level {
 	DEBUG = 4
 };
 
-enum parsed_type {
-	PROGRAM = 0,
-	SOCKET = 1,
-	SERVER = 2
-};
-
 struct s_report {
 	bool				critical;
-	char				buffer[512];
+	char				buffer[PIPE_BUF + 1];
+	char				stamp[22];
 	int					report_fd;
-	enum parsed_type	parsed_type;
-	char*				name;
 };
 
 struct s_env {
-	char*			key;
 	char*			value;
 	struct s_env*	next;
 };
@@ -73,6 +68,7 @@ struct s_logger {
 	char*	logfile;
 	int		logfile_maxbytes;
 	int		logfile_backups;
+	int		logfd;
 };
 
 struct s_socket {
@@ -143,44 +139,50 @@ struct s_process {
 };
 
 struct s_server {
-	char *				config_file;
+	char*				config_file;
 	int					log_pipe[2];
 	enum log_level		loglevel;
 	struct s_logger		logger;
-	char				*pidfile;
-	char				*user;
-	char				*group;
+	char*				pidfile;
+	char*				user;
+	char*				workingdir;
 	int					umask;
 	struct s_env*		env;
 	bool				daemon;
 	struct s_socket		socket;
-	struct s_program	*program_tree;
+	struct s_program*	program_tree;
 	struct s_priority*	priorities;
 	struct s_server*	(*cleaner)(struct s_server*);
-	bool				(*insert)(struct s_server*, struct s_program*);
+	void				(*insert)(struct s_server*, struct s_program*, struct s_report *reporter);
 	void				(*delete_tree)(struct s_server*);
 	struct s_program*	(*begin)(struct s_server*);
 	void				(*print_tree)(struct s_server*);
 
 };
 
-struct s_server*	parse_config(char* config_file);
+struct s_server*	parse_config(char* config_file, struct s_report *reporter);
+bool				report(struct s_report* reporter, bool critical);
+void*				initial_log(void *fds);
 void				init_server(struct s_server * server);
 void				register_treefn_serv(struct s_server *self);
 void				register_treefn_prog(struct s_program *self);
 void				default_logger(struct s_logger *logger);
-bool				parse_server(struct s_server *server, yaml_document_t *document, int value_index);
-bool				parse_programs(struct s_server *server, yaml_document_t *document, int value_index);
-bool 				add_char(char const *program_name, char const *field_name, char **target, yaml_node_t *value);
-bool				add_number(char const *program_name, char const *field_name, int *target, yaml_node_t *value, long min, long max);
-bool				add_octal(char const *program_name, char const *field_name, int *target, yaml_node_t *value, long min, long max);
-void				add_bool(char const *program_name, char const *field_name, bool *target, yaml_node_t *value);
+bool				parse_server(struct s_server *server, yaml_document_t *document, int value_index, struct s_report *reporter);
+bool				parse_programs(struct s_server *server, yaml_document_t *document, int value_index, struct s_report *reporter);
+bool 				add_char(char const *program_name, char const *field_name, char **target, yaml_node_t *value, struct s_report *reporter);
+bool				add_number(char const *program_name, char const *field_name, int *target, yaml_node_t *value, long min, long max, struct s_report *reporter);
+bool				add_octal(char const *program_name, char const *field_name, int *target, yaml_node_t *value, long min, long max, struct s_report *reporter);
+bool				add_bool(char const *program_name, char const *field_name, bool *target, yaml_node_t *value, struct s_report *reporter);
 struct s_env*		free_s_env(struct s_env *start);
-bool				parse_env(yaml_node_t *map, yaml_document_t *document, struct s_env **dest);
-struct s_priority*	create_priorities(struct s_server* server);
+bool				parse_env(char const *program_name, yaml_node_t *map, yaml_document_t *document, struct s_env **dest, struct s_report *reporter);
+void				report_critical(int fd);
+struct s_priority*	create_priorities(struct s_server* server, struct s_report *reporter);
 void				*administrator(void *arg);
-void				launch(struct s_priority *lst);
+void				launch(struct s_priority *lst, int log_fd);
 void				wait_priorities(struct s_priority *lst);
+void				prelude(struct s_server *server, struct s_report *reporter);
+void				transfer_logs(int tmp_fd, struct s_server *server);
+bool				write_log(struct s_logger *logger, char* log_string);
 
 int create_server(void);
 void handle(int sig);
