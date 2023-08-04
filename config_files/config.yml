@@ -3,7 +3,7 @@ programs:
         command: /bin/sh -c "echo 32; sleep 5"
         numprocs: 2
         retry: 3
-        umask: 0o022
+        umask: 022
         exitcodes:
             - 0
             - 1
@@ -13,7 +13,7 @@ programs:
     echoeing:
         command: echo 1
         retry: 3
-        umask: 0o027
+        umask: 027
         user: bdetune
         workingdir: /
         env:
@@ -26,5 +26,5 @@ server:
         chmod: 0o744
         username: bdetune
         chown: :user
-    logfile: /mnt/nfs/homes/bdetune/taskmaster.log
-    loglevel: ERRO
+    logfile: taskmaster.log
+    loglevel: ERROR
