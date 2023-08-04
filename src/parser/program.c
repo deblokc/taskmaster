@@ -17,8 +17,9 @@
 
 static struct s_program *cleaner(struct s_program *self)
 {
-	if (self->processes)
+	if (self->processes) {
 		free(self->processes);
+	}
 	if (self->name)
 		free(self->name);
 	if (self->command)

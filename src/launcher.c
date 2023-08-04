@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/07 10:59:08 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/10 17:07:38 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/26 18:21:22 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,10 +31,21 @@ void wait_process(struct s_program *lst) {
 		}
 		if (lst->numprocs == 1) {
 			pthread_join(lst->processes[0].handle, NULL);
+			free(lst->processes[0].name);
+			lst->processes[0].name = NULL;
+			free(lst->processes);
+			lst->processes = NULL;
+			printf("joined one proc\n");
 		} else {
-			for (int j = 0; j < lst->numprocs; j++) {
+			int j = 0;
+			for (; j < lst->numprocs; j++) {
 				pthread_join(lst->processes[j].handle, NULL);
+				free(lst->processes[j].name);
+				lst->processes[j].name = NULL;
 			}
+			free(lst->processes);
+			lst->processes = NULL;
+			printf("joined %d proc\n", j);
 		}
 	}
 }
@@ -46,7 +57,7 @@ void wait_priorities(struct s_priority *lst) {
 	}
 }
 
-void create_process(struct s_program *lst) {
+void create_process(struct s_program *lst, int log_fd) {
 	if (!lst) {
 		return;
 	}
@@ -55,7 +66,7 @@ void create_process(struct s_program *lst) {
 	 * NEED TO GIVE LOGGER TO THE PROCESS
 	 */
 
-	for (int i = 0; lst; i++, lst = lst->itnext(lst)) {
+	for (int i = 0; lst; i++, lst = lst->next) {
 		printf("creating processes for %s\n", lst->name);
 		lst->processes = (struct s_process *)calloc(sizeof(struct s_process), (size_t)lst->numprocs);
 		if (!lst->processes) {
@@ -71,6 +82,7 @@ void create_process(struct s_program *lst) {
 			if (pipe(lst->processes[0].com)) {
 				perror("pipe");
 			}
+			lst->processes[0].log = log_fd;
 			if (pthread_create(&(lst->processes[0].handle), NULL, administrator, &(lst->processes[0]))) {
 				printf("FATAL ERROR PTHREAD_CREATE\n");
 			}
@@ -85,6 +97,7 @@ void create_process(struct s_program *lst) {
 				if (pipe(lst->processes[j].com)) {
 					perror("pipe");
 				}
+				lst->processes[j].log = log_fd;
 				if (pthread_create(&(lst->processes[j].handle), NULL, administrator, &(lst->processes[j]))) {
 					printf("FATAL ERROR PTHREAD_CREATE\n");
 				}
@@ -93,9 +106,9 @@ void create_process(struct s_program *lst) {
 	}
 }
 
-void launch(struct s_priority *lst) {
+void launch(struct s_priority *lst, int log_fd) {
 	while (lst) {
-		create_process(lst->begin);
+		create_process(lst->begin, log_fd);
 		lst = lst->itnext(lst);
 	}
 }
