@@ -18,7 +18,7 @@
 #include <sys/epoll.h>
 
 
-static char	*get_stamp(char* stamp_str)
+char	*get_stamp(char* stamp_str)
 {
 	time_t stamp;
 	struct tm *local_stamp;

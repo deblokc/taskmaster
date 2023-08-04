@@ -16,13 +16,13 @@
 
 static struct s_server	*free_server(struct s_server *self)
 {
-	if (self->log_pipe[0] != 0)
+	if (self->log_pipe[0] >= 0)
 		close(self->log_pipe[0]);
-	if (self->log_pipe[1] != 0)
+	if (self->log_pipe[1] >= 0)
 		close(self->log_pipe[1]);
 	if (self->logger.logfile)
 		free(self->logger.logfile);
-	if (self->logger.logfd != 0 && self->logger.logfd != -1)
+	if (self->logger.logfd != -1)
 		close(self->logger.logfd);
 	if (self->pidfile)
 		free(self->pidfile);

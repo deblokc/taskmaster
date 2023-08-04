@@ -5,6 +5,8 @@
 #include <time.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <sys/epoll.h>
+
 
 static bool	rotate_log(struct s_logger *logger)
 {
@@ -42,11 +44,19 @@ bool	write_log(struct s_logger *logger, char* log_string)
 
 	if ((size_t)logger->logfile_maxbytes < 22)
 		return (true);
+	if (logger->logfd < 0 && (logger->logfd = open(logger->logfile, O_CREAT | O_APPEND | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP)) == -1)
+		return (false);
 	len = strlen(log_string);
 	if ((size_t)logger->logfile_maxbytes < len)
 		return (true);
 	if (fstat(logger->logfd, &statbuf) == -1)
-		return (false);
+	{
+		close(logger->logfd);
+		if ((logger->logfd = open(logger->logfile, O_CREAT | O_APPEND | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP)) == -1)
+			return (false);
+		if (fstat(logger->logfd, &statbuf) == -1)
+			return (false);
+	}
 	if ((statbuf.st_size + (off_t)len) > (off_t)logger->logfile_maxbytes)
 	{
 		if (!rotate_log(logger))
@@ -54,6 +64,48 @@ bool	write_log(struct s_logger *logger, char* log_string)
 	}
 	if (write(logger->logfd, log_string, len) == -1)
 		return (false);
+	return (true);
+}
+
+bool	write_process_log(struct s_logger *logger, char* log_string)
+{
+	off_t		remainder;
+	size_t		len;
+	struct stat	statbuf;
+
+	if ((size_t)logger->logfile_maxbytes == 0)
+		return (true);
+	if (logger->logfd < 0 && (logger->logfd = open(logger->logfile, O_CREAT | O_APPEND | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP)) == -1)
+		return (false);
+	len = strlen(log_string);
+	if (fstat(logger->logfd, &statbuf) == -1)
+	{
+		close(logger->logfd);
+		if ((logger->logfd = open(logger->logfile, O_CREAT | O_APPEND | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP)) == -1)
+			return (false);
+		if (fstat(logger->logfd, &statbuf) == -1)
+			return (false);
+	}
+	if (statbuf.st_size + (off_t)len > (off_t)logger->logfile_maxbytes)
+	{
+		if (statbuf.st_size > logger->logfile_maxbytes)
+		{
+			if (!rotate_log(logger))
+				return (false);
+			return (write_process_log(logger, log_string));
+		}
+		remainder = logger->logfile_maxbytes - statbuf.st_size;
+		if (write(logger->logfd, log_string, (size_t)remainder) == -1)
+			return (false);
+		if (!rotate_log(logger))
+			return (false);
+		return (write_process_log(logger, &log_string[remainder]));
+	}
+	else
+	{
+		if (write(logger->logfd, log_string, len) == -1)
+			return (false);
+	}
 	return (true);
 }
 
@@ -125,4 +177,88 @@ void	transfer_logs(int tmp_fd, struct s_server *server)
 	}
 	close(tmp_fd);
 	remove("/tmp/.taskmasterd_tmp.log");
+}
+
+void	*main_logger(void *void_server)
+{
+	struct s_server		*server;
+	int					nb_events;
+	int					epoll_fd;
+	ssize_t				ret;
+	char				buffer[PIPE_BUF + 1];
+	struct epoll_event	event;
+
+	server = (struct s_server*)void_server;
+	bzero(&event, sizeof(event));
+	epoll_fd = epoll_create(1);
+	if (epoll_fd == -1)
+	{
+		get_stamp(buffer);
+		strcpy(&buffer[22], "CRITICAL: Could not instantiate epoll, exiting process\n");
+		write_log(&server->logger, buffer);
+		if (!server->daemon)
+		{
+			if (write(2, buffer, strlen(buffer)) == -1) {}
+		}
+		pthread_exit(NULL);
+	}
+	event.data.fd = server->log_pipe[0];
+	event.events = EPOLLIN;
+	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, server->log_pipe[0], &event))
+	{
+		get_stamp(buffer);
+		strcpy(&buffer[22], "CRITICAL: Could not add pipe to epoll events, exiting process\n");
+		write_log(&server->logger, buffer);
+		if (!server->daemon)
+		{
+			if (write(2, buffer, strlen(buffer)) == -1) {}
+		}
+		close(epoll_fd);
+		pthread_exit(NULL);
+	}
+	write(2, "Ready for logging\n", strlen("Ready for logging\n"));
+	while (true)
+	{
+		if ((nb_events = epoll_wait(epoll_fd, &event, 1, 100000)) == -1)
+		{
+			get_stamp(buffer);
+			strcpy(&buffer[22], "CRITICAL: Error while waiting for epoll event, exiting process\n");
+			write_log(&server->logger, buffer);
+			if (!server->daemon)
+			{
+				if (write(2, buffer, strlen(buffer)) == -1) {}
+			}
+			event.data.fd = server->log_pipe[0];
+			event.events = EPOLLIN;
+			epoll_ctl(epoll_fd, EPOLL_CTL_DEL, server->log_pipe[0], &event);
+			close(epoll_fd);
+			pthread_exit(NULL);
+		}
+		if (nb_events)
+		{
+			get_stamp(buffer);
+			ret = read(server->log_pipe[0], &buffer[22], PIPE_BUF);
+			if (ret > 0)
+			{
+				buffer[ret + 22] = '\0';
+				if (!strncmp("ENDLOG\n", &buffer[22], 7))
+				{
+					event.data.fd = server->log_pipe[0];
+					event.events = EPOLLIN;
+					epoll_ctl(epoll_fd, EPOLL_CTL_DEL, server->log_pipe[0], &event);
+					close(epoll_fd);
+					pthread_exit(NULL);
+				}
+				else
+				{
+					write_log(&server->logger, buffer);
+					if (!server->daemon)
+					{
+						if (write(2, buffer, strlen(buffer)) == -1) {}
+					}
+				}
+			}
+		}
+	}
+	return (NULL);
 }

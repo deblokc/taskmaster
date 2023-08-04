@@ -187,6 +187,7 @@ int main(int ac, char **av)
 	int ret = 0;
 	int reporter_pipe[4];
 	pthread_t initial_logger;
+	pthread_t logger;
 	struct s_report reporter;
 	struct s_server *server = NULL;
 	struct s_priority *priorities = NULL;
@@ -285,7 +286,24 @@ int main(int ac, char **av)
 			close(reporter_pipe[0]);
 			close(reporter_pipe[1]);
 			transfer_logs(reporter_pipe[2], server);
-			write(2, "Ready to start\n", strlen("Ready to start\n"));
+			if (pipe2(server->log_pipe, O_DIRECT | O_NONBLOCK) == -1)
+			{
+				get_stamp(reporter.buffer);
+				strcpy(&reporter.buffer[22], "CRITICAL: Could not open pipe for logging\n");
+				if (write(2, reporter.buffer, strlen(reporter.buffer)) <= 0) {}
+				write_log(&server->logger, reporter.buffer);
+				server = server->cleaner(server);
+				return (1);
+			}
+			if (pthread_create(&logger, NULL, main_logger, server))
+			{
+				get_stamp(reporter.buffer);
+				strcpy(&reporter.buffer[22], "CRITICAL: Could not initiate logging thread\n");
+				if (write(2, reporter.buffer, strlen(reporter.buffer)) <= 0) {}
+				write_log(&server->logger, reporter.buffer);
+				server = server->cleaner(server);
+				return (1);
+			}
 			priorities = create_priorities(server, &reporter);
 			int sock_fd = create_server();
 			struct epoll_event sock;
