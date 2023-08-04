@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/10 16:03:20 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/07/25 18:35:50 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -78,14 +78,7 @@ void child_exec(struct s_process *proc) {
 			begin = proc->program->env;
 			while (begin)
 			{
-				char*	string = calloc(strlen(begin->key) + strlen(begin->value) + 2, sizeof(char));
-				if (string)
-				{
-					strcpy(string, begin->key);
-					string[strlen(begin->key)] = '=';
-					strcpy(&string[strlen(begin->key) + 1], begin->value);
-					putenv(string);
-				}
+				putenv(strdup(begin->value));
 				begin = begin->next;
 			}
 		}
