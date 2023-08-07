@@ -32,7 +32,7 @@ static bool	rotate_log(struct s_logger *logger)
 	logger->logfd = -1;
 	if (logger->logfile_backups == 0)
 	{
-		if ((logger->logfd = open(logger->logfile, O_TRUNC | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP)) == -1)
+		if ((logger->logfd = open(logger->logfile, O_TRUNC | O_RDWR, 0666 & ~logger->umask)) == -1)
 			return (false);
 		return (true);
 	}
@@ -47,7 +47,7 @@ static bool	rotate_log(struct s_logger *logger)
 	snprintf(old_name, 256, "%s", logger->logfile);
 	snprintf(new_name, 256, "%s%d", logger->logfile, 1);
 	rename(old_name, new_name);
-	if ((logger->logfd = open(logger->logfile, O_CREAT | O_TRUNC | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP)) == -1)
+	if ((logger->logfd = open(logger->logfile, O_CREAT | O_TRUNC | O_RDWR, 0666 & ~logger->umask)) == -1)
 			return (false);
 	return (true);
 }
@@ -59,7 +59,7 @@ bool	write_log(struct s_logger *logger, char* log_string)
 
 	if ((size_t)logger->logfile_maxbytes < 22)
 		return (true);
-	if (logger->logfd < 0 && (logger->logfd = open(logger->logfile, O_CREAT | O_APPEND | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP)) == -1)
+	if (logger->logfd < 0 && (logger->logfd = open(logger->logfile, O_CREAT | O_APPEND | O_RDWR, 0666 & ~logger->umask)) == -1)
 		return (false);
 	len = strlen(log_string);
 	if ((size_t)logger->logfile_maxbytes < len)
@@ -67,7 +67,7 @@ bool	write_log(struct s_logger *logger, char* log_string)
 	if (fstat(logger->logfd, &statbuf) == -1)
 	{
 		close(logger->logfd);
-		if ((logger->logfd = open(logger->logfile, O_CREAT | O_APPEND | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP)) == -1)
+		if ((logger->logfd = open(logger->logfile, O_CREAT | O_APPEND | O_RDWR, 0666 & ~logger->umask)) == -1)
 			return (false);
 		if (fstat(logger->logfd, &statbuf) == -1)
 			return (false);
@@ -90,13 +90,13 @@ bool	write_process_log(struct s_logger *logger, char* log_string)
 
 	if ((size_t)logger->logfile_maxbytes == 0)
 		return (true);
-	if (logger->logfd < 0 && (logger->logfd = open(logger->logfile, O_CREAT | O_APPEND | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP)) == -1)
+	if (logger->logfd < 0 && (logger->logfd = open(logger->logfile, O_CREAT | O_APPEND | O_RDWR, 0666 & ~logger->umask)) == -1)
 		return (false);
 	len = strlen(log_string);
 	if (fstat(logger->logfd, &statbuf) == -1)
 	{
 		close(logger->logfd);
-		if ((logger->logfd = open(logger->logfile, O_CREAT | O_APPEND | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP)) == -1)
+		if ((logger->logfd = open(logger->logfile, O_CREAT | O_APPEND | O_RDWR, 0666 & ~logger->umask)) == -1)
 			return (false);
 		if (fstat(logger->logfd, &statbuf) == -1)
 			return (false);

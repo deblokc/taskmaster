@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/25 18:58:58 by bdetune           #+#    #+#             */
-/*   Updated: 2023/07/26 18:34:04 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/07 16:05:31 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,6 +18,16 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <fcntl.h>
+
+static void update_umask(struct s_server *server)
+{
+	server->logger.umask = server->umask;
+	for (struct s_program* current = server->begin(server); current; current = current->itnext(current))
+	{
+		current->stdout_logger.umask = server->umask;
+		current->stderr_logger.umask = server->umask;
+	}
+}
 
 void	prelude(struct s_server *server, struct s_report *reporter)
 {
@@ -83,10 +93,11 @@ void	prelude(struct s_server *server, struct s_report *reporter)
 			return ;
 		}
 	}
-	if ((server->logger.logfd = open(server->logger.logfile, O_CREAT | O_APPEND | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP)) == -1)
+	if ((server->logger.logfd = open(server->logger.logfile, O_CREAT | O_APPEND | O_RDWR, 0666 & ~server->umask)) == -1)
 	{
 		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not open logfile\n");
 		report(reporter, true);
 		return ;
 	}
+	update_umask(server);
 }

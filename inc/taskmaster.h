@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/07 16:09:51 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/07 16:17:25 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -69,6 +69,7 @@ struct s_logger {
 	int		logfile_maxbytes;
 	int		logfile_backups;
 	int		logfd;
+	int		umask;
 };
 
 struct s_socket {
