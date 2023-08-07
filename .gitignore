@@ -9,3 +9,4 @@ yaml-0.2.5/
 yaml.h
 taskmasterctl/taskmasterctl
 readline.a
+logs/

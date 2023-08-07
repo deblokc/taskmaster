@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/26 18:46:40 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/07 13:20:15 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -58,6 +58,16 @@ bool end_initial_log(struct s_server *server, struct s_report *reporter, int *re
 		close(reporter_pipe[2]);
 		return (false);
 	}
+	return (true);
+}
+
+bool end_logging_thread(struct s_report *reporter, pthread_t logger)
+{
+	strcpy(reporter->buffer, "ENDLOG\n");
+	if (!report(reporter, false))
+		return (false);
+	if (pthread_join(logger, NULL))
+		return (false);
 	return (true);
 }
 
@@ -304,6 +314,7 @@ int main(int ac, char **av)
 				server = server->cleaner(server);
 				return (1);
 			}
+			reporter.report_fd = server->log_pipe[1];
 			priorities = create_priorities(server, &reporter);
 			int sock_fd = create_server();
 			struct epoll_event sock;
@@ -312,14 +323,18 @@ int main(int ac, char **av)
 			sock.events = EPOLLIN;
 			int efd = epoll_create(1);
 			epoll_ctl(efd, EPOLL_CTL_ADD, sock_fd, &sock);
+			strcpy(reporter.buffer, "INFO: Starting taskmasterd\n");
+			report(&reporter, false);
 			if (!priorities)
-				printf("No priorities\n");
+			{
+				strcpy(reporter.buffer, "DEBUG: No priorities to start\n");
+				report(&reporter, false);
+			}
 			else
 			{
-				printf("Got priorities\n");
-				// priorities->print_priorities(priorities);
-				printf("=-=-=-=-=-=-=-=-= LAUNCHING PRIORITIES =-=-=-=-=-=-=-=-=\n");
-				launch(priorities);
+				strcpy(reporter.buffer, "DEBUG: Launching priorities\n");
+				report(&reporter, false);
+				/*launch(priorities);
 
 				// todo
 				while (1)
@@ -328,8 +343,12 @@ int main(int ac, char **av)
 				}
 
 				printf("=-=-=-=-=-=-=-=-= WAITING PRIORITIES =-=-=-=-=-=-=-=-=\n");
-				wait_priorities(priorities);
+				wait_priorities(priorities);*/
 				priorities->destructor(priorities);
+			}
+			if (!end_logging_thread(&reporter, logger))
+			{
+				if (write(2, "Could not terminate logging thread\n", strlen("Could not terminate logging thread\n"))){}
 			}
 			server = server->cleaner(server);
 		}

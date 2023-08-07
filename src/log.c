@@ -7,6 +7,21 @@
 #include <stdio.h>
 #include <sys/epoll.h>
 
+static bool	should_log(enum log_level loglevel, char* line)
+{
+	if (loglevel == DEBUG)
+		return (true);
+	else if (loglevel == INFO && strncmp(line, "DEBUG", 5))
+		return (true);
+	else if (loglevel == WARN && strncmp(line, "DEBUG", 5) && strncmp(line, "INFO", 4))
+		return (true);
+	else if (loglevel == ERROR && (!strncmp(line, "ERROR", 5) || !strncmp(line, "CRITICAL", 8)))
+		return (true);
+	else if (loglevel == CRITICAL && !strncmp(line, "CRITICAL", 8))
+		return (true);
+	return (false);
+}
+
 
 static bool	rotate_log(struct s_logger *logger)
 {
@@ -21,16 +36,16 @@ static bool	rotate_log(struct s_logger *logger)
 			return (false);
 		return (true);
 	}
-	snprintf(old_name, PIPE_BUF, "%s%d", logger->logfile, logger->logfile_backups);
+	snprintf(old_name, 256, "%s%d", logger->logfile, logger->logfile_backups);
 	remove(old_name);
 	for (int i = logger->logfile_backups - 1; i > 0; --i)
 	{
-		snprintf(old_name, PIPE_BUF, "%s%d", logger->logfile, i);
-		snprintf(new_name, PIPE_BUF, "%s%d", logger->logfile, i + 1);
+		snprintf(old_name, 256, "%s%d", logger->logfile, i);
+		snprintf(new_name, 256, "%s%d", logger->logfile, i + 1);
 		rename(old_name, new_name);
 	}
-	snprintf(old_name, PIPE_BUF, "%s", logger->logfile);
-	snprintf(new_name, PIPE_BUF, "%s%d", logger->logfile, 1);
+	snprintf(old_name, 256, "%s", logger->logfile);
+	snprintf(new_name, 256, "%s%d", logger->logfile, 1);
 	rename(old_name, new_name);
 	if ((logger->logfd = open(logger->logfile, O_CREAT | O_TRUNC | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP)) == -1)
 			return (false);
@@ -216,7 +231,16 @@ void	*main_logger(void *void_server)
 		close(epoll_fd);
 		pthread_exit(NULL);
 	}
-	write(2, "Ready for logging\n", strlen("Ready for logging\n"));
+	get_stamp(buffer);
+	strcpy(&buffer[22], "DEBUG: Ready for logging\n");
+	if (should_log(server->loglevel, &buffer[22]))
+	{
+		write_log(&server->logger, buffer);
+		if (!server->daemon)
+		{
+			if (write(2, buffer, strlen(buffer)) == -1) {}
+		}
+	}
 	while (true)
 	{
 		if ((nb_events = epoll_wait(epoll_fd, &event, 1, 100000)) == -1)
@@ -237,7 +261,7 @@ void	*main_logger(void *void_server)
 		if (nb_events)
 		{
 			get_stamp(buffer);
-			ret = read(server->log_pipe[0], &buffer[22], PIPE_BUF);
+			ret = read(server->log_pipe[0], &buffer[22], PIPE_BUF - 22);
 			if (ret > 0)
 			{
 				buffer[ret + 22] = '\0';
@@ -247,14 +271,27 @@ void	*main_logger(void *void_server)
 					event.events = EPOLLIN;
 					epoll_ctl(epoll_fd, EPOLL_CTL_DEL, server->log_pipe[0], &event);
 					close(epoll_fd);
+					get_stamp(buffer);
+					strcpy(&buffer[22], "DEBUG: Terminating logging thread\n");
+					if (should_log(server->loglevel, &buffer[22]))
+					{
+						write_log(&server->logger, buffer);
+						if (!server->daemon)
+						{
+							if (write(2, buffer, strlen(buffer)) == -1) {}
+						}
+					}
 					pthread_exit(NULL);
 				}
 				else
 				{
-					write_log(&server->logger, buffer);
-					if (!server->daemon)
+					if (should_log(server->loglevel, &buffer[22]))
 					{
-						if (write(2, buffer, strlen(buffer)) == -1) {}
+						write_log(&server->logger, buffer);
+						if (!server->daemon)
+						{
+							if (write(2, buffer, (size_t)ret + 22) == -1) {}
+						}
 					}
 				}
 			}
