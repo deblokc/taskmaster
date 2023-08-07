@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/07 18:00:19 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/07 18:24:14 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -327,11 +327,11 @@ void *administrator(void *arg) {
 			}
 		} else if (process->status == RUNNING) {
 			nfds = epoll_wait(epollfd, events, 3, -1); // busy wait for smth to do
+			char buf[PIPE_BUF + 1];
 
 			for (int i = 0; i < nfds; i++) {
 			/* handles fds as needed */
 				if (events[i].data.fd == process->stdout[0]) { // if process print in stdout
-					char buf[PIPE_BUF + 1];
 					bzero(buf, PIPE_BUF + 1);
 					if (read(process->stdout[0], buf, PIPE_BUF) > 0) {
 						if (process->stdoutlog) {
@@ -346,7 +346,6 @@ void *administrator(void *arg) {
 					}
 				}
 				if (events[i].data.fd == process->stderr[0]) { // if process print in stderr
-					char buf[PIPE_BUF + 1];
 					bzero(buf, PIPE_BUF + 1);
 					if (read(process->stderr[0], buf, PIPE_BUF) > 0) {
 						if (process->stderrlog) {
@@ -358,6 +357,13 @@ void *administrator(void *arg) {
 						snprintf(reporter.buffer, PIPE_BUF - 22, "INFO: %s is now EXITED\n", process->name);
 						report(&reporter, false);
 						break ;
+					}
+				}
+				if (events[i].data.fd == in.data.fd) {
+					bzero(buf, PIPE_BUF + 1);
+					if (read(in.data.fd, buf, PIPE_BUF)) {
+						process->status = STOPPING;
+						exit = true;
 					}
 				}
 			}
