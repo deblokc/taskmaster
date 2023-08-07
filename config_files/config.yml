@@ -27,4 +27,4 @@ server:
         username: bdetune
         chown: :user
     logfile: taskmaster.log
-    loglevel: ERROR
+    loglevel: DEBUG
