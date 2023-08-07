@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/07 13:45:50 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/07 14:41:57 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -223,8 +223,8 @@ int main(int ac, char **av)
 				{
 					check_server(sock_fd, efd);
 				}
-
-				printf("=-=-=-=-=-=-=-=-= WAITING PRIORITIES =-=-=-=-=-=-=-=-=\n");
+				strcpy(reporter.buffer, "DEBUG: Waiting priorities\n");
+				report(&reporter, false);
 				wait_priorities(priorities);
 				priorities->destructor(priorities);
 			}
