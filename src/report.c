@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/11 19:41:17 by bdetune           #+#    #+#             */
-/*   Updated: 2023/07/25 19:23:09 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/07 17:39:49 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,13 +34,13 @@ bool	report(struct s_report* reporter, bool critical)
 	bool	success = false;
 
 	reporter->critical = critical;
-	for (int i = 0; i < 10; ++i)
+	for (int i = 0; i < 100; ++i)
 	{
 		if (write(reporter->report_fd, reporter->buffer, strlen(reporter->buffer)) != -1) {
 			success = true;
 			break ;
 		}
-		usleep(100);
+		usleep(500);
 	}
 	if (!success)
 		perror("LOG ERROR");

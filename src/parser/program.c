@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/19 19:03:58 by bdetune           #+#    #+#             */
-/*   Updated: 2023/07/25 19:29:31 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/07 17:57:59 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -360,6 +360,133 @@ static bool parse_values(struct s_program *program, yaml_document_t *document, y
 	return (ret);
 }
 
+
+static void trim(struct s_program *program, struct s_report *reporter)
+{
+	char	*swap;
+	size_t	i = 0;
+	size_t	j = 0;
+
+	if(write(2, "Trimming\n", strlen("Trimming\n"))){}
+	if (!program->command)
+		return ;
+	while (program->command[i] && ((program->command[i] >= '\t' && program->command[i] <= '\r') || program->command[i] == ' '))
+		++i;
+	printf("index: %ld\n", i);
+	if (!program->command[i])
+	{
+		free(program->command);
+		program->command = NULL;
+		return ;
+	}
+	j = strlen(program->command) - 1;
+	if (!((program->command[0] >= '\t' && program->command[0] <= '\r') || program->command[0] == ' ') &&
+		!((program->command[j] >= '\t' && program->command[j] <= '\r') || program->command[j] == ' '))
+		return ;
+	while ((program->command[j] >= '\t' && program->command[j] <= '\r') || program->command[j] == ' ')
+		--j;
+	program->command[j + 1] = '\0';
+	swap = strdup(&program->command[i]);
+	if (!swap)
+	{
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: could not allocate command for program '%s'\n", program->name);
+		report(reporter, true);
+		return ;
+	}
+	free(program->command);
+	program->command = swap;
+}
+
+static bool has_arg(char* cmd, size_t *index, size_t len)
+{
+	bool	dbl_qu = false;
+	bool	spl_qu = false;
+
+	while (*index != len && (cmd[*index] == '\0' || ((cmd[*index] >= '\t' && cmd[*index] <= '\r') || cmd[*index] == ' ')))
+	{
+		cmd[*index] = '\0';
+		*index += 1;
+	}
+	if (*index == len)
+		return (false);
+	while (*index!= len)
+	{
+		if (cmd[*index] == '\\' && !spl_qu && !dbl_qu)
+		{
+			for (size_t i = *index; i < len; ++i)
+			{
+				cmd[i] = cmd[i + 1];
+			}
+		}
+		else if (cmd[*index] == '\\' && dbl_qu)
+		{
+			if (cmd[*index + 1] == '"' || cmd[*index + 1] == '\\')
+			{
+				for (size_t i = *index; i < len; ++i)
+				{
+					cmd[i] = cmd[i + 1];
+				}
+			}
+		}
+		else if (cmd[*index] == '\\' && spl_qu)
+		{
+			if (cmd[*index + 1] == 39)
+			{
+				for (size_t i = *index; i < len; ++i)
+				{
+					cmd[i] = cmd[i + 1];
+				}
+			}
+		}
+		else if (cmd[*index] == '"' && !spl_qu)
+		{
+			for (size_t i = *index; i < len; ++i)
+			{
+				cmd[i] = cmd[i + 1];
+			}
+			dbl_qu ^= true;
+		}
+		else if (cmd[*index] == 39 && !dbl_qu)
+		{
+			for (size_t i = *index; i < len; ++i)
+			{
+				cmd[i] = cmd[i + 1];
+			}
+			spl_qu ^= true;
+		}
+		else if (cmd[*index] == '\0')
+			break ;
+		else if (!spl_qu && !dbl_qu && ((cmd[*index] >= '\t' && cmd[*index] <= '\r') || cmd[*index] == ' '))
+			break ;
+		*index += 1;
+	}
+	return (true);
+}
+
+static bool parse_command(struct s_program *program, struct s_report *reporter)
+{
+	size_t	nb_arg = 0;
+	size_t	current_arg = 0;
+	size_t	max;
+
+	trim(program, reporter);
+	if (reporter->critical)
+		return (false);
+	if (!program->command)
+	{
+		snprintf(reporter->buffer, PIPE_BUF, "ERROR: no command for program '%s', ignoring it\n", program->name);
+		report(reporter, false);
+		return (false);
+	}
+	max = strlen(program->command);
+	while (has_arg(program->command, &current_arg, max))
+	{
+		++nb_arg;
+	}
+	printf("Found %ld args\n", nb_arg);
+	return (true);
+}
+
 static void	add_program(struct s_server *server, yaml_document_t *document, yaml_node_t *name, yaml_node_t *params, struct s_report *reporter)
 {
 	struct s_program	*program = NULL;
@@ -400,9 +527,16 @@ static void	add_program(struct s_server *server, yaml_document_t *document, yaml
 				}
 				else
 				{
-					snprintf(reporter->buffer, PIPE_BUF, "DEBUG: inserting valid program '%s' in tree\n", name->data.scalar.value);
-					report(reporter, false);
-					server->insert(server, program, reporter);
+					if (parse_command(program, reporter))
+					{
+						snprintf(reporter->buffer, PIPE_BUF, "DEBUG: inserting valid program '%s' in tree\n", name->data.scalar.value);
+						report(reporter, false);
+						server->insert(server, program, reporter);
+					}
+					else
+					{
+						program->cleaner(program);
+					}
 				}
 			}
 		}
