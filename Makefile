@@ -33,6 +33,7 @@ SRCS = main.c \
 	   prelude_server.c \
 	   log.c \
 	   administrator.c \
+	   server.c \
 	   launcher.c
 
 INC = taskmaster.h
@@ -71,7 +72,7 @@ $(OBJDIR)/%.o: %.c
 	$(CC) $(CFLAGS) -I inc -o $@ -c $<
 
 $(OBJDIR) :
-	mkdir -p $(OBJDIR)/parser
+	mkdir -p $(OBJDIR)/parser $(OBJDIR)/gnl
 
 .SECONDARY: $(OBJS)
 

@@ -245,6 +245,8 @@ void	*main_logger(void *void_server)
 	{
 		if ((nb_events = epoll_wait(epoll_fd, &event, 1, 100000)) == -1)
 		{
+			if (errno == EINTR)
+				continue ;
 			get_stamp(buffer);
 			strcpy(&buffer[22], "CRITICAL: Error while waiting for epoll event, exiting process\n");
 			write_log(&server->logger, buffer);

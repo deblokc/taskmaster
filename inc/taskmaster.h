@@ -178,12 +178,18 @@ bool				parse_env(char const *program_name, yaml_node_t *map, yaml_document_t *d
 void				report_critical(int fd);
 struct s_priority*	create_priorities(struct s_server* server, struct s_report *reporter);
 void				*administrator(void *arg);
-void				launch(struct s_priority *lst);
+void				launch(struct s_priority *lst, int log_fd);
 void				wait_priorities(struct s_priority *lst);
 void				prelude(struct s_server *server, struct s_report *reporter);
 void				transfer_logs(int tmp_fd, struct s_server *server);
 bool				write_log(struct s_logger *logger, char* log_string);
 char				*get_stamp(char* stamp_str);
 void				*main_logger(void *void_server);
+
+int create_server(void);
+void handle(int sig);
+void check_server(int sock_fd, int efd);
+
+extern int g_sig;
 
 #endif

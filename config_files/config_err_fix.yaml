@@ -21,6 +21,5 @@ server:
         username: bdetune
         chown: :user
     logfile: logs/taskmaster.log
-    loglevel: WARN
-    logfile_maxbytes: 1024
+    loglevel: DEBUG
     umask: 26
