@@ -26,5 +26,5 @@ server:
         chmod: 0o744
         username: bdetune
         chown: :user
-    logfile: taskmaster.log
+    logfile: logs/taskmaster.log
     loglevel: DEBUG
