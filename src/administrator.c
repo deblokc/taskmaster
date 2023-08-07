@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/07 13:59:28 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/07 14:40:33 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -180,6 +180,9 @@ static bool should_start(struct s_process *process) {
 			if (write(process->log, buf, strlen(buf))) {}
 			return true;
 		} else {
+			char buf[PIPE_BUF - 22];
+			snprintf(buf, PIPE_BUF - 22, "WARNING: %s is now in FATAL\n", process->name);
+			if (write(process->log, buf, strlen(buf))) {}
 			process->status = FATAL;
 			return false;
 		}
@@ -232,19 +235,9 @@ void *administrator(void *arg) {
 				if (write(process->log, buf, strlen(buf))) {}
 				snprintf(buf, PIPE_BUF - 22, "DEBUG: %s has raw cmd %s\n", process->name, process->program->command);
 				if (write(process->log, buf, strlen(buf))) {}
-				if (process->program->args) {
-					printf("with args ");
-					char **tmp = process->program->args;
-					while (*tmp) {
-						printf("%s ", *tmp);
-						tmp++;
-					}
-					printf("\n");
-				} else {
-					printf("with args NULL\n");
-				}
 				if (exec(process, epollfd)) {
-					printf("FATAL ERROR\n");
+					snprintf(buf, PIPE_BUF - 22, "WARNING: %s got a fatal error in exec\n", process->name);
+					if (write(process->log, buf, strlen(buf))) {}
 					return NULL;
 				}
 			} else {
@@ -258,7 +251,8 @@ void *administrator(void *arg) {
 		if (process->status == STARTING) {
 			struct timeval tmp;
 			if (gettimeofday(&tmp, NULL)) {
-				printf("FATAL ERROR\n");
+				snprintf(buf, PIPE_BUF - 22, "WARNING: %s got a fatal error in gettimeofday\n", process->name);
+				if (write(process->log, buf, strlen(buf))) {}
 				return NULL;
 			}
 
@@ -267,19 +261,20 @@ void *administrator(void *arg) {
 
 			if (((long long)process->program->startsecs * 1000) <= (tmp_micro - start_micro)) {
 				process->status = RUNNING;
-				printf("NOW RUNNING\n");
+				snprintf(buf, PIPE_BUF - 22, "INFO: %s is now RUNNING\n", process->name);
+				if (write(process->log, buf, strlen(buf))) {}
 				// need to epoll_wait 0 to return instantly
 				tmp_micro = ((long long)process->program->startsecs * 1000);
 				start_micro = 0;
 			}
-			printf("time to wait : %lld\n", ((long long)process->program->startsecs * 1000) - (tmp_micro - start_micro));
+			snprintf(buf, PIPE_BUF - 22, "DEBUG: %s starting epoll time to wait : %lld\n", process->name, ((long long)process->program->startsecs * 1000) - (tmp_micro - start_micro));
+			if (write(process->log, buf, strlen(buf))) {}
 			if (((long long)process->program->startsecs * 1000) - (tmp_micro - start_micro) > INT_MAX) { // if time to wait is bigger than an int, we wait as much as possible and come again if we got no event
 				nfds = epoll_wait(epollfd, events, 3, INT_MAX);
 			} else {
 				nfds = epoll_wait(epollfd, events, 3, (int)(((long long)process->program->startsecs * 1000) - (tmp_micro - start_micro)));
 			}
 			if (nfds) { // if not timeout
-				printf("GOT EVENT\n");
 				for (int i = 0; i < nfds; i++) {
 				/* handles fds as needed */
 					if (events[i].data.fd == process->stdout[0]) { // if process print in stdout
@@ -317,10 +312,8 @@ void *administrator(void *arg) {
 		} else if (process->status == RUNNING) {
 			nfds = epoll_wait(epollfd, events, 3, -1); // busy wait for smth to do
 
-			printf("number events : %d\n", nfds);
 			for (int i = 0; i < nfds; i++) {
 			/* handles fds as needed */
-				printf("GOT EVENT\n");
 				if (events[i].data.fd == process->stdout[0]) { // if process print in stdout
 					char buf[PIPE_BUF + 1];
 					bzero(buf, PIPE_BUF + 1);
@@ -347,21 +340,12 @@ void *administrator(void *arg) {
 						break ;
 					}
 				}
-				if (events[i].data.fd == 0) {
-					printf("READ STDIN AND WRITING\n");
-					char buf[PIPE_BUF + 1];
-					bzero(buf, PIPE_BUF + 1);
-					if (read(0, buf, PIPE_BUF) > 0) {
-						printf("send : >%s<\n", buf);
-						ssize_t ret =  (write(process->stdin[1], buf, strlen(buf)));
-						printf("Wrote to pipe stdin %ld chars out of %ld\n", ret, strlen(buf));
-					}
-				}
 			}
 		} else if (process->status == STOPPING) {
 			struct timeval tmp;
 			if (gettimeofday(&tmp, NULL)) {
-				printf("FATAL ERROR\n");
+				snprintf(buf, PIPE_BUF - 22, "WARNING: %s got a fatal error in gettimeofday\n", process->name);
+				if (write(process->log, buf, strlen(buf))) {}
 				return NULL;
 			}
 
@@ -372,16 +356,15 @@ void *administrator(void *arg) {
 				snprintf(buf, PIPE_BUF - 22, "WARNING: %s did not stop before %ds, sending SIGKILL\n", process->name, process->program->stopwaitsecs);
 				if (write(process->log, buf, strlen(buf))) {}
 				process->status = STOPPED;
-				printf("FORCED STOPPED\n");
 				// kill(process->pid, SIGKILL);
 				// need to epoll_wait 0 to return instantly
 				tmp_micro = (process->program->stopwaitsecs * 1000);
 				start_micro = 0;
 			}
-			printf("time to wait : %lld\n", (process->program->stopwaitsecs * 1000) - (tmp_micro - start_micro));
+			snprintf(buf, PIPE_BUF - 22, "DEBUG: %s stopping epoll time to wait : %lld\n", process->name, ((long long)process->program->stopwaitsecs * 1000) - (tmp_micro - start_micro));
+			if (write(process->log, buf, strlen(buf))) {}
 			nfds = epoll_wait(epollfd, events, 3, (int)((process->program->stopwaitsecs * 1000) - (tmp_micro - start_micro)));
 			if (nfds) { // if not timeout
-				printf("GOT EVENT\n");
 				for (int i = 0; i < nfds; i++) {
 				/* handles fds as needed */
 					if (events[i].data.fd == process->stdout[0]) { // if process print in stdout
@@ -429,6 +412,5 @@ void *administrator(void *arg) {
 			}
 		}
 	}
-	printf("Exiting administrator\n");
 	return NULL;
 }
