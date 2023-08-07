@@ -6,12 +6,13 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/07 14:40:33 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/07 16:16:40 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 //#define _GNU_SOURCE
 #include "taskmaster.h"
+#include <fcntl.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -208,6 +209,18 @@ void *administrator(void *arg) {
 	snprintf(buf, PIPE_BUF - 22, "DEBUG: Administrator for %s created\n", process->name);
 	if (write(process->log, buf, strlen(buf))) {}
 
+	if (process->stdoutlog) {
+		if ((process->stdout_logger.logfd = open(process->stdout_logger.logfile, O_CREAT | O_TRUNC | O_RDWR)) < 0) {
+			snprintf(buf, PIPE_BUF - 22, "ERROR: %s could not open %s for stdout logging\n", process->name, process->stdout_logger.logfile);
+			if (write(process->log, buf, strlen(buf))) {}
+		}
+	}
+	if (process->stderrlog) {
+		if ((process->stderr_logger.logfd = open(process->stderr_logger.logfile, O_CREAT | O_TRUNC | O_RDWR)) < 0) {
+			snprintf(buf, PIPE_BUF - 22, "ERROR: %s could not open %s for stderr logging\n", process->name, process->stderr_logger.logfile);
+			if (write(process->log, buf, strlen(buf))) {}
+		}
+	}
 	bool				start = false; // this bool serve for autostart and start signal sent by controller
 	int					nfds = 0;
 	struct epoll_event	events[3], in;
@@ -281,7 +294,9 @@ void *administrator(void *arg) {
 						char buf[PIPE_BUF + 1];
 						bzero(buf, PIPE_BUF + 1);
 						if (read(process->stdout[0], buf, PIPE_BUF) > 0) {
-							printf("%s : >%s<\n", process->name, buf);
+							if (process->stdoutlog) {
+								write_process_log(&(process->stdout_logger), buf);
+							}
 						} else {
 							snprintf(buf, PIPE_BUF - 22, "WARNING: %s is now in BACKOFF\n", process->name);
 							if (write(process->log, buf, strlen(buf))) {}
@@ -294,7 +309,9 @@ void *administrator(void *arg) {
 						char buf[PIPE_BUF + 1];
 						bzero(buf, PIPE_BUF + 1);
 						if (read(process->stderr[0], buf, PIPE_BUF) > 0) {
-							printf("%s ERROR : >%s<\n", process->name, buf);
+							if (process->stderrlog) {
+								write_process_log(&(process->stderr_logger), buf);
+							}
 						} else {
 							snprintf(buf, PIPE_BUF - 22, "WARNING: %s is now in BACKOFF\n", process->name);
 							if (write(process->log, buf, strlen(buf))) {}
@@ -318,7 +335,9 @@ void *administrator(void *arg) {
 					char buf[PIPE_BUF + 1];
 					bzero(buf, PIPE_BUF + 1);
 					if (read(process->stdout[0], buf, PIPE_BUF) > 0) {
-						printf("%s : >%s<\n", process->name, buf);
+						if (process->stdoutlog) {
+							write_process_log(&(process->stdout_logger), buf);
+						}
 					} else {
 						closeall(process, epollfd);
 						process->status = EXITED;
@@ -331,7 +350,9 @@ void *administrator(void *arg) {
 					char buf[PIPE_BUF + 1];
 					bzero(buf, PIPE_BUF + 1);
 					if (read(process->stderr[0], buf, PIPE_BUF) > 0) {
-						printf("%s ERROR : >%s<\n", process->name, buf);
+						if (process->stderrlog) {
+							write_process_log(&(process->stderr_logger), buf);
+						}
 					} else {
 						closeall(process, epollfd);
 						process->status = EXITED;
@@ -371,7 +392,9 @@ void *administrator(void *arg) {
 						char buf[PIPE_BUF + 1];
 						bzero(buf, PIPE_BUF + 1);
 						if (read(process->stdout[0], buf, PIPE_BUF) > 0) {
-							printf("%s : >%s<\n", process->name, buf);
+							if (process->stdoutlog) {
+								write_process_log(&(process->stdout_logger), buf);
+							}
 						} else {
 							closeall(process, epollfd);
 							process->status = STOPPED;
@@ -386,7 +409,9 @@ void *administrator(void *arg) {
 						char buf[PIPE_BUF + 1];
 						bzero(buf, PIPE_BUF + 1);
 						if (read(process->stderr[0], buf, PIPE_BUF) > 0) {
-							printf("%s ERROR : >%s<\n", process->name, buf);
+							if (process->stderrlog) {
+								write_process_log(&(process->stderr_logger), buf);
+							}
 						} else {
 							closeall(process, epollfd);
 							process->status = STOPPED;
