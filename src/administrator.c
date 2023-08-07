@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/07 14:30:01 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/07 14:40:33 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -180,6 +180,9 @@ static bool should_start(struct s_process *process) {
 			if (write(process->log, buf, strlen(buf))) {}
 			return true;
 		} else {
+			char buf[PIPE_BUF - 22];
+			snprintf(buf, PIPE_BUF - 22, "WARNING: %s is now in FATAL\n", process->name);
+			if (write(process->log, buf, strlen(buf))) {}
 			process->status = FATAL;
 			return false;
 		}
