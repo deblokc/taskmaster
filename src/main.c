@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/07 13:20:15 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/07 13:27:10 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -334,7 +334,7 @@ int main(int ac, char **av)
 			{
 				strcpy(reporter.buffer, "DEBUG: Launching priorities\n");
 				report(&reporter, false);
-				/*launch(priorities);
+				launch(priorities);
 
 				// todo
 				while (1)
@@ -343,7 +343,7 @@ int main(int ac, char **av)
 				}
 
 				printf("=-=-=-=-=-=-=-=-= WAITING PRIORITIES =-=-=-=-=-=-=-=-=\n");
-				wait_priorities(priorities);*/
+				wait_priorities(priorities);
 				priorities->destructor(priorities);
 			}
 			if (!end_logging_thread(&reporter, logger))
