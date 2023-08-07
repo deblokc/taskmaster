@@ -1,9 +1,9 @@
 programs:
     exception:
-        command: /bin/sh -c "echo 32; sleep 5"
+        command: /bin/sh -c "\"echo 32; sleep 5"
         numprocs: 2
         retry: 3
-        umask: 0o022
+        umask: 0022
         exitcodes:
             - 0
             - 1
@@ -14,6 +14,9 @@ programs:
         command: /bin/sh -c "echo 32; sleep 5"
         numprocs: 2
         retry: 3
+    useless:
+        command: "a        a "
+        umask: 022
 server:
     unixsocket:
         file: /mnt/nfs/homes/bdetune/taskmasterd.sock

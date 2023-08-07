@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/25 18:58:58 by bdetune           #+#    #+#             */
-/*   Updated: 2023/08/07 16:05:31 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/07 18:57:43 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -59,13 +59,12 @@ void	prelude(struct s_server *server, struct s_report *reporter)
 			free(ret);
 			return ;
 		}
-		free(ret);
 		ret = NULL;
 	}
 	current = server->env;
 	while (current)
 	{
-		if (!putenv(current->value))
+		if (putenv(current->value))
 		{
 			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not update env in 'server'\n");
 			report(reporter, true);

@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/19 19:03:58 by bdetune           #+#    #+#             */
-/*   Updated: 2023/07/25 19:29:31 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/07 19:19:24 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,13 +25,7 @@ static struct s_program *cleaner(struct s_program *self)
 	if (self->command)
 		free(self->command);
 	if (self->args)
-	{
-		for (int i = 0; (self->args)[i]; i++)
-		{
-			free((self->args)[i]);
-		}
 		free(self->args);
-	}
 	if (self->exitcodes)
 		free(self->exitcodes);
 	if (self->env)
@@ -290,11 +284,11 @@ static bool add_value(struct s_program *program, yaml_document_t *document, char
 	else if (!strcmp("startretries", key))
 		ret = add_number(program->name, "startretries", &program->startretries, value, 0, 10, reporter);
 	else if (!strcmp("autorestart", key))
-		add_autorestart(program, value, reporter);
+		ret = add_autorestart(program, value, reporter);
 	else if (!strcmp("exitcodes", key))
 		ret = add_exitcodes(program, document, value, reporter);
 	else if (!strcmp("stopsignal", key))
-		add_stopsignal(program, value, reporter);
+		ret = add_stopsignal(program, value, reporter);
 	else if (!strcmp("stopwaitsecs", key))
 		ret = add_number(program->name, "stopwaitsecs", &program->stopwaitsecs, value, 0, 300, reporter);
 	else if (!strcmp("stopasgroup", key))
@@ -360,6 +354,158 @@ static bool parse_values(struct s_program *program, yaml_document_t *document, y
 	return (ret);
 }
 
+
+static void trim(struct s_program *program, struct s_report *reporter)
+{
+	char	*swap;
+	size_t	i = 0;
+	size_t	j = 0;
+
+	if (!program->command)
+		return ;
+	while (program->command[i] && ((program->command[i] >= '\t' && program->command[i] <= '\r') || program->command[i] == ' '))
+		++i;
+	if (!program->command[i])
+	{
+		free(program->command);
+		program->command = NULL;
+		return ;
+	}
+	j = strlen(program->command) - 1;
+	if (!((program->command[0] >= '\t' && program->command[0] <= '\r') || program->command[0] == ' ') &&
+		!((program->command[j] >= '\t' && program->command[j] <= '\r') || program->command[j] == ' '))
+		return ;
+	while ((program->command[j] >= '\t' && program->command[j] <= '\r') || program->command[j] == ' ')
+		--j;
+	program->command[j + 1] = '\0';
+	swap = strdup(&program->command[i]);
+	if (!swap)
+	{
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: could not allocate command for program '%s'\n", program->name);
+		report(reporter, true);
+		return ;
+	}
+	free(program->command);
+	program->command = swap;
+}
+
+static bool has_arg(char* cmd, size_t *index, size_t len)
+{
+	bool	dbl_qu = false;
+	bool	spl_qu = false;
+
+	while (*index != len && (cmd[*index] == '\0' || ((cmd[*index] >= '\t' && cmd[*index] <= '\r') || cmd[*index] == ' ')))
+	{
+		cmd[*index] = '\0';
+		*index += 1;
+	}
+	if (*index == len)
+		return (false);
+	while (*index!= len)
+	{
+		if (cmd[*index] == '\\' && !spl_qu && !dbl_qu)
+		{
+			for (size_t i = *index; i < len; ++i)
+			{
+				cmd[i] = cmd[i + 1];
+			}
+		}
+		else if (cmd[*index] == '\\' && dbl_qu)
+		{
+			if (cmd[*index + 1] == '"' || cmd[*index + 1] == '\\')
+			{
+				for (size_t i = *index; i < len; ++i)
+				{
+					cmd[i] = cmd[i + 1];
+				}
+			}
+		}
+		else if (cmd[*index] == '\\' && spl_qu)
+		{
+			if (cmd[*index + 1] == 39)
+			{
+				for (size_t i = *index; i < len; ++i)
+				{
+					cmd[i] = cmd[i + 1];
+				}
+			}
+		}
+		else if (cmd[*index] == '"' && !spl_qu)
+		{
+			for (size_t i = *index; i < len; ++i)
+			{
+				cmd[i] = cmd[i + 1];
+			}
+			dbl_qu ^= true;
+		}
+		else if (cmd[*index] == 39 && !dbl_qu)
+		{
+			for (size_t i = *index; i < len; ++i)
+			{
+				cmd[i] = cmd[i + 1];
+			}
+			spl_qu ^= true;
+		}
+		else if (cmd[*index] == '\0')
+			break ;
+		else if (!spl_qu && !dbl_qu && ((cmd[*index] >= '\t' && cmd[*index] <= '\r') || cmd[*index] == ' '))
+			break ;
+		*index += 1;
+	}
+	return (true);
+}
+
+static char*	add_arg(char* command, size_t *index, size_t len)
+{
+	char*	ret;
+
+	while (*index != len && command[*index] == '\0')
+	{
+		*index += 1;
+	}
+	ret = &command[*index];
+	while (*index != len && command[*index] != '\0')
+	{
+		*index += 1;
+	}
+	return (ret);
+}
+
+static bool parse_command(struct s_program *program, struct s_report *reporter)
+{
+	size_t	nb_arg = 0;
+	size_t	current_arg = 0;
+	size_t	max;
+
+	trim(program, reporter);
+	if (reporter->critical)
+		return (false);
+	if (!program->command)
+	{
+		snprintf(reporter->buffer, PIPE_BUF, "ERROR: no command for program '%s', ignoring it\n", program->name);
+		report(reporter, false);
+		return (false);
+	}
+	max = strlen(program->command);
+	while (has_arg(program->command, &current_arg, max))
+	{
+		++nb_arg;
+	}
+	program->args = calloc(nb_arg + 1, sizeof(*program->args));
+	if (!(program->args))
+	{
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: could not allocate args for program '%s'\n", program->name);
+		report(reporter, true);
+		return (false);
+	}
+	current_arg = 0;
+	for (size_t runner = 0; runner < nb_arg; ++runner)
+	{
+		program->args[runner] = add_arg(program->command, &current_arg, max);
+	}
+	return (true);
+}
+
 static void	add_program(struct s_server *server, yaml_document_t *document, yaml_node_t *name, yaml_node_t *params, struct s_report *reporter)
 {
 	struct s_program	*program = NULL;
@@ -400,9 +546,16 @@ static void	add_program(struct s_server *server, yaml_document_t *document, yaml
 				}
 				else
 				{
-					snprintf(reporter->buffer, PIPE_BUF, "DEBUG: inserting valid program '%s' in tree\n", name->data.scalar.value);
-					report(reporter, false);
-					server->insert(server, program, reporter);
+					if (parse_command(program, reporter))
+					{
+						snprintf(reporter->buffer, PIPE_BUF, "DEBUG: inserting valid program '%s' in tree\n", name->data.scalar.value);
+						report(reporter, false);
+						server->insert(server, program, reporter);
+					}
+					else
+					{
+						program->cleaner(program);
+					}
 				}
 			}
 		}
