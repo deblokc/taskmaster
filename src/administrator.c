@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/07 16:22:29 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/07 18:00:19 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -61,49 +61,49 @@ char *getcmd(struct s_process *proc) {
 }
 
 void child_exec(struct s_process *proc) {
-		// dup every standard stream to pipe
-		dup2(proc->stdin[0], 0);
-		dup2(proc->stdout[1], 1);
-		dup2(proc->stderr[1], 2);
+	struct s_report reporter;
+	reporter.report_fd = proc->log;
+	// dup every standard stream to pipe
+	dup2(proc->stdin[0], 0);
+	dup2(proc->stdout[1], 1);
+	dup2(proc->stderr[1], 2);
 
-		// close ends of pipe which doesnt belong to us
-		close(proc->stdin[1]);
-		close(proc->stdout[0]);
-		close(proc->stderr[0]);
-		close(proc->com[0]);
-		close(proc->com[1]);
-	
-		if (proc->program->env) {
-			struct s_env*	begin;
+	// close ends of pipe which doesnt belong to us
+	close(proc->stdin[1]);
+	close(proc->stdout[0]);
+	close(proc->stderr[0]);
+	close(proc->com[0]);
+	close(proc->com[1]);
 
-			begin = proc->program->env;
-			while (begin)
-			{
-				putenv(strdup(begin->value));
-				begin = begin->next;
-			}
+	if (proc->program->env) {
+		struct s_env*	begin;
+
+		begin = proc->program->env;
+		while (begin)
+		{
+			putenv(strdup(begin->value));
+			begin = begin->next;
 		}
-		char *command = getcmd(proc);
+	}
+	char *command = getcmd(proc);
 
-		if (!command) {
-			char buf[PIPE_BUF - 22];
-			snprintf(buf, PIPE_BUF - 22, "CRITICAL: %s command \"%s\" not found\n", proc->name, proc->program->command);
-			if (write(proc->log, buf, strlen(buf))) {}
-		} else {
-			char buf[PIPE_BUF - 22];
-			snprintf(buf, PIPE_BUF - 22, "DEBUG: %s execveing command \"%s\"", proc->name, proc->program->command);
-			if (write(proc->log, buf, strlen(buf))) {}
-			execve(command, proc->program->args, environ);
-			perror("execve");
-		}
-		// on error dont leak fds
-		close(proc->log);
-		close(proc->stdin[0]);
-		close(proc->stdout[1]);
-		close(proc->stderr[1]);
-		free(command);
-		free(proc->name);
-		exit(1);
+	if (!command) {
+		snprintf(reporter.buffer, PIPE_BUF - 22, "CRITICAL: %s command \"%s\" not found\n", proc->name, proc->program->command);
+		report(&reporter, false);
+	} else {
+		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s execveing command \"%s\"\n", proc->name, proc->program->command);
+		report(&reporter, false);
+		execve(command, proc->program->args, environ);
+		perror("execve");
+	}
+	// on error dont leak fds
+	close(proc->log);
+	close(proc->stdin[0]);
+	close(proc->stdout[1]);
+	close(proc->stderr[1]);
+	free(command);
+	free(proc->name);
+	exit(1);
 }
 
 int exec(struct s_process *process, int epollfd) {
@@ -174,16 +174,16 @@ static bool should_start(struct s_process *process) {
 			return false;
 		}
 	} else if (process->status == BACKOFF) {
+		struct s_report reporter;
+		reporter.report_fd = process->log;
 		if (process->count_restart < process->program->startretries) {
 			process->count_restart++;
-			char buf[PIPE_BUF - 22];
-			snprintf(buf, PIPE_BUF - 22, "DEBUG: %s restarting for the %d time\n", process->name, process->count_restart);
-			if (write(process->log, buf, strlen(buf))) {}
+			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s restarting for the %d time\n", process->name, process->count_restart);
+			report(&reporter, false);
 			return true;
 		} else {
-			char buf[PIPE_BUF - 22];
-			snprintf(buf, PIPE_BUF - 22, "WARNING: %s is now in FATAL\n", process->name);
-			if (write(process->log, buf, strlen(buf))) {}
+			snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s is now in FATAL\n", process->name);
+			report(&reporter, false);
 			process->status = FATAL;
 			return false;
 		}
@@ -192,9 +192,10 @@ static bool should_start(struct s_process *process) {
 }
 
 void closeall(struct s_process *process, int epollfd) {
-	char buf[PIPE_BUF - 22];
-	snprintf(buf, PIPE_BUF - 22, "DEBUG: %s exited\n", process->name);
-	if (write(process->log, buf, strlen(buf))) {}
+	struct s_report reporter;
+	reporter.report_fd = process->log;
+	snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s exited\n", process->name);
+	report(&reporter, false);
 	epoll_ctl(epollfd, EPOLL_CTL_DEL, process->stdout[0], NULL);
 	epoll_ctl(epollfd, EPOLL_CTL_DEL, process->stderr[0], NULL);
 	close(process->stdin[1]);
@@ -205,23 +206,25 @@ void closeall(struct s_process *process, int epollfd) {
 
 void *administrator(void *arg) {
 	struct s_process *process = (struct s_process *)arg;
-	char buf[PIPE_BUF - 22];
-	snprintf(buf, PIPE_BUF - 22, "DEBUG: Administrator for %s created\n", process->name);
-	if (write(process->log, buf, strlen(buf))) {}
+	struct s_report reporter;
+	reporter.report_fd = process->log;
+	snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: Administrator for %s created\n", process->name);
+	report(&reporter, false);
 
 	if (process->stdoutlog) {
 		if ((process->stdout_logger.logfd = open(process->stdout_logger.logfile, O_CREAT | O_TRUNC | O_RDWR, 0666 & ~(process->stdout_logger.umask))) < 0) {
-			snprintf(buf, PIPE_BUF - 22, "ERROR: %s could not open %s for stdout logging\n", process->name, process->stdout_logger.logfile);
-			if (write(process->log, buf, strlen(buf))) {}
+			snprintf(reporter.buffer, PIPE_BUF - 22, "ERROR: %s could not open %s for stdout logging\n", process->name, process->stdout_logger.logfile);
+			report(&reporter, false);
 		}
 	}
 	if (process->stderrlog) {
 		if ((process->stderr_logger.logfd = open(process->stderr_logger.logfile, O_CREAT | O_TRUNC | O_RDWR, 0666 & ~(process->stderr_logger.umask))) < 0) {
-			snprintf(buf, PIPE_BUF - 22, "ERROR: %s could not open %s for stderr logging\n", process->name, process->stderr_logger.logfile);
-			if (write(process->log, buf, strlen(buf))) {}
+			snprintf(reporter.buffer, PIPE_BUF - 22, "ERROR: %s could not open %s for stderr logging\n", process->name, process->stderr_logger.logfile);
+			report(&reporter, false);
 		}
 	}
 	bool				start = false; // this bool serve for autostart and start signal sent by controller
+	bool				exit = false;
 	int					nfds = 0;
 	struct epoll_event	events[3], in;
 	int					epollfd = epoll_create(1);
@@ -235,37 +238,33 @@ void *administrator(void *arg) {
 	}
 
 	in.events = EPOLLIN;
-	in.data.fd = 0;
-	(void)in;
-	// ALL THIS IS TEMPORARY -- WILL USE PIPE WITH MAIN THREAD INSTEAD
-	//epoll_ctl(epollfd, EPOLL_CTL_ADD, 0, &in);
+	in.data.fd = process->com[0];
+	epoll_ctl(epollfd, EPOLL_CTL_ADD, in.data.fd, &in); // listen for main communication
 
 	while (1) {
 		if (process->status == EXITED || process->status == BACKOFF || start) {
 			if (should_start(process) || start) {
 				start = false;
-				snprintf(buf, PIPE_BUF - 22, "INFO: %s is now STARTING\n", process->name);
-				if (write(process->log, buf, strlen(buf))) {}
-				snprintf(buf, PIPE_BUF - 22, "DEBUG: %s has raw cmd %s\n", process->name, process->program->command);
-				if (write(process->log, buf, strlen(buf))) {}
+				snprintf(reporter.buffer, PIPE_BUF - 22, "INFO: %s is now STARTING\n", process->name);
+				report(&reporter, false);
+				snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s has raw cmd %s\n", process->name, process->program->command);
+				report(&reporter, false);
 				if (exec(process, epollfd)) {
-					snprintf(buf, PIPE_BUF - 22, "WARNING: %s got a fatal error in exec\n", process->name);
-					if (write(process->log, buf, strlen(buf))) {}
+					snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s got a fatal error in exec\n", process->name);
+					report(&reporter, false);
 					return NULL;
 				}
 			} else {
-
-				snprintf(buf, PIPE_BUF - 22, "INFO: %s could not restart, exiting\n", process->name);
-				if (write(process->log, buf, strlen(buf))) {}
-				usleep(1000);
+				snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s will not instantly restart\n", process->name);
+				report(&reporter, false);
 				return NULL;
 			}
 		}
 		if (process->status == STARTING) {
 			struct timeval tmp;
 			if (gettimeofday(&tmp, NULL)) {
-				snprintf(buf, PIPE_BUF - 22, "WARNING: %s got a fatal error in gettimeofday\n", process->name);
-				if (write(process->log, buf, strlen(buf))) {}
+				snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s got a fatal error in gettimeofday\n", process->name);
+				report(&reporter, false);
 				return NULL;
 			}
 
@@ -274,14 +273,14 @@ void *administrator(void *arg) {
 
 			if (((long long)process->program->startsecs * 1000) <= (tmp_micro - start_micro)) {
 				process->status = RUNNING;
-				snprintf(buf, PIPE_BUF - 22, "INFO: %s is now RUNNING\n", process->name);
-				if (write(process->log, buf, strlen(buf))) {}
+				snprintf(reporter.buffer, PIPE_BUF - 22, "INFO: %s is now RUNNING\n", process->name);
+				report(&reporter, false);
 				// need to epoll_wait 0 to return instantly
 				tmp_micro = ((long long)process->program->startsecs * 1000);
 				start_micro = 0;
 			}
-			snprintf(buf, PIPE_BUF - 22, "DEBUG: %s starting epoll time to wait : %lld\n", process->name, ((long long)process->program->startsecs * 1000) - (tmp_micro - start_micro));
-			if (write(process->log, buf, strlen(buf))) {}
+			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s starting epoll time to wait : %lld\n", process->name, ((long long)process->program->startsecs * 1000) - (tmp_micro - start_micro));
+			report(&reporter, false);
 			if (((long long)process->program->startsecs * 1000) - (tmp_micro - start_micro) > INT_MAX) { // if time to wait is bigger than an int, we wait as much as possible and come again if we got no event
 				nfds = epoll_wait(epollfd, events, 3, INT_MAX);
 			} else {
@@ -298,8 +297,8 @@ void *administrator(void *arg) {
 								write_process_log(&(process->stdout_logger), buf);
 							}
 						} else {
-							snprintf(buf, PIPE_BUF - 22, "WARNING: %s is now in BACKOFF\n", process->name);
-							if (write(process->log, buf, strlen(buf))) {}
+							snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s is now in BACKOFF\n", process->name);
+							report(&reporter, false);
 							closeall(process, epollfd);
 							process->status = BACKOFF;
 							break ;
@@ -313,8 +312,8 @@ void *administrator(void *arg) {
 								write_process_log(&(process->stderr_logger), buf);
 							}
 						} else {
-							snprintf(buf, PIPE_BUF - 22, "WARNING: %s is now in BACKOFF\n", process->name);
-							if (write(process->log, buf, strlen(buf))) {}
+							snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s is now in BACKOFF\n", process->name);
+							report(&reporter, false);
 							closeall(process, epollfd);
 							process->status = BACKOFF;
 							break ;
@@ -323,8 +322,8 @@ void *administrator(void *arg) {
 				}
 			} else if (((long long)process->program->startsecs * 1000) - (tmp_micro - start_micro) > INT_MAX) { // if timeout and not because time to wait is bigger than an int
 				process->status = RUNNING;
-				snprintf(buf, PIPE_BUF - 22, "INFO: %s is now RUNNING\n", process->name);
-				if (write(process->log, buf, strlen(buf))) {}
+				snprintf(reporter.buffer, PIPE_BUF - 22, "INFO: %s is now RUNNING\n", process->name);
+				report(&reporter, false);
 			}
 		} else if (process->status == RUNNING) {
 			nfds = epoll_wait(epollfd, events, 3, -1); // busy wait for smth to do
@@ -341,8 +340,8 @@ void *administrator(void *arg) {
 					} else {
 						closeall(process, epollfd);
 						process->status = EXITED;
-						snprintf(buf, PIPE_BUF - 22, "INFO: %s is now EXITED\n", process->name);
-						if (write(process->log, buf, strlen(buf))) {}
+						snprintf(reporter.buffer, PIPE_BUF - 22, "INFO: %s is now EXITED\n", process->name);
+						report(&reporter, false);
 						break ;
 					}
 				}
@@ -356,8 +355,8 @@ void *administrator(void *arg) {
 					} else {
 						closeall(process, epollfd);
 						process->status = EXITED;
-						snprintf(buf, PIPE_BUF - 22, "INFO: %s is now EXITED\n", process->name);
-						if (write(process->log, buf, strlen(buf))) {}
+						snprintf(reporter.buffer, PIPE_BUF - 22, "INFO: %s is now EXITED\n", process->name);
+						report(&reporter, false);
 						break ;
 					}
 				}
@@ -365,8 +364,8 @@ void *administrator(void *arg) {
 		} else if (process->status == STOPPING) {
 			struct timeval tmp;
 			if (gettimeofday(&tmp, NULL)) {
-				snprintf(buf, PIPE_BUF - 22, "WARNING: %s got a fatal error in gettimeofday\n", process->name);
-				if (write(process->log, buf, strlen(buf))) {}
+				snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s got a fatal error in gettimeofday\n", process->name);
+				report(&reporter, false);
 				return NULL;
 			}
 
@@ -374,16 +373,16 @@ void *administrator(void *arg) {
 			long long tmp_micro = ((tmp.tv_sec * 1000) + (tmp.tv_usec / 1000));
 
 			if ((long long)(process->program->stopwaitsecs * 1000) <= (long long)(tmp_micro - start_micro)) {
-				snprintf(buf, PIPE_BUF - 22, "WARNING: %s did not stop before %ds, sending SIGKILL\n", process->name, process->program->stopwaitsecs);
-				if (write(process->log, buf, strlen(buf))) {}
+				snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s did not stop before %ds, sending SIGKILL\n", process->name, process->program->stopwaitsecs);
+				report(&reporter, false);
 				process->status = STOPPED;
 				// kill(process->pid, SIGKILL);
 				// need to epoll_wait 0 to return instantly
 				tmp_micro = (process->program->stopwaitsecs * 1000);
 				start_micro = 0;
 			}
-			snprintf(buf, PIPE_BUF - 22, "DEBUG: %s stopping epoll time to wait : %lld\n", process->name, ((long long)process->program->stopwaitsecs * 1000) - (tmp_micro - start_micro));
-			if (write(process->log, buf, strlen(buf))) {}
+			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s stopping epoll time to wait : %lld\n", process->name, ((long long)process->program->stopwaitsecs * 1000) - (tmp_micro - start_micro));
+			report(&reporter, false);
 			nfds = epoll_wait(epollfd, events, 3, (int)((process->program->stopwaitsecs * 1000) - (tmp_micro - start_micro)));
 			if (nfds) { // if not timeout
 				for (int i = 0; i < nfds; i++) {
@@ -398,10 +397,13 @@ void *administrator(void *arg) {
 						} else {
 							closeall(process, epollfd);
 							process->status = STOPPED;
-							snprintf(buf, PIPE_BUF - 22, "INFO: %s is now STOPPED\n", process->name);
-							if (write(process->log, buf, strlen(buf))) {}
+							snprintf(reporter.buffer, PIPE_BUF - 22, "INFO: %s is now STOPPED\n", process->name);
+							report(&reporter, false);
 							stop.tv_sec = 0;
 							stop.tv_usec = 0;
+							if (exit) { // if need to exit administrator
+								return NULL;
+							}
 							break ;
 						}
 					}
@@ -415,23 +417,27 @@ void *administrator(void *arg) {
 						} else {
 							closeall(process, epollfd);
 							process->status = STOPPED;
-							snprintf(buf, PIPE_BUF - 22, "INFO: %s is now STOPPED\n", process->name);
-							if (write(process->log, buf, strlen(buf))) {}
+							snprintf(reporter.buffer, PIPE_BUF - 22, "INFO: %s is now STOPPED\n", process->name);
+							report(&reporter, false);
 							stop.tv_sec = 0;
 							stop.tv_usec = 0;
+							if (exit) { // if need to exit administrator
+								return NULL;
+							}
 							break ;
 						}
 					}
 				}
 			} else { // if timeout
 				process->status = STOPPED;
-				// kill(process->pid, SIGKILL);
 				stop.tv_sec = 0;
 				stop.tv_usec = 0;
+				if (exit) { // if need to exit administrator
+					return NULL;
+				}
 			}
 		} else if (process->status == STOPPED || process->status == EXITED || process->status == FATAL) {
 			nfds = epoll_wait(epollfd, events, 3, -1); // busy wait for main thread to send instruction
-
 			for (int i = 0; i < nfds; i++) {
 				// do shit
 			}
