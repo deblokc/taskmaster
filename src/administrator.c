@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/25 18:35:50 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/07 13:59:28 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -230,7 +230,7 @@ void *administrator(void *arg) {
 				start = false;
 				snprintf(buf, PIPE_BUF - 22, "INFO: %s is now STARTING\n", process->name);
 				if (write(process->log, buf, strlen(buf))) {}
-				snprintf(buf, PIPE_BUF - 22, "DEBUG: %s has raw cmd %s\n", process->program->command);
+				snprintf(buf, PIPE_BUF - 22, "DEBUG: %s has raw cmd %s\n", process->name, process->program->command);
 				if (write(process->log, buf, strlen(buf))) {}
 				if (process->program->args) {
 					printf("with args ");
@@ -248,7 +248,10 @@ void *administrator(void *arg) {
 					return NULL;
 				}
 			} else {
-				printf("%s could not restart, exiting\n", process->name); // SHOULD NOT REALLY EXIT
+
+				snprintf(buf, PIPE_BUF - 22, "INFO: %s could not restart, exiting\n", process->name);
+				if (write(process->log, buf, strlen(buf))) {}
+				usleep(1000);
 				return NULL;
 			}
 		}

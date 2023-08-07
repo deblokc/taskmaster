@@ -20,7 +20,6 @@ server:
         chmod: 0o744
         username: bdetune
         chown: :user
-    logfile: taskmaster.log
+    logfile: logs/taskmaster.log
     loglevel: DEBUG
-    logfile_maxbytes: 1024
     umask: 26

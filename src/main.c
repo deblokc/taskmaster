@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/26 18:46:40 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/07 13:45:50 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,7 +22,8 @@
 
 int g_sig = 0;
 
-void handle(int sig) {
+void handle(int sig)
+{
 	(void)sig;
 	g_sig = 1;
 }
@@ -57,12 +58,23 @@ bool end_initial_log(struct s_server *server, struct s_report *reporter, int *re
 	return (true);
 }
 
+bool end_logging_thread(struct s_report *reporter, pthread_t logger)
+{
+	strcpy(reporter->buffer, "ENDLOG\n");
+	if (!report(reporter, false))
+		return (false);
+	if (pthread_join(logger, NULL))
+		return (false);
+	return (true);
+}
+
 int main(int ac, char **av)
 {
 	void *thread_ret;
 	int ret = 0;
 	int reporter_pipe[4];
 	pthread_t initial_logger;
+	pthread_t logger;
 	struct s_report reporter;
 	struct s_server *server = NULL;
 	struct s_priority *priorities = NULL;
@@ -81,8 +93,6 @@ int main(int ac, char **av)
 	else
 	{
 		signal(SIGINT, &handle);
-		server = parse_config(av[1], &reporter);
-		if (!server) {}
 		reporter.critical = false;
 		reporter.report_fd = reporter_pipe[1];
 		bzero(reporter.buffer, PIPE_BUF + 1);
@@ -164,7 +174,29 @@ int main(int ac, char **av)
 			close(reporter_pipe[0]);
 			close(reporter_pipe[1]);
 			transfer_logs(reporter_pipe[2], server);
-			write(2, "Ready to start\n", strlen("Ready to start\n"));
+			if (pipe2(server->log_pipe, O_DIRECT | O_NONBLOCK) == -1)
+			{
+				get_stamp(reporter.buffer);
+				strcpy(&reporter.buffer[22], "CRITICAL: Could not open pipe for logging\n");
+				if (write(2, reporter.buffer, strlen(reporter.buffer)) <= 0)
+				{
+				}
+				write_log(&server->logger, reporter.buffer);
+				server = server->cleaner(server);
+				return (1);
+			}
+			if (pthread_create(&logger, NULL, main_logger, server))
+			{
+				get_stamp(reporter.buffer);
+				strcpy(&reporter.buffer[22], "CRITICAL: Could not initiate logging thread\n");
+				if (write(2, reporter.buffer, strlen(reporter.buffer)) <= 0)
+				{
+				}
+				write_log(&server->logger, reporter.buffer);
+				server = server->cleaner(server);
+				return (1);
+			}
+			reporter.report_fd = server->log_pipe[1];
 			priorities = create_priorities(server, &reporter);
 			int sock_fd = create_server();
 			struct epoll_event sock;
@@ -173,23 +205,34 @@ int main(int ac, char **av)
 			sock.events = EPOLLIN;
 			int efd = epoll_create(1);
 			epoll_ctl(efd, EPOLL_CTL_ADD, sock_fd, &sock);
+			strcpy(reporter.buffer, "INFO: Starting taskmasterd\n");
+			report(&reporter, false);
 			if (!priorities)
-				printf("No priorities\n");
+			{
+				strcpy(reporter.buffer, "DEBUG: No priorities to start\n");
+				report(&reporter, false);
+			}
 			else
 			{
-				printf("Got priorities\n");
-				// priorities->print_priorities(priorities);
-				printf("=-=-=-=-=-=-=-=-= LAUNCHING PRIORITIES =-=-=-=-=-=-=-=-=\n");
-				launch(priorities, 1);
+				strcpy(reporter.buffer, "DEBUG: Launching priorities\n");
+				report(&reporter, false);
+				launch(priorities, server->log_pipe[1]);
 
 				// todo
-				while (!g_sig) {
+				while (!g_sig)
+				{
 					check_server(sock_fd, efd);
 				}
 
 				printf("=-=-=-=-=-=-=-=-= WAITING PRIORITIES =-=-=-=-=-=-=-=-=\n");
 				wait_priorities(priorities);
 				priorities->destructor(priorities);
+			}
+			if (!end_logging_thread(&reporter, logger))
+			{
+				if (write(2, "Could not terminate logging thread\n", strlen("Could not terminate logging thread\n")))
+				{
+				}
 			}
 			server = server->cleaner(server);
 		}
