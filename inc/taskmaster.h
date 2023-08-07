@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/26 18:11:16 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/07 14:50:39 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -135,6 +135,10 @@ struct s_process {
 	int					stderr[2];
 	int					log;
 	int					com[2];
+	bool				stdoutlog;
+	struct s_logger		stdout_logger;
+	bool				stderrlog;
+	struct s_logger		stderr_logger;
 	pthread_t			handle;
 };
 
