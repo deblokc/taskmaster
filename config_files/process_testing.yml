@@ -19,8 +19,7 @@ programs:
         startsecs: 0
         bs: true
     exception:
-        command: bash -c "./taskmaster \"Hey\""
-        numprocs: 000000000005
+        command: bash -c "./taskmaster \"./config_files/inception.yml\""
         retry: 3
         umask: 777
         exitcodes:
@@ -30,7 +29,6 @@ programs:
         autostart: true
         autorestart: onerror
         startsecs: 0
-        stopsignal: HUPS
         priority: 0
     infinity&beyond:
         command: suprise I changed
@@ -42,7 +40,7 @@ server:
     connection: Unix
     user: bdetune
     umask: 022                        # umask, ranges from 000 to 777 in octal, default value 022
-    daemon: true                      # starts taskmaster as daemon if true, default false
-    loglevel: CRITICAL
+    daemon: false                      # starts taskmaster as daemon if true, default false
+    loglevel: INFO
     env:
         kk: cool

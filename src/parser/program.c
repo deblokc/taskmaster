@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/19 19:03:58 by bdetune           #+#    #+#             */
-/*   Updated: 2023/08/07 17:57:59 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/07 19:19:24 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,13 +25,7 @@ static struct s_program *cleaner(struct s_program *self)
 	if (self->command)
 		free(self->command);
 	if (self->args)
-	{
-		for (int i = 0; (self->args)[i]; i++)
-		{
-			free((self->args)[i]);
-		}
 		free(self->args);
-	}
 	if (self->exitcodes)
 		free(self->exitcodes);
 	if (self->env)
@@ -290,11 +284,11 @@ static bool add_value(struct s_program *program, yaml_document_t *document, char
 	else if (!strcmp("startretries", key))
 		ret = add_number(program->name, "startretries", &program->startretries, value, 0, 10, reporter);
 	else if (!strcmp("autorestart", key))
-		add_autorestart(program, value, reporter);
+		ret = add_autorestart(program, value, reporter);
 	else if (!strcmp("exitcodes", key))
 		ret = add_exitcodes(program, document, value, reporter);
 	else if (!strcmp("stopsignal", key))
-		add_stopsignal(program, value, reporter);
+		ret = add_stopsignal(program, value, reporter);
 	else if (!strcmp("stopwaitsecs", key))
 		ret = add_number(program->name, "stopwaitsecs", &program->stopwaitsecs, value, 0, 300, reporter);
 	else if (!strcmp("stopasgroup", key))
@@ -367,12 +361,10 @@ static void trim(struct s_program *program, struct s_report *reporter)
 	size_t	i = 0;
 	size_t	j = 0;
 
-	if(write(2, "Trimming\n", strlen("Trimming\n"))){}
 	if (!program->command)
 		return ;
 	while (program->command[i] && ((program->command[i] >= '\t' && program->command[i] <= '\r') || program->command[i] == ' '))
 		++i;
-	printf("index: %ld\n", i);
 	if (!program->command[i])
 	{
 		free(program->command);
@@ -463,6 +455,22 @@ static bool has_arg(char* cmd, size_t *index, size_t len)
 	return (true);
 }
 
+static char*	add_arg(char* command, size_t *index, size_t len)
+{
+	char*	ret;
+
+	while (*index != len && command[*index] == '\0')
+	{
+		*index += 1;
+	}
+	ret = &command[*index];
+	while (*index != len && command[*index] != '\0')
+	{
+		*index += 1;
+	}
+	return (ret);
+}
+
 static bool parse_command(struct s_program *program, struct s_report *reporter)
 {
 	size_t	nb_arg = 0;
@@ -483,7 +491,18 @@ static bool parse_command(struct s_program *program, struct s_report *reporter)
 	{
 		++nb_arg;
 	}
-	printf("Found %ld args\n", nb_arg);
+	program->args = calloc(nb_arg + 1, sizeof(*program->args));
+	if (!(program->args))
+	{
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: could not allocate args for program '%s'\n", program->name);
+		report(reporter, true);
+		return (false);
+	}
+	current_arg = 0;
+	for (size_t runner = 0; runner < nb_arg; ++runner)
+	{
+		program->args[runner] = add_arg(program->command, &current_arg, max);
+	}
 	return (true);
 }
 
