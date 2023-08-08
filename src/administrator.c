@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/08 18:46:58 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/08 19:33:08 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -362,7 +362,7 @@ void *administrator(void *arg) {
 				if (events[i].data.fd == in.data.fd) {
 					bzero(buf, PIPE_BUF + 1);
 					if (read(in.data.fd, buf, PIPE_BUF) > 0) {
-						snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s's administrator received something from main thread\n", process->name);
+						snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s's administrator received something from main thread while RUNNING\n", process->name);
 						report(&reporter, false);
 						if (!strcmp(buf, "exit")) {
 							snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s has received order to exit\n", process->name);
@@ -504,9 +504,24 @@ void *administrator(void *arg) {
 				}
 			}
 		} else if (process->status == STOPPED || process->status == EXITED || process->status == FATAL) {
+			char buf[PIPE_BUF + 1];
+			bzero(buf, PIPE_BUF + 1);
 			nfds = epoll_wait(epollfd, events, 3, -1); // busy wait for main thread to send instruction
 			for (int i = 0; i < nfds; i++) {
-				// do shit
+				if (events[i].data.fd == in.data.fd) {
+					if (read(in.data.fd, buf, PIPE_BUF) > 0) {
+						snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s's administrator received something from main thread while STOPPED\n", process->name);
+						report(&reporter, false);
+						if (!strcmp(buf, "exit")) {
+							snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s has received order to exit\n", process->name);
+							report(&reporter, false);
+							snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s was already stopped, exiting administrator\n", process->name);
+							report(&reporter, false);
+							return NULL;
+						}
+					} else {
+					}
+				}
 			}
 		}
 	}
