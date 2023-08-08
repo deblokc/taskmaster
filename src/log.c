@@ -301,3 +301,30 @@ void	*main_logger(void *void_server)
 	}
 	return (NULL);
 }
+
+bool	start_logging_thread(struct s_server *server, bool daemonized)
+{
+	struct s_report	reporter;
+
+	if (pipe2(server->log_pipe, O_DIRECT | O_NONBLOCK) == -1)
+	{
+		get_stamp(reporter.buffer);
+		strcpy(&reporter.buffer[22], "CRITICAL: Could not open pipe for logging\n");
+		if (!daemonized && write(2, reporter.buffer, strlen(reporter.buffer)) <= 0)
+		{
+		}
+		write_log(&server->logger, reporter.buffer);
+		return (false);
+	}
+	if (pthread_create(&server->logging_thread, NULL, main_logger, server))
+	{
+		get_stamp(reporter.buffer);
+		strcpy(&reporter.buffer[22], "CRITICAL: Could not initiate logging thread\n");
+		if (!daemonized && write(2, reporter.buffer, strlen(reporter.buffer)) <= 0)
+		{
+		}
+		write_log(&server->logger, reporter.buffer);
+		return (false);
+	}
+	return (true);
+}

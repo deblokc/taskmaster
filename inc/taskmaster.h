@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/07 16:00:40 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/08 17:18:50 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -73,12 +73,15 @@ struct s_logger {
 };
 
 struct s_socket {
+	int		sockfd;
+	bool	enable;
 	char	*socketpath;
-	int		chmod;
+	int		umask;
 	char	*uid;
 	char	*gid;
 	char	*user;
 	char	*password;
+	void	(*destructor)(struct s_socket*);
 };
 
 struct s_priority {
@@ -153,6 +156,8 @@ struct s_server {
 	struct s_socket		socket;
 	struct s_program*	program_tree;
 	struct s_priority*	priorities;
+	pid_t				pid;
+	pthread_t			logging_thread;
 	struct s_server*	(*cleaner)(struct s_server*);
 	void				(*insert)(struct s_server*, struct s_program*, struct s_report *reporter);
 	void				(*delete_tree)(struct s_server*);
@@ -186,6 +191,11 @@ void				transfer_logs(int tmp_fd, struct s_server *server);
 bool				write_log(struct s_logger *logger, char* log_string);
 char				*get_stamp(char* stamp_str);
 void				*main_logger(void *void_server);
+void				init_socket(struct s_socket *socket);
+bool				parse_socket(struct s_server *server, yaml_document_t *document, int value_index, struct s_report *reporter);
+bool				start_logging_thread(struct s_server *server, bool daemonized);
+int					daemonize(struct s_server *server);
+bool				end_logging_thread(struct s_report *reporter, pthread_t logger);
 
 int create_server(void);
 void handle(int sig);

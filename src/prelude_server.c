@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/25 18:58:58 by bdetune           #+#    #+#             */
-/*   Updated: 2023/08/07 18:57:43 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/08 14:14:14 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -92,7 +92,7 @@ void	prelude(struct s_server *server, struct s_report *reporter)
 			return ;
 		}
 	}
-	if ((server->logger.logfd = open(server->logger.logfile, O_CREAT | O_APPEND | O_RDWR, 0666 & ~server->umask)) == -1)
+	if ((server->logger.logfd = open(server->logger.logfile, O_CREAT | O_APPEND | O_RDWR | O_NOCTTY, 0666 & ~server->umask)) == -1)
 	{
 		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not open logfile\n");
 		report(reporter, true);

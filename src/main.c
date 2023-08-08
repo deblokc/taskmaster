@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/07 19:30:53 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/08 17:10:06 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,6 +26,33 @@ void handle(int sig)
 {
 	(void)sig;
 	g_sig = 1;
+}
+
+void	create_pid_file(struct s_server *server, struct s_report *reporter)
+{
+	int	fd;
+	
+	if (!server->pidfile)
+		fd = open("taskmasterd.pid", O_CREAT | O_EXCL | O_TRUNC | O_RDWR, 0666 & ~server->umask);
+	else
+		fd = open(server->pidfile, O_CREAT | O_EXCL | O_TRUNC | O_RDWR, 0666 & ~server->umask);
+	if (fd  < 0)
+	{
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not create pid file, exiting process\n");
+		report(reporter, true);
+		return ;
+	}
+	snprintf(reporter->buffer, PIPE_BUF, "%d\n", server->pid);
+	if (write(fd, reporter->buffer, strlen(reporter->buffer)) == -1)
+	{
+		if (server->pidfile)
+			unlink(server->pidfile);
+		else
+			unlink("taskmasterd.pid");
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not write pid to file, exiting process\n");
+		report(reporter, true);
+	}
+	close(fd);
 }
 
 bool end_initial_log(struct s_server *server, struct s_report *reporter, int *reporter_pipe, void **thread_ret, pthread_t initial_logger)
@@ -74,7 +101,6 @@ int main(int ac, char **av)
 	int ret = 0;
 	int reporter_pipe[4];
 	pthread_t initial_logger;
-	pthread_t logger;
 	struct s_report reporter;
 	struct s_server *server = NULL;
 	struct s_priority *priorities = NULL;
@@ -174,30 +200,55 @@ int main(int ac, char **av)
 			close(reporter_pipe[0]);
 			close(reporter_pipe[1]);
 			transfer_logs(reporter_pipe[2], server);
-			if (pipe2(server->log_pipe, O_DIRECT | O_NONBLOCK) == -1)
+			if (!start_logging_thread(server, false))
 			{
-				get_stamp(reporter.buffer);
-				strcpy(&reporter.buffer[22], "CRITICAL: Could not open pipe for logging\n");
-				if (write(2, reporter.buffer, strlen(reporter.buffer)) <= 0)
-				{
-				}
-				write_log(&server->logger, reporter.buffer);
-				server = server->cleaner(server);
-				return (1);
-			}
-			if (pthread_create(&logger, NULL, main_logger, server))
-			{
-				get_stamp(reporter.buffer);
-				strcpy(&reporter.buffer[22], "CRITICAL: Could not initiate logging thread\n");
-				if (write(2, reporter.buffer, strlen(reporter.buffer)) <= 0)
-				{
-				}
-				write_log(&server->logger, reporter.buffer);
 				server = server->cleaner(server);
 				return (1);
 			}
 			reporter.report_fd = server->log_pipe[1];
 			priorities = create_priorities(server, &reporter);
+			if (reporter.critical)
+			{
+				strcpy(reporter.buffer, "CRITICAL: Could not build priorities, exiting taskmasterd\n");
+				report(&reporter, true);
+				if (!end_logging_thread(&reporter, server->logging_thread))
+				{
+					if (write(2, "Could not terminate logging thread\n", strlen("Could not terminate logging thread\n")))
+					{
+					}
+				}	
+				server = server->cleaner(server);
+				return (1);
+			}
+			if (server->daemon)
+			{
+				ret = daemonize(server);
+				if (ret != -1)
+				{
+					if (priorities)
+						priorities->destructor(priorities);
+					server->cleaner(server);
+					exit(ret);
+				}
+			}
+			else
+			{
+				server->pid = getpid();
+			}
+			create_pid_file(server, &reporter);
+			if (reporter.critical)
+			{
+				if (!end_logging_thread(&reporter, server->logging_thread))
+				{
+					if (!server->daemon && write(2, "Could not terminate logging thread\n", strlen("Could not terminate logging thread\n")))
+					{
+					}
+				}
+				if (priorities)
+					priorities->destructor(priorities);
+				server->cleaner(server);
+				return (1);
+			}
 			int sock_fd = create_server();
 			struct epoll_event sock;
 			bzero(&sock, sizeof(sock));
@@ -228,12 +279,16 @@ int main(int ac, char **av)
 				wait_priorities(priorities);
 				priorities->destructor(priorities);
 			}
-			if (!end_logging_thread(&reporter, logger))
+			if (!end_logging_thread(&reporter, server->logging_thread))
 			{
 				if (write(2, "Could not terminate logging thread\n", strlen("Could not terminate logging thread\n")))
 				{
 				}
 			}
+			if (server->pidfile)
+				unlink(server->pidfile);
+			else
+				unlink("taskmasterd.pid");
 			server = server->cleaner(server);
 		}
 	}

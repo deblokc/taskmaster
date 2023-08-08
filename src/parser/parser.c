@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 18:00:54 by bdetune           #+#    #+#             */
-/*   Updated: 2023/07/25 14:53:48 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/08 11:25:26 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -53,6 +53,16 @@ static bool parse_document(struct s_server *server, yaml_document_t * document, 
 						snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Parsing 'server' block\n");
 						report(reporter, false);
 						if (!parse_server(server, document, (current_node->data.mapping.pairs.start + i)->value, reporter))
+						{
+							ret = false;
+							break ;
+						}
+					}
+					else if (!strcmp((char*)key_node->data.scalar.value, "ssocket"))
+					{
+						snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Parsing 'socket' block\n");
+						report(reporter, false);
+						if (!parse_socket(server, document, (current_node->data.mapping.pairs.start + i)->value, reporter))
 						{
 							ret = false;
 							break ;
