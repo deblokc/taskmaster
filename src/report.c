@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/11 19:41:17 by bdetune           #+#    #+#             */
-/*   Updated: 2023/08/07 17:39:18 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/08 13:49:20 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,7 +34,7 @@ bool	report(struct s_report* reporter, bool critical)
 	bool	success = false;
 
 	reporter->critical = critical;
-	for (int i = 0; i < 42; ++i)
+	for (int i = 0; i < 100; ++i)
 	{
 		if (write(reporter->report_fd, reporter->buffer, strlen(reporter->buffer)) != -1) {
 			success = true;
@@ -99,6 +99,8 @@ void	*initial_log(void *fds)
 	{
 		if ((nb_events = epoll_wait(epoll_fd, &event, 1, 100000)) == -1)
 		{
+			if (errno == EINTR)
+				continue ;
 			if (write(2, "CRITICAL: Error while waiting for epoll event, exiting process\n", strlen("CRITICAL: Error while waiting for epoll event, exiting process\n")) == -1) {};
 			event.data.fd = reporter_pipe[0];
 			event.events = EPOLLIN;
