@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 15:17:03 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/26 18:30:16 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/08 16:13:51 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -116,10 +116,9 @@ void remote_exec(char *cmd, int efd, struct epoll_event sock) {
 	 *  THIS MEANS IT WILL ALWAYS FIRST `SEND A REQUEST` (OR MORE ACCURATELLY
 	 *  TRANSFER THE COMMAND) AND THEN `PRINT THE RESPONSE` WITHOUT ANY THOUGH
 	 */
-	printf("remote exec\n");
-
 	if (strlen(cmd) > PIPE_BUF) {
 		printf("line too long...\n");
+		return ;
 	}
 
 	sock.events = EPOLLOUT;
@@ -145,7 +144,7 @@ void remote_exec(char *cmd, int efd, struct epoll_event sock) {
 			char buf[PIPE_BUF + 1];
 			bzero(buf, PIPE_BUF + 1);
 			recv(tmp.data.fd, buf, PIPE_BUF, 0);
-			printf("%s\n", buf); // DUMBLY PRINT RESPONSE
+			printf("%s", buf); // DUMBLY PRINT RESPONSE
 		}
 	} else if (ret == 0) {
 		printf("SOCKET TIMED OUT\n");

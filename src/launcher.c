@@ -6,22 +6,73 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/07 10:59:08 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/07 18:26:37 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/08 16:29:36 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "taskmaster.h"
 #include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
 
-char *getname(char *name, int num) {
-	size_t size = strlen(name) + 2;
-	char *ret = (char *)calloc(size, sizeof(char));
-	if (!ret) {
-		return NULL;
+static size_t	ft_size(int n)
+{
+	size_t			size;
+	unsigned int	nb;
+
+	size = 0;
+	if (n < 0)
+	{
+		size++;
+		nb = (unsigned int)-n;
 	}
-	strcpy(ret, name);
-	ret[size - 1] = '0' + (char)num + 1;
-	return (ret);
+	else
+		nb = (unsigned int)n;
+	while (nb > 9)
+	{
+		nb /= 10;
+		size++;
+	}
+	return (++size);
+}
+
+static long	power(int n, size_t power)
+{
+	long	rep;
+
+	rep = 1;
+	while (power-- > 0)
+		rep *= n;
+	return (rep);
+}
+
+char	*itoa(int n)
+{
+	char			*dest;
+	unsigned int	nb;
+	size_t			i;
+	size_t			pow;
+
+	i = 0;
+	dest = (char *)malloc(sizeof(char) * (ft_size(n) + 1));
+	if (!dest)
+		return (NULL);
+	pow = ft_size(n);
+	if (n < 0)
+	{
+		pow--;
+		nb = (unsigned int)-n;
+		dest[i++] = '-';
+	}
+	else
+		nb = (unsigned int)n;
+	while (pow-- > 0)
+	{
+		dest[i++] = (char)((nb / power(10, pow)) + '0');
+		nb = (unsigned int)(nb % power(10, pow));
+	}
+	dest[i] = '\0';
+	return (dest);
 }
 
 void wait_process(struct s_program *lst) {
@@ -115,9 +166,11 @@ void create_process(struct s_program *lst, int log_fd) {
 			}
 		} else {
 			for (int j = 0; j < lst->numprocs; j++) {
-				lst->processes[j].name = getname(lst->name, j);
+				char *tmp = itoa(j);
+				lst->processes[j].name = strjoin(lst->name, "_", tmp);
+				free(tmp);
 				if (!lst->processes[j].name) {
-					printf("FATAL ERROR GETNAME FAILED\n");
+					printf("FATAL ERROR WITH NAME\n");
 				}
 				lst->processes[j].stdoutlog = lst->stdoutlog;
 				lst->processes[j].stdout_logger = lst->stdout_logger;

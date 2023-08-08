@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/08 15:36:26 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/08 18:16:18 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -82,6 +82,7 @@ struct s_command *process_line(char *line) {
 					cmd->arg = (char **)calloc(sizeof(char *), 2);
 					cmd->arg[0] = ret;
 					cmd->arg[1] = NULL;
+					i++;
 				} else {
 					i++;
 					cmd->arg = (char **)realloc(cmd->arg, (sizeof(char *) * (i + 1)));
@@ -129,6 +130,7 @@ void check_server(int sock_fd, int efd, struct s_server *serv) {
 							epoll_ctl(efd, EPOLL_CTL_DEL, client->poll.data.fd, &client->poll);
 							if (client == list) {
 								list = client->next;
+								close(client->poll.data.fd);
 								free(client);
 							} else {
 								struct s_client *head = list;
@@ -136,6 +138,7 @@ void check_server(int sock_fd, int efd, struct s_server *serv) {
 									head = head->next;
 								}
 								head->next = client->next;
+								close(client->poll.data.fd);
 								free(client);
 							}
 							break ;
@@ -148,12 +151,15 @@ void check_server(int sock_fd, int efd, struct s_server *serv) {
 							char *fatal_error = "Fatal Error in process_line\n";
 							memcpy(client->buf, fatal_error, strlen(fatal_error));
 						} else {
-							snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: controller send command %s", cmd->cmd);
-							for (int i = 0; cmd->arg[i]; i++) {
-								strcat(reporter.buffer, " ");
-								strcat(reporter.buffer, cmd->arg[i]);
+							snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: controller send command \"%s", cmd->cmd);
+							if (cmd->arg) {
+								for (int i = 0; cmd->arg[i]; i++) {
+									snprintf(reporter.buffer + strlen(reporter.buffer), PIPE_BUF - 22, "\" \"%s", cmd->arg[i]);
+								}
+								snprintf(reporter.buffer + strlen(reporter.buffer), PIPE_BUF - 22, "\"\n");
+							} else {
+								snprintf(reporter.buffer + strlen(reporter.buffer), PIPE_BUF - 22, "\"\n");
 							}
-							strcat(reporter.buffer, "\n");
 							report(&reporter, false);
 							if (!strcmp(cmd->cmd, "maintail")) {      //send via logging thread
 							} else if (!strcmp(cmd->cmd, "signal")) {  //administrator send signal
@@ -162,14 +168,19 @@ void check_server(int sock_fd, int efd, struct s_server *serv) {
 								report(&reporter, false);
 								if (cmd->arg) {
 									if (!strcmp(cmd->arg[0], "all")) {
-										// send stop to every process
+										for (struct s_program *current = serv->begin(serv); current; current = current->itnext(current)) {
+											for (int i = 0; i < current->numprocs; i++) {
+												if (write(current->processes[i].com[1], "stop", strlen("stop"))) {}
+											}
+										}
 									} else {
 										for (int i = 0; cmd->arg[i]; i++) {
 											for (struct s_program *current = serv->begin(serv); current; current = current->itnext(current)) {
 												if (!strncmp(current->name, cmd->arg[i], strlen(current->name))) {
 													for (int j = 0; j < current->numprocs; j++) {
-														// add check
-														if (write(current->processes[j].com[1], "stop", strlen("stop"))) {}
+														if (!strcmp(current->processes[j].name, cmd->arg[i])) {
+															if (write(current->processes[j].com[1], "stop", strlen("stop"))) {}
+														}
 													}
 												}
 											}
@@ -186,6 +197,27 @@ void check_server(int sock_fd, int efd, struct s_server *serv) {
 							} else if (!strcmp(cmd->cmd, "pid")) {     //main thread send pid of process
 							} else if (!strcmp(cmd->cmd, "shutdown")) {//main thread stop all process & exit
 							} else if (!strcmp(cmd->cmd, "status")) {  //administrator send status
+								char *status[7] = {"STOPPED", "STARTING", "RUNNING", "BACKOFF", "STOPPING", "EXITED", "FATAL"};
+								if (cmd->arg) {
+									for (int i = 0; cmd->arg[i]; i++) {
+										for (struct s_program *current = serv->begin(serv); current; current = current->itnext(current)) {
+											if (!strncmp(current->name, cmd->arg[i], strlen(current->name))) {
+												for (int j = 0; j < current->numprocs; j++) {
+													if (!strcmp(cmd->arg[i], current->processes[j].name)) {
+														snprintf(client->buf + strlen(client->buf), PIPE_BUF + 1, "%s : %s\n", current->processes[j].name, status[current->processes[j].status]);
+													}
+												}
+											}
+	
+										}
+									}
+								} else {
+									for (struct s_program *current = serv->begin(serv); current; current = current->itnext(current)) {
+										for (int i = 0; i < current->numprocs; i++) {
+											snprintf(client->buf + strlen(client->buf), PIPE_BUF + 1, "%s : %s\n", current->processes[i].name, status[current->processes[i].status]);
+										}
+									}
+								}
 							} else if (!strcmp(cmd->cmd, "update")) {  //reparse config file
 							} else {
 								char *unknown_cmd = "Unknown command\n";
@@ -195,8 +227,14 @@ void check_server(int sock_fd, int efd, struct s_server *serv) {
 						}
 					} else if (tmp.events & EPOLLOUT) {
 						// send response located in client->buf
-						printf("SENDING DATA\n");
-						send(tmp.data.fd, client->buf, strlen(client->buf), 0);
+						if (strlen(client->buf)) {
+							printf("SENDING BACK DATA : >%s< \n", client->buf);
+							send(tmp.data.fd, client->buf, strlen(client->buf), 0);
+							bzero(client->buf, PIPE_BUF + 1);
+						} else {
+							printf("SENDING BACK NON ZERO RESPONSE\n");
+							send(tmp.data.fd, ".\n", 2, 0);
+						}
 						client->poll.events = EPOLLIN;
 						epoll_ctl(efd, EPOLL_CTL_MOD, client->poll.data.fd, &client->poll);
 					}

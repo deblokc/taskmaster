@@ -1,7 +1,7 @@
 programs:
     exception:
         command: /bin/sh
-        numprocs: 2
+        numprocs: 11
         retry: 3
         umask: 022
         exitcodes:
@@ -10,16 +10,6 @@ programs:
         autorestart: onerror
         stopsignal: KILL
         priority: 3
-    echoeing:
-        command: echo 1
-        retry: 3
-        umask: 027
-        user: bdetune
-        workingdir: /
-        env:
-            PATH: ""
-            PATH: "/"
-            pwd: "~"
 server:
     unixsocket:
         file: /mnt/nfs/homes/bdetune/taskmasterd.sock
