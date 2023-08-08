@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/07 16:17:25 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/08 14:56:24 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -194,7 +194,7 @@ void				*main_logger(void *void_server);
 
 int create_server(void);
 void handle(int sig);
-void check_server(int sock_fd, int efd);
+void check_server(int sock_fd, int efd, struct s_server *serv);
 
 extern int g_sig;
 

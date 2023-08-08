@@ -1,12 +1,12 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   server.c                                             :+:      :+:    :+:   */
+/*   server.c                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/26 18:34:56 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/08 15:36:26 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -96,12 +96,13 @@ struct s_command *process_line(char *line) {
 	}
 }
 
-void check_server(int sock_fd, int efd) {
+void check_server(int sock_fd, int efd, struct s_server *serv) {
 	static struct s_client	*list = NULL;
 	char					buf[PIPE_BUF + 1];
 	struct epoll_event		tmp;
 	char					*cmd;
 
+	(void)serv;
 	bzero(&tmp, sizeof(tmp));
 	bzero(&cmd, sizeof(cmd));
 	if (epoll_wait(efd, &tmp, 1, 0) > 0) { // for now only check one event every time, might change
@@ -114,6 +115,9 @@ void check_server(int sock_fd, int efd) {
 				list = client;
 			}
 		} else {
+			struct s_report reporter;
+			reporter.report_fd = serv->log_pipe[1];
+
 			printf("GOT SMTH\n");
 			struct s_client *client = list;
 			while (client) {
@@ -144,9 +148,34 @@ void check_server(int sock_fd, int efd) {
 							char *fatal_error = "Fatal Error in process_line\n";
 							memcpy(client->buf, fatal_error, strlen(fatal_error));
 						} else {
-							 if (!strcmp(cmd->cmd, "maintail")) {      //send via logging thread
+							snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: controller send command %s", cmd->cmd);
+							for (int i = 0; cmd->arg[i]; i++) {
+								strcat(reporter.buffer, " ");
+								strcat(reporter.buffer, cmd->arg[i]);
+							}
+							strcat(reporter.buffer, "\n");
+							report(&reporter, false);
+							if (!strcmp(cmd->cmd, "maintail")) {      //send via logging thread
 							} else if (!strcmp(cmd->cmd, "signal")) {  //administrator send signal
 							} else if (!strcmp(cmd->cmd, "stop")) {    //administrator stop process
+								snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: controller has sent stop command\n");
+								report(&reporter, false);
+								if (cmd->arg) {
+									if (!strcmp(cmd->arg[0], "all")) {
+										// send stop to every process
+									} else {
+										for (int i = 0; cmd->arg[i]; i++) {
+											for (struct s_program *current = serv->begin(serv); current; current = current->itnext(current)) {
+												if (!strncmp(current->name, cmd->arg[i], strlen(current->name))) {
+													for (int j = 0; j < current->numprocs; j++) {
+														// add check
+														if (write(current->processes[j].com[1], "stop", strlen("stop"))) {}
+													}
+												}
+											}
+										}
+									}
+								}
 							} else if (!strcmp(cmd->cmd, "avail")) {   //main thread return available process
 							} else if (!strcmp(cmd->cmd, "fg")) {      //administrator send logging and stdin
 							} else if (!strcmp(cmd->cmd, "reload")) {  //restart daemon

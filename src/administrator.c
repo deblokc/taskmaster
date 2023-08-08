@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/07 18:24:14 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/08 15:35:58 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -242,7 +242,7 @@ void *administrator(void *arg) {
 	epoll_ctl(epollfd, EPOLL_CTL_ADD, in.data.fd, &in); // listen for main communication
 
 	while (1) {
-		if (process->status == EXITED || process->status == BACKOFF || start) {
+		if (process->status == EXITED || process->status == BACKOFF || (process->status != STOPPING && start)) {
 			if (should_start(process) || start) {
 				start = false;
 				snprintf(reporter.buffer, PIPE_BUF - 22, "INFO: %s is now STARTING\n", process->name);
@@ -361,7 +361,57 @@ void *administrator(void *arg) {
 				}
 				if (events[i].data.fd == in.data.fd) {
 					bzero(buf, PIPE_BUF + 1);
-					if (read(in.data.fd, buf, PIPE_BUF)) {
+					if (read(in.data.fd, buf, PIPE_BUF) > 0) {
+						snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s's administrator received something from main thread\n", process->name);
+						report(&reporter, false);
+						if (!strcmp(buf, "exit")) {
+							snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s has received order to exit\n", process->name);
+							report(&reporter, false);
+							if (process->status == STARTING || process->status == RUNNING || process->status == BACKOFF) {
+								snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s was not already stopped, sending him signal %d to stop him\n", process->name, process->program->stopsignal);
+								report(&reporter, false);
+								process->status = STOPPING;
+								kill(process->pid, process->program->stopsignal);
+							} else {
+								snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s was already stopped, exiting administrator\n", process->name);
+								report(&reporter, false);
+							}
+							exit = true;
+						} else if (!strcmp(buf, "stop")) {
+							snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s has received order to stop\n", process->name);
+							report(&reporter, false);
+							if (process->status == STARTING || process->status == RUNNING || process->status == BACKOFF) {
+								snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s was not already stopped, sending him signal %d to stop him\n", process->name, process->program->stopsignal);
+								report(&reporter, false);
+								process->status = STOPPING;
+								kill(process->pid, process->program->stopsignal);
+							} else {
+								snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s was stopped, did nothing\n", process->name);
+								report(&reporter, false);
+							}
+						} else if (!strcmp(buf, "start")) {
+							snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s has received order to start\n", process->name);
+							report(&reporter, false);
+							if (process->status == STOPPED || process->status == EXITED || process->status == FATAL) {
+								snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s was stopped, starting it\n", process->name);
+								report(&reporter, false);
+								start = true;
+							} else {
+								snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s was running, did nothing\n", process->name);
+								report(&reporter, false);
+							}
+						} else if (!strncmp(buf, "sig", 3)) {
+							snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s has received order to send sig %d to process", process->name, (int)buf[3]);
+							report(&reporter, false);
+							kill(process->pid, (int)buf[3]);
+						} else if (!strcmp(buf, "status")) {
+							snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s has received order to send back status\n", process->name);
+							report(&reporter, false);
+							if (write(in.data.fd, (char *)&(process->status), 1)) {}
+						}
+					} else {
+						snprintf(reporter.buffer, PIPE_BUF - 22, "ERROR: %s's administrator could not read from main thread, exiting to avoid hanging\n", process->name);
+						report(&reporter, false);
 						process->status = STOPPING;
 						exit = true;
 					}

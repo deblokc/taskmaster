@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/07 19:30:53 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/08 14:56:07 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -221,7 +221,7 @@ int main(int ac, char **av)
 				// todo
 				while (!g_sig)
 				{
-					check_server(sock_fd, efd);
+					check_server(sock_fd, efd, server);
 				}
 				strcpy(reporter.buffer, "DEBUG: Waiting priorities\n");
 				report(&reporter, false);

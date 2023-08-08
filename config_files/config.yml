@@ -1,6 +1,6 @@
 programs:
     exception:
-        command: /bin/sh -c "echo 32; sleep 5"
+        command: /bin/sh
         numprocs: 2
         retry: 3
         umask: 022
@@ -8,7 +8,7 @@ programs:
             - 0
             - 1
         autorestart: onerror
-        stopsignal: USR2
+        stopsignal: KILL
         priority: 3
     echoeing:
         command: echo 1
