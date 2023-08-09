@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/09 17:34:29 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/09 18:08:13 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -147,6 +147,14 @@ struct s_client *new_client(struct s_client *list, int client_fd) {
 		new->poll.data.fd = client_fd;
 		bzero(new->buf, PIPE_BUF + 1);
 		return (new);
+	}
+}
+
+void exit_admins(struct s_server *serv) {
+	for (struct s_program *current = serv->begin(serv); current; current = current->itnext(current)) {
+		for (int i = 0; i < current->numprocs; i++) {
+			if (write(current->processes[i].com[1], "exit", strlen("exit"))) {}
+		}
 	}
 }
 
@@ -378,6 +386,8 @@ void check_server(int sock_fd, int efd, struct s_server *serv) {
 									snprintf(client->buf, PIPE_BUF + 1, "%d\n", getpid());
 								}
 							} else if (!strcmp(cmd->cmd, "shutdown")) {//main thread stop all process & exit
+								//FOR NOW SET g_sig LATER DO MORE
+								g_sig = 1;
 							} else if (!strcmp(cmd->cmd, "status")) {  //administrator send status
 								char *status[7] = {"STOPPED", "STARTING", "RUNNING", "BACKOFF", "STOPPING", "EXITED", "FATAL"};
 								if (cmd->arg) {

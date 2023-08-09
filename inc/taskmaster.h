@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/09 17:33:22 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/09 18:07:11 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -207,9 +207,11 @@ bool				start_logging_thread(struct s_server *server, bool daemonized);
 int					daemonize(struct s_server *server);
 bool				end_logging_thread(struct s_report *reporter, pthread_t logger);
 
-void				 create_server(struct s_server *server, struct s_report *reporter);
-void handle(int sig);
-void check_server(int sock_fd, int efd, struct s_server *serv);
+
+void				exit_admins(struct s_server *serv);
+void				create_server(struct s_server *server, struct s_report *reporter);
+void				handle(int sig);
+void				check_server(int sock_fd, int efd, struct s_server *serv);
 
 extern volatile sig_atomic_t g_sig;
 

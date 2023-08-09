@@ -11,17 +11,11 @@ programs:
         stopsignal: KILL
         priority: 3
 server:
-    unixsocket:
-        file: /mnt/nfs/homes/bdetune/taskmasterd.sock
-        chmod: 0o744
-        username: bdetune
-        chown: :user
     daemon: false
     logfile: taskmaster.log
     loglevel: DEBUG
 
 socket:
     enable: true
-    socketpath: /mnt/nfs/homes/bdetune/42Cursus/42Unix/taskmaster/taskmaster.sock
-    uid: bdetune
+    socketpath: /tmp/taskmaster.sock
     umask: 077

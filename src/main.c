@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/09 17:34:03 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/09 17:52:40 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -305,6 +305,7 @@ int main(int ac, char **av)
 				{
 					check_server(server->socket.sockfd, efd, server);
 				}
+				exit_admins(server);
 			}
 			else
 			{

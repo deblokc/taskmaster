@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/09 15:25:11 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/09 18:16:31 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -509,6 +509,8 @@ void *administrator(void *arg) {
 							process->stop.tv_sec = 0;
 							process->stop.tv_usec = 0;
 							if (process->bool_exit) { // if need to exit administrator
+								snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s's administrator exited\n", process->name);
+								report(&reporter, false);
 								return NULL;
 							}
 							break ;
@@ -529,6 +531,8 @@ void *administrator(void *arg) {
 							process->stop.tv_sec = 0;
 							process->stop.tv_usec = 0;
 							if (process->bool_exit) { // if need to exit administrator
+								snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s's administrator exited\n", process->name);
+								report(&reporter, false);
 								return NULL;
 							}
 							break ;
@@ -563,6 +567,8 @@ void *administrator(void *arg) {
 				process->stop.tv_sec = 0;
 				process->stop.tv_usec = 0;
 				if (process->bool_exit) { // if need to exit administrator
+					snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s's administrator exited\n", process->name);
+					report(&reporter, false);
 					return NULL;
 				}
 			}
