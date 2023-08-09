@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/08 12:33:09 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/09 16:41:25 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,6 +16,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/types.h>
+#include <pwd.h>
+#include <grp.h>
+#include <sys/stat.h>
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -34,23 +38,97 @@ struct s_client {
 	struct s_client		*next;
 };
 
-int create_server(void) {
-	int fd;
-	struct sockaddr_un addr;
+void create_server(struct s_server *server, struct s_report *reporter) {
+	uid_t				user;
+	gid_t				group;
+	struct group		*gid = NULL;
+	struct passwd		*uid = NULL;
+	struct sockaddr_un	addr;
 	
-	fd = socket(AF_UNIX, SOCK_STREAM, 0);
-	if (fd < 0) {
-		perror("socket");
+	if (!server->socket.socketpath)
+	{
+		server->socket.socketpath = strdup("/tmp/taskmasterd.sock");
+		if (!server->socket.socketpath)
+		{
+			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not allocate string for socketpath, exiting process\n");
+			report(reporter, true);
+			return ;
+		}
+	}
+	server->socket.sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
+	if (server->socket.sockfd < 0) {
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not open socket, exiting process\n");
+		report(reporter, true);
+		return ;
 	}
 	bzero(&addr, sizeof(addr));
 	addr.sun_family = AF_UNIX;
-	strcpy(addr.sun_path, SOCK_PATH);
-	unlink(SOCK_PATH);
-	if (bind(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-		perror("bind");
+	strcpy(addr.sun_path, server->socket.socketpath);
+	if (bind(server->socket.sockfd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not create socket, exiting process\n");
+		report(reporter, true);
+		return ;
 	}
-	listen(fd, 99);
-	return (fd);
+	if (chmod(server->socket.socketpath, 0666 & ~server->socket.umask) == -1)
+	{
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not change rights of socket, exiting process\n");
+		report(reporter, true);
+		unlink(server->socket.socketpath);
+		return ;
+	}
+	if (server->socket.uid)
+	{
+		errno = 0;
+		uid = getpwnam(server->socket.uid);
+		if (!uid)
+		{
+			if (errno == 0 || errno == ENOENT || errno == ESRCH || errno == EBADF || errno == EPERM)
+			{
+				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Unkown user %s, cannot change ownership of socket, exiting process\n", server->socket.uid);
+				report(reporter, true);
+			}
+			else
+			{
+				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not get information on user %s, cannot change ownership of socket, exiting process\n", server->socket.uid);
+				report(reporter, true);
+			}
+			unlink(server->socket.socketpath);
+			return ;
+		}
+		user = uid->pw_uid;
+		group = uid->pw_gid;
+		if (server->socket.gid)
+		{
+			gid = getgrnam(server->socket.gid);
+			if (!gid)
+			{
+				if (errno == 0 || errno == ENOENT || errno == ESRCH || errno == EBADF || errno == EPERM)
+				{
+					snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Unkown group %s, cannot change ownership of socket, exiting process\n", server->socket.gid);
+					report(reporter, true);
+				}
+				else
+				{
+					snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not get information on group %s, cannot change ownership of socket, exiting process\n", server->socket.gid);
+					report(reporter, true);
+				}
+				unlink(server->socket.socketpath);
+				return ;
+			}
+			group = gid->gr_gid;
+		}
+		if (chown(server->socket.socketpath, user, group) == -1)
+		{
+			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not change ownership of socket to %s:%s, exiting process\n", server->socket.uid, server->socket.gid);
+			report(reporter, true);
+			unlink(server->socket.socketpath);
+			return ;
+		}
+		snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Successfully changed ownership of socket to %s:%s\n", server->socket.uid, server->socket.gid);
+		report(reporter, false);
+
+	}
+	listen(server->socket.sockfd, 10);
 }
 
 struct s_client *new_client(struct s_client *list, int client_fd) {

@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/08 17:18:50 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/09 16:52:38 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,6 +19,7 @@
 # include <sys/time.h>
 # include <pthread.h>
 # include <stdatomic.h>
+# include <signal.h>
 # define BUFFER_SIZE PIPE_BUF
 # include "yaml.h"
 # include "get_next_line.h"
@@ -143,6 +144,7 @@ struct s_process {
 };
 
 struct s_server {
+	char*				bin_path;
 	char*				config_file;
 	int					log_pipe[2];
 	enum log_level		loglevel;
@@ -166,7 +168,7 @@ struct s_server {
 
 };
 
-struct s_server*	parse_config(char* config_file, struct s_report *reporter);
+struct s_server*	parse_config(char* bin_path, char* config_file, struct s_report *reporter);
 bool				report(struct s_report* reporter, bool critical);
 void*				initial_log(void *fds);
 void				init_server(struct s_server * server);
@@ -197,10 +199,10 @@ bool				start_logging_thread(struct s_server *server, bool daemonized);
 int					daemonize(struct s_server *server);
 bool				end_logging_thread(struct s_report *reporter, pthread_t logger);
 
-int create_server(void);
+void				 create_server(struct s_server *server, struct s_report *reporter);
 void handle(int sig);
 void check_server(int sock_fd, int efd);
 
-extern int g_sig;
+extern volatile sig_atomic_t g_sig;
 
 #endif

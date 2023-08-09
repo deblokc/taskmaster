@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/08/08 11:24:49 by bdetune           #+#    #+#             */
-/*   Updated: 2023/08/08 16:38:03 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/09 16:58:18 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -51,7 +51,7 @@ static bool add_value(struct s_socket *socket, char* key, yaml_node_t *value, st
 {
 	bool	ret = true;
 
-	if (!strcmp("daemon", key))
+	if (!strcmp("enable", key))
 		ret = add_bool(NULL, "enable", &socket->enable, value, reporter);
 	else if (!strcmp("socketpath", key))
 		ret = add_char(NULL, "socketpath", &socket->socketpath, value, reporter);

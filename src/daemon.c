@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/08/08 13:29:40 by bdetune           #+#    #+#             */
-/*   Updated: 2023/08/08 17:29:11 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/09 15:58:57 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,6 +30,7 @@ int	daemonize(struct s_server *server)
 		strcpy(&reporter.buffer[22], "CRITICAL: Could not terminate logging thread\n");
 		write_log(&server->logger, reporter.buffer);
 		if (write(2, reporter.buffer, strlen(reporter.buffer))){};
+		unlink(server->socket.socketpath);
 		return (1);
 	}
 	pid = fork();
@@ -39,6 +40,7 @@ int	daemonize(struct s_server *server)
 		strcpy(&reporter.buffer[22], "CRITICAL: Could not daemonize process, exiting process\n");
 		write_log(&server->logger, reporter.buffer);
 		if (write(2, reporter.buffer, strlen(reporter.buffer))){};
+		unlink(server->socket.socketpath);
 		return (1);
 	}
 	if (pid == 0)
@@ -57,6 +59,7 @@ int	daemonize(struct s_server *server)
 			get_stamp(reporter.buffer);
 			strcpy(&reporter.buffer[22], "CRITICAL: Could not create a new session\n");
 			report(&reporter, true);
+			unlink(server->socket.socketpath);
 			return (1);
 		}
 		pid = fork();
@@ -65,6 +68,7 @@ int	daemonize(struct s_server *server)
 			get_stamp(reporter.buffer);
 			strcpy(&reporter.buffer[22], "CRITICAL: Could not start daemon\n");
 			report(&reporter, true);
+			unlink(server->socket.socketpath);
 			return (1);
 		}
 		if (pid)
@@ -104,7 +108,10 @@ int	daemonize(struct s_server *server)
 			close(server->log_pipe[1]);
 			server->log_pipe[1] = -1;
 			if (!start_logging_thread(server, true))
+			{
+				unlink(server->socket.socketpath);
 				return (1);
+			}
 			return (-1);
 		}
 	}
