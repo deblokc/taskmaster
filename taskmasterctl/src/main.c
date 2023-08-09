@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 15:17:03 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/09 15:49:21 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/09 18:45:18 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -146,6 +146,7 @@ void remote_exec(char *cmd, int efd, struct epoll_event sock) {
 			char buf[PIPE_BUF + 1];
 			bzero(buf, PIPE_BUF + 1);
 			recv(tmp.data.fd, buf, PIPE_BUF, 0);
+			// WIlL NEED A CONDITION FOR CONNECTION WITH AN ADMINISTRATOR (tail/fg)
 			printf("%s", buf); // DUMBLY PRINT RESPONSE
 		}
 	} else if (ret == 0) {
