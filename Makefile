@@ -6,7 +6,7 @@
 #    By: tnaton <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/06/16 11:17:59 by tnaton            #+#    #+#              #
-#    Updated: 2023/07/25 19:11:37 by bdetune          ###   ########.fr        #
+#    Updated: 2023/08/08 16:34:07 by bdetune          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -21,6 +21,7 @@ OBJDIR := obj
 SRCS = main.c \
 	   parser/parser.c \
 	   parser/server.c \
+	   parser/socket.c \
 	   parser/logger.c \
 	   parser/program.c \
 	   parser/tree.c \
@@ -32,6 +33,7 @@ SRCS = main.c \
 	   report.c \
 	   prelude_server.c \
 	   log.c \
+	   daemon.c \
 	   administrator.c \
 	   server.c \
 	   launcher.c

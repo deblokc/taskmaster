@@ -26,5 +26,12 @@ server:
         chmod: 0o744
         username: bdetune
         chown: :user
+    daemon: false
     logfile: taskmaster.log
     loglevel: DEBUG
+
+socket:
+    enable: true
+    socketpath: /mnt/nfs/homes/bdetune/42Cursus/42Unix/taskmaster/taskmaster.sock
+    uid: bdetune
+    umask: 077
