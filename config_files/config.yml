@@ -11,7 +11,7 @@ programs:
         stopsignal: KILL
         priority: 3
 server:
-    daemon: false
+    daemon: true
     logfile: taskmaster.log
     loglevel: DEBUG
 
