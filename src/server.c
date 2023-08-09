@@ -6,13 +6,14 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/08 18:16:18 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/09 17:12:19 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "taskmaster.h"
 #include <limits.h>
 #include <unistd.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -97,6 +98,28 @@ struct s_command *process_line(char *line) {
 	}
 }
 
+void send_command_multiproc(struct s_command *cmd, struct s_server *serv) {
+	if (!strcmp(cmd->arg[0], "all")) {
+		for (struct s_program *current = serv->begin(serv); current; current = current->itnext(current)) {
+			for (int i = 0; i < current->numprocs; i++) {
+				if (write(current->processes[i].com[1], cmd->cmd, strlen(cmd->cmd))) {}
+			}
+		}
+	} else {
+		for (int i = 0; cmd->arg[i]; i++) {
+			for (struct s_program *current = serv->begin(serv); current; current = current->itnext(current)) {
+				if (!strncmp(current->name, cmd->arg[i], strlen(current->name))) {
+					for (int j = 0; j < current->numprocs; j++) {
+						if (!strcmp(current->processes[j].name, cmd->arg[i])) {
+							if (write(current->processes[j].com[1], cmd->cmd, strlen(cmd->cmd))) {}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
 void check_server(int sock_fd, int efd, struct s_server *serv) {
 	static struct s_client	*list = NULL;
 	char					buf[PIPE_BUF + 1];
@@ -163,23 +186,56 @@ void check_server(int sock_fd, int efd, struct s_server *serv) {
 							report(&reporter, false);
 							if (!strcmp(cmd->cmd, "maintail")) {      //send via logging thread
 							} else if (!strcmp(cmd->cmd, "signal")) {  //administrator send signal
-							} else if (!strcmp(cmd->cmd, "stop")) {    //administrator stop process
-								snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: controller has sent stop command\n");
+								snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: controller has sent signal command\n");
 								report(&reporter, false);
 								if (cmd->arg) {
-									if (!strcmp(cmd->arg[0], "all")) {
-										for (struct s_program *current = serv->begin(serv); current; current = current->itnext(current)) {
-											for (int i = 0; i < current->numprocs; i++) {
-												if (write(current->processes[i].com[1], "stop", strlen("stop"))) {}
-											}
-										}
+									char msg[4] = "sig ";
+									if (!strcmp(cmd->arg[0], "SIGHUP")) {
+										snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: signal to be send is SIGHUP\n");
+										report(&reporter, false);
+										msg[3] = SIGHUP;
+									} else if (!strcmp(cmd->arg[0], "SIGINT")) {
+										snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: signal to be send is SIGINT\n");
+										report(&reporter, false);
+										msg[3] = SIGINT;
+									} else if (!strcmp(cmd->arg[0], "SIGQUIT")) {
+										snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: signal to be send is SIGQUIT\n");
+										report(&reporter, false);
+										msg[3] = SIGQUIT;
+									} else if (!strcmp(cmd->arg[0], "SIGKILL")) {
+										snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: signal to be send is SIGKILL\n");
+										report(&reporter, false);
+										msg[3] = SIGKILL;
+									} else if (!strcmp(cmd->arg[0], "SIGUSR1")) {
+										snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: signal to be send is SIGUSR1\n");
+										report(&reporter, false);
+										msg[3] = SIGUSR1;
+									} else if (!strcmp(cmd->arg[0], "SIGUSR2")) {
+										snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: signal to be send is SIGUSR2\n");
+										report(&reporter, false);
+										msg[3] = SIGUSR2;
+									} else if (!strcmp(cmd->arg[0], "SIGTERM")) {
+										snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: signal to be send is SIGTERM\n");
+										report(&reporter, false);
+										msg[3] = SIGTERM;
 									} else {
-										for (int i = 0; cmd->arg[i]; i++) {
+										msg[0] = '\0';
+									}
+									if (msg[0]) {
+										if (!strcmp(cmd->arg[1], "all")) {
 											for (struct s_program *current = serv->begin(serv); current; current = current->itnext(current)) {
-												if (!strncmp(current->name, cmd->arg[i], strlen(current->name))) {
-													for (int j = 0; j < current->numprocs; j++) {
-														if (!strcmp(current->processes[j].name, cmd->arg[i])) {
-															if (write(current->processes[j].com[1], "stop", strlen("stop"))) {}
+												for (int i = 0; i < current->numprocs; i++) {
+													if (write(current->processes[i].com[1], msg, strlen(msg))) {}
+												}
+											}
+										} else {
+											for (int i = 1; cmd->arg[i]; i++) {
+												for (struct s_program *current = serv->begin(serv); current; current = current->itnext(current)) {
+													if (!strncmp(current->name, cmd->arg[i], strlen(current->name))) {
+														for (int j = 0; j < current->numprocs; j++) {
+															if (!strcmp(current->processes[j].name, cmd->arg[i])) {
+																if (write(current->processes[j].com[1], msg, strlen(msg))) {}
+															}
 														}
 													}
 												}
@@ -187,14 +243,60 @@ void check_server(int sock_fd, int efd, struct s_server *serv) {
 										}
 									}
 								}
+							} else if (!strcmp(cmd->cmd, "stop")) {    //administrator stop process
+								snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: controller has sent stop command\n");
+								report(&reporter, false);
+								if (cmd->arg) {
+									send_command_multiproc(cmd, serv);
+								}
 							} else if (!strcmp(cmd->cmd, "avail")) {   //main thread return available process
 							} else if (!strcmp(cmd->cmd, "fg")) {      //administrator send logging and stdin
 							} else if (!strcmp(cmd->cmd, "reload")) {  //restart daemon
 							} else if (!strcmp(cmd->cmd, "restart")) { //administrator stop then start process
+								snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: controller has sent start command\n");
+								report(&reporter, false);
+								if (cmd->arg) {
+									send_command_multiproc(cmd, serv);
+								}
 							} else if (!strcmp(cmd->cmd, "start")) {   //administrator start process
+								snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: controller has sent start command\n");
+								report(&reporter, false);
+								if (cmd->arg) {
+									send_command_multiproc(cmd, serv);
+								}
 							} else if (!strcmp(cmd->cmd, "tail")) {    //administrator send logging
 							} else if (!strcmp(cmd->cmd, "clear")) {   //administrator clear logging
+								snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: controller has sent clear command\n");
+								report(&reporter, false);
+								if (cmd->arg) {
+									send_command_multiproc(cmd, serv);
+								}
 							} else if (!strcmp(cmd->cmd, "pid")) {     //main thread send pid of process
+								snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: controller has sent clear command\n");
+								report(&reporter, false);
+								if (cmd->arg) {
+									if (!strcmp(cmd->arg[0], "all")) {
+										for (struct s_program *current = serv->begin(serv); current; current = current->itnext(current)) {
+											for (int i = 0; i < current->numprocs; i++) {
+												snprintf(client->buf + strlen(client->buf), PIPE_BUF + 1, "%s : %d\n", current->processes[i].name, current->processes[i].pid);
+											}
+										}
+									} else {
+										for (int i = 0; cmd->arg[i]; i++) {
+											for (struct s_program *current = serv->begin(serv); current; current = current->itnext(current)) {
+												if (!strncmp(current->name, cmd->arg[i], strlen(current->name))) {
+													for (int j = 0; j < current->numprocs; j++) {
+														if (!strcmp(cmd->arg[i], current->processes[j].name)) {
+															snprintf(client->buf + strlen(client->buf), PIPE_BUF + 1, "%s : %d\n", current->processes[j].name, current->processes[j].pid);
+														}
+													}
+												}
+											}
+										}
+									}
+								} else {
+									snprintf(client->buf, PIPE_BUF + 1, "%d\n", getpid());
+								}
 							} else if (!strcmp(cmd->cmd, "shutdown")) {//main thread stop all process & exit
 							} else if (!strcmp(cmd->cmd, "status")) {  //administrator send status
 								char *status[7] = {"STOPPED", "STARTING", "RUNNING", "BACKOFF", "STOPPING", "EXITED", "FATAL"};
@@ -208,7 +310,6 @@ void check_server(int sock_fd, int efd, struct s_server *serv) {
 													}
 												}
 											}
-	
 										}
 									}
 								} else {

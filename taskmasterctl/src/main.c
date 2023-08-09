@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 15:17:03 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/08 16:13:51 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/09 15:49:21 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,7 +41,9 @@ void help(char *full_arg) {
 	if (!strlen(arg)) {
 		printf("default commands (type help <command>):\n");
 		printf("=======================================\n");
-		printf("TOUTES LES COMMANDES QUON AURA\n");
+		printf("exit maintail quit signal stop avail fg\n");
+		printf("reload restart start tail clear help pid\n");
+		printf("shutdown status update\n");
 	} else {
 		if (!strcmp(arg, "exit")) {
 			printf("exit\tExit the taskmaster shell.\n");

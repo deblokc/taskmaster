@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/08 14:56:24 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/09 14:58:45 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -127,7 +127,10 @@ struct s_program {
 struct s_process {
 	char				*name;
 	int					pid;
+	bool				bool_start;
+	bool				bool_exit;
 	struct timeval		start;
+	struct timeval		stop;
 	_Atomic int			status;
 	struct s_program	*program;
 	int					count_restart;

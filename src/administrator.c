@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/08 19:33:08 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/09 15:25:11 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -204,6 +204,69 @@ void closeall(struct s_process *process, int epollfd) {
 	waitpid(process->pid, NULL, 0);
 }
 
+int handle_command(struct s_process *process, char *buf) {
+	struct s_report reporter;
+	reporter.report_fd = process->log;
+
+	if (!strcmp(buf, "exit")) {
+		// exit command
+		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s has received order to exit\n", process->name);
+		report(&reporter, false);
+		if (process->status == STARTING || process->status == RUNNING || process->status == BACKOFF) { // if process is not stopped start stop process
+			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s was not already stopped, sending him signal %d to stop him\n", process->name, process->program->stopsignal);
+			report(&reporter, false);
+			process->status = STOPPING;
+			kill(process->pid, process->program->stopsignal);
+			if (gettimeofday(&process->stop, NULL)) {
+				snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s got a fatal error in gettimeofday\n", process->name);
+				report(&reporter, false);
+				return -1;
+			}
+			process->bool_exit = true;
+		} else { // else if is already stopped exit taskmaster
+			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s was already stopped, exiting administrator\n", process->name);
+			report(&reporter, false);
+			return -1; // might need some more cleaning before this
+		}
+	} else if (!strcmp(buf, "stop")) {
+		// stop command
+		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s has received order to stop\n", process->name);
+		report(&reporter, false);
+		if (process->status == STARTING || process->status == RUNNING || process->status == BACKOFF) { // if process is not stopped start stop process
+			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s was not already stopped, sending him signal %d to stop him\n", process->name, process->program->stopsignal);
+			report(&reporter, false);
+			process->status = STOPPING;
+			kill(process->pid, process->program->stopsignal);
+			if (gettimeofday(&process->stop, NULL)) {
+				snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s got a fatal error in gettimeofday\n", process->name);
+				report(&reporter, false);
+				return -1;
+			}
+		} else { // if already stopped do nothing
+			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s was stopped, did nothing\n", process->name);
+			report(&reporter, false);
+		}
+	} else if (!strcmp(buf, "start")) {
+		// stop command
+		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s has received order to start\n", process->name);
+		report(&reporter, false);
+		if (process->status == STOPPED || process->status == EXITED || process->status == FATAL) { // if process is stopped start it
+			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s was stopped, starting it\n", process->name);
+			report(&reporter, false);
+			process->bool_start = true;
+		} else { // if not stopped do nothing
+			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s was running, did nothing\n", process->name);
+			report(&reporter, false);
+		}
+	} else if (!strncmp(buf, "sig", 3)) {
+		// sig command
+		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s has received order to send sig %d to process", process->name, (int)buf[3]);
+		report(&reporter, false);
+		kill(process->pid, (int)buf[3]);
+	}
+	return (0);
+}
+
 void *administrator(void *arg) {
 	struct s_process *process = (struct s_process *)arg;
 	struct s_report reporter;
@@ -223,18 +286,17 @@ void *administrator(void *arg) {
 			report(&reporter, false);
 		}
 	}
-	bool				start = false; // this bool serve for autostart and start signal sent by controller
-	bool				exit = false;
+	process->bool_start = false; // this bool serve for autostart and start signal sent by controller
+	process->bool_exit = false;
 	int					nfds = 0;
 	struct epoll_event	events[3], in;
 	int					epollfd = epoll_create(1);
-	struct timeval		stop;  //
 
-	stop.tv_sec = 0;           // NEED TO SET W/ gettimeofday WHEN CHANGING STATUS TO STOPPING
-	stop.tv_usec = 0;          //
+	process->stop.tv_sec = 0;           // NEED TO SET W/ gettimeofday WHEN CHANGING STATUS TO STOPPING
+	process->stop.tv_usec = 0;          //
 
 	if (process->program->autostart) {
-		start = true;
+		process->bool_start = true;
 	}
 
 	in.events = EPOLLIN;
@@ -242,9 +304,9 @@ void *administrator(void *arg) {
 	epoll_ctl(epollfd, EPOLL_CTL_ADD, in.data.fd, &in); // listen for main communication
 
 	while (1) {
-		if (process->status == EXITED || process->status == BACKOFF || (process->status != STOPPING && start)) {
-			if (should_start(process) || start) {
-				start = false;
+		if (process->status == EXITED || process->status == BACKOFF || (process->status != STOPPING && process->bool_start)) {
+			if (should_start(process) || process->bool_start) {
+				process->bool_start = false;
 				snprintf(reporter.buffer, PIPE_BUF - 22, "INFO: %s is now STARTING\n", process->name);
 				report(&reporter, false);
 				snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s has raw cmd %s\n", process->name, process->program->command);
@@ -319,6 +381,27 @@ void *administrator(void *arg) {
 							break ;
 						}
 					}
+					if (events[i].data.fd == in.data.fd) {
+						char buf[PIPE_BUF + 1];
+						bzero(buf, PIPE_BUF + 1);
+						if (read(in.data.fd, buf, PIPE_BUF) > 0) {
+							snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s's administrator received something from main thread while STARTING\n", process->name);
+							report(&reporter, false);
+							if (handle_command(process, buf)) {
+								return NULL;
+							}
+						} else {
+							snprintf(reporter.buffer, PIPE_BUF - 22, "ERROR: %s's administrator could not read from main thread, exiting to avoid hanging\n", process->name);
+							report(&reporter, false);
+							process->status = STOPPING;
+							if (gettimeofday(&process->stop, NULL)) {
+								snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s got a fatal error in gettimeofday\n", process->name);
+								report(&reporter, false);
+								return NULL;
+							}
+							process->bool_exit = true;
+						}
+					}
 				}
 			} else if (((long long)process->program->startsecs * 1000) - (tmp_micro - start_micro) > INT_MAX) { // if timeout and not because time to wait is bigger than an int
 				process->status = RUNNING;
@@ -329,104 +412,61 @@ void *administrator(void *arg) {
 			nfds = epoll_wait(epollfd, events, 3, -1); // busy wait for smth to do
 			char buf[PIPE_BUF + 1];
 
-			for (int i = 0; i < nfds; i++) {
-			/* handles fds as needed */
-				if (events[i].data.fd == process->stdout[0]) { // if process print in stdout
-					bzero(buf, PIPE_BUF + 1);
-					if (read(process->stdout[0], buf, PIPE_BUF) > 0) {
-						if (process->stdoutlog) {
-							write_process_log(&(process->stdout_logger), buf);
+			if (nfds) {
+				for (int i = 0; i < nfds; i++) {
+				/* handles fds as needed */
+					if (events[i].data.fd == process->stdout[0]) { // if process print in stdout
+						bzero(buf, PIPE_BUF + 1);
+						if (read(process->stdout[0], buf, PIPE_BUF) > 0) {
+							if (process->stdoutlog) {
+								write_process_log(&(process->stdout_logger), buf);
+							}
+						} else {
+							closeall(process, epollfd);
+							process->status = EXITED;
+							snprintf(reporter.buffer, PIPE_BUF - 22, "INFO: %s is now EXITED\n", process->name);
+							report(&reporter, false);
+							break ;
 						}
-					} else {
-						closeall(process, epollfd);
-						process->status = EXITED;
-						snprintf(reporter.buffer, PIPE_BUF - 22, "INFO: %s is now EXITED\n", process->name);
-						report(&reporter, false);
-						break ;
+					}
+					if (events[i].data.fd == process->stderr[0]) { // if process print in stderr
+						bzero(buf, PIPE_BUF + 1);
+						if (read(process->stderr[0], buf, PIPE_BUF) > 0) {
+							if (process->stderrlog) {
+								write_process_log(&(process->stderr_logger), buf);
+							}
+						} else {
+							closeall(process, epollfd);
+							process->status = EXITED;
+							snprintf(reporter.buffer, PIPE_BUF - 22, "INFO: %s is now EXITED\n", process->name);
+							report(&reporter, false);
+							break ;
+						}
+					}
+					if (events[i].data.fd == in.data.fd) {
+						bzero(buf, PIPE_BUF + 1);
+						if (read(in.data.fd, buf, PIPE_BUF) > 0) {
+							snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s's administrator received something from main thread while RUNNING\n", process->name);
+							report(&reporter, false);
+							if (handle_command(process, buf)) {
+								return NULL;
+							}
+						} else {
+							snprintf(reporter.buffer, PIPE_BUF - 22, "ERROR: %s's administrator could not read from main thread, exiting to avoid hanging\n", process->name);
+							report(&reporter, false);
+							process->status = STOPPING;
+							if (gettimeofday(&process->stop, NULL)) {
+								snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s got a fatal error in gettimeofday\n", process->name);
+								report(&reporter, false);
+								return NULL;
+							}
+							process->bool_exit = true;
+						}
 					}
 				}
-				if (events[i].data.fd == process->stderr[0]) { // if process print in stderr
-					bzero(buf, PIPE_BUF + 1);
-					if (read(process->stderr[0], buf, PIPE_BUF) > 0) {
-						if (process->stderrlog) {
-							write_process_log(&(process->stderr_logger), buf);
-						}
-					} else {
-						closeall(process, epollfd);
-						process->status = EXITED;
-						snprintf(reporter.buffer, PIPE_BUF - 22, "INFO: %s is now EXITED\n", process->name);
-						report(&reporter, false);
-						break ;
-					}
-				}
-				if (events[i].data.fd == in.data.fd) {
-					bzero(buf, PIPE_BUF + 1);
-					if (read(in.data.fd, buf, PIPE_BUF) > 0) {
-						snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s's administrator received something from main thread while RUNNING\n", process->name);
-						report(&reporter, false);
-						if (!strcmp(buf, "exit")) {
-							snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s has received order to exit\n", process->name);
-							report(&reporter, false);
-							if (process->status == STARTING || process->status == RUNNING || process->status == BACKOFF) {
-								snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s was not already stopped, sending him signal %d to stop him\n", process->name, process->program->stopsignal);
-								report(&reporter, false);
-								process->status = STOPPING;
-								kill(process->pid, process->program->stopsignal);
-								if (gettimeofday(&stop, NULL)) {
-									snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s got a fatal error in gettimeofday\n", process->name);
-									report(&reporter, false);
-									return NULL;
-								}
-							} else {
-								snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s was already stopped, exiting administrator\n", process->name);
-								report(&reporter, false);
-							}
-							exit = true;
-						} else if (!strcmp(buf, "stop")) {
-							snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s has received order to stop\n", process->name);
-							report(&reporter, false);
-							if (process->status == STARTING || process->status == RUNNING || process->status == BACKOFF) {
-								snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s was not already stopped, sending him signal %d to stop him\n", process->name, process->program->stopsignal);
-								report(&reporter, false);
-								process->status = STOPPING;
-								kill(process->pid, process->program->stopsignal);
-								if (gettimeofday(&stop, NULL)) {
-									snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s got a fatal error in gettimeofday\n", process->name);
-									report(&reporter, false);
-									return NULL;
-								}
-							} else {
-								snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s was stopped, did nothing\n", process->name);
-								report(&reporter, false);
-							}
-						} else if (!strcmp(buf, "start")) {
-							snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s has received order to start\n", process->name);
-							report(&reporter, false);
-							if (process->status == STOPPED || process->status == EXITED || process->status == FATAL) {
-								snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s was stopped, starting it\n", process->name);
-								report(&reporter, false);
-								start = true;
-							} else {
-								snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s was running, did nothing\n", process->name);
-								report(&reporter, false);
-							}
-						} else if (!strncmp(buf, "sig", 3)) {
-							snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s has received order to send sig %d to process", process->name, (int)buf[3]);
-							report(&reporter, false);
-							kill(process->pid, (int)buf[3]);
-						}
-					} else {
-						snprintf(reporter.buffer, PIPE_BUF - 22, "ERROR: %s's administrator could not read from main thread, exiting to avoid hanging\n", process->name);
-						report(&reporter, false);
-						process->status = STOPPING;
-						if (gettimeofday(&stop, NULL)) {
-							snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s got a fatal error in gettimeofday\n", process->name);
-							report(&reporter, false);
-							return NULL;
-						}
-						exit = true;
-					}
-				}
+			} else {
+				snprintf(reporter.buffer, PIPE_BUF - 22, "ERROR: %s epoll_wait encountered an issue : \"%d\"", process->name, errno);
+				report(&reporter, false);
 			}
 		} else if (process->status == STOPPING) {
 			struct timeval tmp;
@@ -436,21 +476,21 @@ void *administrator(void *arg) {
 				return NULL;
 			}
 
-			long long start_micro = ((stop.tv_sec * 1000) + (stop.tv_usec / 1000));
+			long long stop_micro = ((process->stop.tv_sec * 1000) + (process->stop.tv_usec / 1000));
 			long long tmp_micro = ((tmp.tv_sec * 1000) + (tmp.tv_usec / 1000));
 
-			if ((long long)(process->program->stopwaitsecs * 1000) <= (long long)(tmp_micro - start_micro)) {
+			if ((long long)(process->program->stopwaitsecs * 1000) <= (long long)(tmp_micro - stop_micro)) {
 				snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s did not stop before %ds, sending SIGKILL\n", process->name, process->program->stopwaitsecs);
 				report(&reporter, false);
 				process->status = STOPPED;
 				// kill(process->pid, SIGKILL);
 				// need to epoll_wait 0 to return instantly
 				tmp_micro = (process->program->stopwaitsecs * 1000);
-				start_micro = 0;
+				stop_micro = 0;
 			}
-			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s stopping epoll time to wait : %lld\n", process->name, ((long long)process->program->stopwaitsecs * 1000) - (tmp_micro - start_micro));
+			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s stopping epoll time to wait : %lld\n", process->name, ((long long)process->program->stopwaitsecs * 1000) - (tmp_micro - stop_micro));
 			report(&reporter, false);
-			nfds = epoll_wait(epollfd, events, 3, (int)((process->program->stopwaitsecs * 1000) - (tmp_micro - start_micro)));
+			nfds = epoll_wait(epollfd, events, 3, (int)((process->program->stopwaitsecs * 1000) - (tmp_micro - stop_micro)));
 			if (nfds) { // if not timeout
 				for (int i = 0; i < nfds; i++) {
 				/* handles fds as needed */
@@ -466,9 +506,9 @@ void *administrator(void *arg) {
 							process->status = STOPPED;
 							snprintf(reporter.buffer, PIPE_BUF - 22, "INFO: %s is now STOPPED\n", process->name);
 							report(&reporter, false);
-							stop.tv_sec = 0;
-							stop.tv_usec = 0;
-							if (exit) { // if need to exit administrator
+							process->stop.tv_sec = 0;
+							process->stop.tv_usec = 0;
+							if (process->bool_exit) { // if need to exit administrator
 								return NULL;
 							}
 							break ;
@@ -486,20 +526,43 @@ void *administrator(void *arg) {
 							process->status = STOPPED;
 							snprintf(reporter.buffer, PIPE_BUF - 22, "INFO: %s is now STOPPED\n", process->name);
 							report(&reporter, false);
-							stop.tv_sec = 0;
-							stop.tv_usec = 0;
-							if (exit) { // if need to exit administrator
+							process->stop.tv_sec = 0;
+							process->stop.tv_usec = 0;
+							if (process->bool_exit) { // if need to exit administrator
 								return NULL;
 							}
 							break ;
 						}
 					}
+					if (events[i].data.fd == in.data.fd) {
+						char buf[PIPE_BUF + 1];
+						bzero(buf, PIPE_BUF + 1);
+						if (read(in.data.fd, buf, PIPE_BUF) > 0) {
+							snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s's administrator received something from main thread while RUNNING\n", process->name);
+							report(&reporter, false);
+							if (handle_command(process, buf)) {
+								return NULL;
+							}
+						} else {
+							snprintf(reporter.buffer, PIPE_BUF - 22, "ERROR: %s's administrator could not read from main thread, exiting to avoid hanging\n", process->name);
+							report(&reporter, false);
+							process->status = STOPPING;
+							if (gettimeofday(&process->stop, NULL)) {
+								snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s got a fatal error in gettimeofday\n", process->name);
+								report(&reporter, false);
+								return NULL;
+							}
+							process->bool_exit = true;
+						}
+					}
 				}
 			} else { // if timeout
 				process->status = STOPPED;
-				stop.tv_sec = 0;
-				stop.tv_usec = 0;
-				if (exit) { // if need to exit administrator
+				snprintf(reporter.buffer, PIPE_BUF - 22, "INFO: %s is now STOPPED\n", process->name);
+				report(&reporter, false);
+				process->stop.tv_sec = 0;
+				process->stop.tv_usec = 0;
+				if (process->bool_exit) { // if need to exit administrator
 					return NULL;
 				}
 			}
@@ -512,14 +575,19 @@ void *administrator(void *arg) {
 					if (read(in.data.fd, buf, PIPE_BUF) > 0) {
 						snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s's administrator received something from main thread while STOPPED\n", process->name);
 						report(&reporter, false);
-						if (!strcmp(buf, "exit")) {
-							snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s has received order to exit\n", process->name);
-							report(&reporter, false);
-							snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s was already stopped, exiting administrator\n", process->name);
-							report(&reporter, false);
+						if (handle_command(process, buf)) {
 							return NULL;
 						}
 					} else {
+						snprintf(reporter.buffer, PIPE_BUF - 22, "ERROR: %s's administrator could not read from main thread, exiting to avoid hanging\n", process->name);
+						report(&reporter, false);
+						process->status = STOPPING;
+						if (gettimeofday(&process->stop, NULL)) {
+							snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s got a fatal error in gettimeofday\n", process->name);
+							report(&reporter, false);
+							return NULL;
+						}
+						process->bool_exit = true;
 					}
 				}
 			}
