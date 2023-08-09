@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/09 14:58:45 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/09 17:33:22 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,6 +19,7 @@
 # include <sys/time.h>
 # include <pthread.h>
 # include <stdatomic.h>
+# include <signal.h>
 # define BUFFER_SIZE PIPE_BUF
 # include "yaml.h"
 # include "get_next_line.h"
@@ -73,12 +74,15 @@ struct s_logger {
 };
 
 struct s_socket {
+	int		sockfd;
+	bool	enable;
 	char	*socketpath;
-	int		chmod;
+	int		umask;
 	char	*uid;
 	char	*gid;
 	char	*user;
 	char	*password;
+	void	(*destructor)(struct s_socket*);
 };
 
 struct s_priority {
@@ -147,6 +151,7 @@ struct s_process {
 };
 
 struct s_server {
+	char*				bin_path;
 	char*				config_file;
 	int					log_pipe[2];
 	enum log_level		loglevel;
@@ -160,6 +165,8 @@ struct s_server {
 	struct s_socket		socket;
 	struct s_program*	program_tree;
 	struct s_priority*	priorities;
+	pid_t				pid;
+	pthread_t			logging_thread;
 	struct s_server*	(*cleaner)(struct s_server*);
 	void				(*insert)(struct s_server*, struct s_program*, struct s_report *reporter);
 	void				(*delete_tree)(struct s_server*);
@@ -168,7 +175,7 @@ struct s_server {
 
 };
 
-struct s_server*	parse_config(char* config_file, struct s_report *reporter);
+struct s_server*	parse_config(char* bin_path, char* config_file, struct s_report *reporter);
 bool				report(struct s_report* reporter, bool critical);
 void*				initial_log(void *fds);
 void				init_server(struct s_server * server);
@@ -194,11 +201,16 @@ bool				write_log(struct s_logger *logger, char* log_string);
 bool				write_process_log(struct s_logger *logger, char* log_string);
 char				*get_stamp(char* stamp_str);
 void				*main_logger(void *void_server);
+void				init_socket(struct s_socket *socket);
+bool				parse_socket(struct s_server *server, yaml_document_t *document, int value_index, struct s_report *reporter);
+bool				start_logging_thread(struct s_server *server, bool daemonized);
+int					daemonize(struct s_server *server);
+bool				end_logging_thread(struct s_report *reporter, pthread_t logger);
 
-int create_server(void);
+void				 create_server(struct s_server *server, struct s_report *reporter);
 void handle(int sig);
 void check_server(int sock_fd, int efd, struct s_server *serv);
 
-extern int g_sig;
+extern volatile sig_atomic_t g_sig;
 
 #endif

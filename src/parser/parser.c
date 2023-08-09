@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 18:00:54 by bdetune           #+#    #+#             */
-/*   Updated: 2023/07/25 14:53:48 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/09 16:57:01 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -53,6 +53,16 @@ static bool parse_document(struct s_server *server, yaml_document_t * document, 
 						snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Parsing 'server' block\n");
 						report(reporter, false);
 						if (!parse_server(server, document, (current_node->data.mapping.pairs.start + i)->value, reporter))
+						{
+							ret = false;
+							break ;
+						}
+					}
+					else if (!strcmp((char*)key_node->data.scalar.value, "socket"))
+					{
+						snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Parsing 'socket' block\n");
+						report(reporter, false);
+						if (!parse_socket(server, document, (current_node->data.mapping.pairs.start + i)->value, reporter))
 						{
 							ret = false;
 							break ;
@@ -115,7 +125,7 @@ static bool	parse_config_yaml(struct s_server * server, FILE *config_file_handle
 }
 
 
-static void	resolve_configfile_path(struct s_server* server, char* config_file, struct s_report *reporter)
+static void	resolve_path(char** target, char* file_path, char* target_key, struct s_report *reporter)
 {
 	char*	config_trimmed;
 	char*	cwd;
@@ -123,13 +133,13 @@ static void	resolve_configfile_path(struct s_server* server, char* config_file, 
 	size_t	len;
 
 	i = 0;
-	while ((config_file[i] >= '\t' && config_file[i] <= '\r') || config_file[i] == ' ')
+	while ((file_path[i] >= '\t' && file_path[i] <= '\r') || file_path[i] == ' ')
 		i++;
-	config_trimmed = &config_file[i];
+	config_trimmed = &file_path[i];
 	if (config_trimmed[0] == '/')
 	{
-		server->config_file = strdup(config_trimmed);
-		if (!server->config_file)
+		*target = strdup(config_trimmed);
+		if (!*target)
 		{
 			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not allocate path for current working directory\n");
 			report(reporter, true);
@@ -145,30 +155,30 @@ static void	resolve_configfile_path(struct s_server* server, char* config_file, 
 		}
 		else
 		{
-			server->config_file = calloc((strlen(cwd) + strlen(config_trimmed) + 2), sizeof(char));
-			if (!server->config_file)
+			*target = calloc((strlen(cwd) + strlen(config_trimmed) + 2), sizeof(char));
+			if (!*target)
 			{
-				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not allocate path for config file\n");
+				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not allocate path for %s\n", target_key);
 				report(reporter, true);
 			}
 			else
 			{
-				strcpy(server->config_file, cwd);
-				len = strlen(server->config_file);
-				server->config_file[len] = '/';
-				strcpy(&server->config_file[len + 1], config_trimmed);
+				strcpy(*target, cwd);
+				len = strlen(*target);
+				(*target)[len] = '/';
+				strcpy(&(*target)[len + 1], config_trimmed);
 			}
 			free(cwd);
 		}
 	}
 	if (!reporter->critical)
 	{
-		snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Path to configuration file resolved: %s\n", server->config_file);
+		snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Path to %s resolved: %s\n", target_key, *target);
 		report(reporter, false);
 	}
 }
 
-struct s_server*	parse_config(char* config_file, struct s_report* reporter)
+struct s_server*	parse_config(char* bin_path, char* config_file, struct s_report* reporter)
 {
 	FILE				*config_file_handle = NULL;
 	struct s_server		*server = NULL;
@@ -179,6 +189,12 @@ struct s_server*	parse_config(char* config_file, struct s_report* reporter)
 		init_server(server);
 		snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Buiding server\n");
 		report(reporter, false);
+		resolve_path(&server->bin_path, bin_path, "binary path", reporter);
+		if (reporter->critical)
+		{
+			server = server->cleaner(server);
+			return (NULL);
+		}
 		config_file_handle = fopen(config_file, "r");	
 		if (!config_file_handle)
 		{
@@ -188,11 +204,15 @@ struct s_server*	parse_config(char* config_file, struct s_report* reporter)
 		}
 		else
 		{
-			resolve_configfile_path(server, config_file, reporter);
+			resolve_path(&server->config_file, config_file, "configuration file", reporter);
 			if (!reporter->critical)
 			{
 				if (!parse_config_yaml(server, config_file_handle, reporter))
 					server = server->cleaner(server);
+			}
+			else
+			{
+				server = server->cleaner(server);
 			}
 			fclose(config_file_handle);
 		}
