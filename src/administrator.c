@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/09 18:16:31 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/09 19:00:05 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -258,6 +258,21 @@ int handle_command(struct s_process *process, char *buf) {
 			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s was running, did nothing\n", process->name);
 			report(&reporter, false);
 		}
+	} else if (!strcmp(buf, "restart")) {
+		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s has received order to restart\n", process->name);
+		report(&reporter, false);
+		if (process->status == STARTING || process->status == RUNNING || process->status == BACKOFF) {
+			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s was not stopped, stopping it for restart\n", process->name);
+			report(&reporter, false);
+			process->status = STOPPING;
+			kill(process->pid, process->program->stopsignal);
+			if (gettimeofday(&process->stop, NULL)) {
+				snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s got a fatal error in gettimeofday\n", process->name);
+				report(&reporter, false);
+				return -1;
+			}
+		}
+		process->bool_start = true;
 	} else if (!strncmp(buf, "sig", 3)) {
 		// sig command
 		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s has received order to send sig %d to process", process->name, (int)buf[3]);
