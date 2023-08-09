@@ -17,7 +17,6 @@ static void	destructor(struct s_socket *self)
 {
 	if (self->sockfd >= 0)
 	{
-		shutdown(self->sockfd, SHUT_RDWR);
 		close(self->sockfd);
 		self->sockfd = -1;
 	}
