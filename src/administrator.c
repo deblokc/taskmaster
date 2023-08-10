@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/10 16:29:51 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/10 18:44:03 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -412,11 +412,25 @@ void *administrator(void *arg) {
 								write_process_log(&(process->stdout_logger), buf);
 							}
 						} else {
-							snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s is now in BACKOFF\n", process->name);
-							report(&reporter, false);
-							closeall(process, epollfd);
-							process->status = BACKOFF;
-							break ;
+							if (process->bool_exit) {
+								snprintf(reporter.buffer, PIPE_BUF - 22, "INFO: %s has STOPPED\n", process->name);
+								report(&reporter, false);
+								closeall(process, epollfd);
+								close(epollfd);
+								if (process->stdout_logger.logfd > 0) {
+									close(process->stdout_logger.logfd);
+								}
+								if (process->stderr_logger.logfd > 0) {
+									close(process->stderr_logger.logfd);
+								}
+								return NULL;
+							} else {
+								snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s is now in BACKOFF\n", process->name);
+								report(&reporter, false);
+								closeall(process, epollfd);
+								process->status = BACKOFF;
+								break ;
+							}
 						}
 					}
 					if (events[i].data.fd == process->stderr[0]) { // if process print in stderr
@@ -427,11 +441,25 @@ void *administrator(void *arg) {
 								write_process_log(&(process->stderr_logger), buf);
 							}
 						} else {
-							snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s is now in BACKOFF\n", process->name);
-							report(&reporter, false);
-							closeall(process, epollfd);
-							process->status = BACKOFF;
-							break ;
+							if (process->bool_exit) {
+								snprintf(reporter.buffer, PIPE_BUF - 22, "INFO: %s has STOPPED\n", process->name);
+								report(&reporter, false);
+								closeall(process, epollfd);
+								close(epollfd);
+								if (process->stdout_logger.logfd > 0) {
+									close(process->stdout_logger.logfd);
+								}
+								if (process->stderr_logger.logfd > 0) {
+									close(process->stderr_logger.logfd);
+								}
+								return NULL;
+							} else {
+								snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s is now in BACKOFF\n", process->name);
+								report(&reporter, false);
+								closeall(process, epollfd);
+								process->status = BACKOFF;
+								break ;
+							}
 						}
 					}
 					if (events[i].data.fd == in.data.fd) {

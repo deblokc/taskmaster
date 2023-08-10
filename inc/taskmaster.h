@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/10 17:30:39 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/10 19:08:38 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -211,6 +211,7 @@ bool				unblock_signals_thread(struct s_report *reporter);
 void				handler(int sig);
 bool				end_initial_log(struct s_report *reporter, void **thread_ret, pthread_t initial_logger);
 bool				end_logging_thread(struct s_report *reporter, pthread_t logger);
+bool				install_signal_handler(struct s_report *reporter);
 void				create_pid_file(struct s_server *server, struct s_report *reporter);
 
 
@@ -220,5 +221,6 @@ void				handle(int sig);
 void				check_server(int sock_fd, int efd, struct s_server *serv);
 
 extern volatile sig_atomic_t g_sig;
+extern volatile _Atomic int efd;
 
 #endif

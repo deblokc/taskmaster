@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/10 17:38:04 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/10 19:09:09 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,13 +19,15 @@
 #include <sys/un.h>
 #include <sys/epoll.h>
 
+volatile _Atomic int efd = 0;
+
 static void	cleanup(struct s_server *server, struct s_priority *priorities, bool remove_pidfile, struct s_report *reporter)
 {
-	if (!end_logging_thread(reporter, server->logging_thread))
+	if (efd > 0)
+		close(efd);
+	if (!end_logging_thread(reporter, server->logging_thread) && !server->daemon)
 	{
-		if (!server->daemon && write(2, "Could not terminate logging thread\n", strlen("Could not terminate logging thread\n")))
-		{
-		}
+		if (write(2, reporter->buffer, strlen(reporter->buffer))) {}
 	}
 	if (priorities)
 		priorities->destructor(priorities);
@@ -57,6 +59,49 @@ int	early_error(char* msg, int* reporter_pipe, char* tmp_log, struct s_server *s
 	return (1);
 }
 
+int	main_routine(struct s_server *server, struct s_priority *priorities, struct s_report *reporter)
+{
+	if (!install_signal_handler(reporter) || !unblock_signals_thread(reporter))
+	{
+		exit_admins(server);
+		if (priorities)
+		{
+			strcpy(reporter->buffer, "DEBUG: Waiting priorities\n");
+			report(reporter, false);
+			wait_priorities(priorities);
+		}
+		cleanup(server, priorities, true, reporter);
+		return (1);
+	}
+	if (server->socket.enable)
+	{
+		struct epoll_event sock;
+		bzero(&sock, sizeof(sock));
+		sock.data.fd = server->socket.sockfd;
+		sock.events = EPOLLIN;
+		efd = epoll_create(1);
+		epoll_ctl(efd, EPOLL_CTL_ADD, server->socket.sockfd, &sock);
+		while (!g_sig)
+		{
+			check_server(server->socket.sockfd, efd, server);
+		}
+		exit_admins(server);
+	}
+	else
+	{
+		while (!g_sig)
+		{
+		}
+	}
+	if (priorities)
+	{
+		strcpy(reporter->buffer, "DEBUG: Waiting priorities\n");
+		report(reporter, false);
+		wait_priorities(priorities);
+	}
+	cleanup(server, priorities, true, reporter);
+	return (1);
+}
 
 int main(int ac, char **av)
 {
@@ -111,21 +156,9 @@ int main(int ac, char **av)
 		snprintf(&reporter.buffer[22], PIPE_BUF - 22, "CRITICAL: could not start taskmasterd, exiting process\n");
 		return (early_error(reporter.buffer, reporter_pipe, "/tmp/.taskmasterd_tmp.log", server));
 	}
-	else
+	if (server->socket.enable)
 	{
-		if (server->socket.enable)
-		{
-			create_server(server, &reporter);
-			if (reporter.critical)
-			{
-				if (end_initial_log(&reporter, &thread_ret, initial_logger) && *(int *)thread_ret != 1)
-					report_critical(reporter_pipe[2]);
-				get_stamp(reporter.buffer);
-				snprintf(&reporter.buffer[22], PIPE_BUF - 22, "CRITICAL: could not start taskmasterd, exiting process\n");
-				return (early_error(reporter.buffer, reporter_pipe, "/tmp/.taskmasterd_tmp.log", server));
-			}
-		}
-		prelude(server, &reporter);
+		create_server(server, &reporter);
 		if (reporter.critical)
 		{
 			if (end_initial_log(&reporter, &thread_ret, initial_logger) && *(int *)thread_ret != 1)
@@ -134,96 +167,77 @@ int main(int ac, char **av)
 			snprintf(&reporter.buffer[22], PIPE_BUF - 22, "CRITICAL: could not start taskmasterd, exiting process\n");
 			return (early_error(reporter.buffer, reporter_pipe, "/tmp/.taskmasterd_tmp.log", server));
 		}
-		if (!end_initial_log(&reporter, &thread_ret, initial_logger))
-			return (early_error(reporter.buffer, reporter_pipe, "/tmp/.taskmasterd_tmp.log", server));
-		close(reporter_pipe[0]);
-		close(reporter_pipe[1]);
-		reporter_pipe[0] = 0;
-		reporter_pipe[1] = 0;
-		if (!transfer_logs(reporter_pipe[2], server, &reporter))
-			return (early_error(reporter.buffer, reporter_pipe, "/tmp/.taskmasterd_tmp.log", server));
-		reporter_pipe[2] = 0;
-		if (!start_logging_thread(server, false))
-		{
-			server = server->cleaner(server);
-			return (1);
-		}
-		reporter.report_fd = server->log_pipe[1];
-		priorities = create_priorities(server, &reporter);
-		if (reporter.critical)
-		{
-			strcpy(reporter.buffer, "CRITICAL: Could not build priorities, exiting taskmasterd\n");
-			report(&reporter, true);
-			if (!end_logging_thread(&reporter, server->logging_thread))
-			{
-				if (write(2, reporter->buffer, strlen(reporter->buffer))) {}
-			}	
-			server = server->cleaner(server);
-			return (1);
-		}
-		if (server->daemon)
-		{
-			ret = daemonize(server);
-			if (ret != -1)
-			{
-				if (priorities)
-					priorities->destructor(priorities);
-				server->cleaner(server);
-				exit(ret);
-			}
-		}
-		else
-		{
-			server->pid = getpid();
-		}
-		reporter.report_fd = server->log_pipe[1];
-		create_pid_file(server, &reporter);
-		if (reporter.critical)
-		{
-			cleanup(server, priorities, false, &reporter);
-			return (1);
-		}
-		strcpy(reporter.buffer, "INFO: Starting taskmasterd\n");
-		report(&reporter, false);
-		if (!priorities)
-		{
-			strcpy(reporter.buffer, "DEBUG: No priorities to start\n");
-			report(&reporter, false);
-		}
-		else
-		{
-			strcpy(reporter.buffer, "DEBUG: Launching priorities\n");
-			report(&reporter, false);
-			launch(priorities, server->log_pipe[1]);
-		}
-		if (server->socket.enable)
-		{
-			struct epoll_event sock;
-			int efd;
-			bzero(&sock, sizeof(sock));
-			sock.data.fd = server->socket.sockfd;
-			sock.events = EPOLLIN;
-			efd = epoll_create(1);
-			epoll_ctl(efd, EPOLL_CTL_ADD, server->socket.sockfd, &sock);
-			while (!g_sig)
-			{
-				check_server(server->socket.sockfd, efd, server);
-			}
-			exit_admins(server);
-		}
-		else
-		{
-			while (!g_sig)
-			{
-			}
-		}
-		if (priorities)
-		{
-			strcpy(reporter.buffer, "DEBUG: Waiting priorities\n");
-			report(&reporter, false);
-			wait_priorities(priorities);
-		}
-		cleanup(server, priorities, true, &reporter);
 	}
-	return (ret);
+	prelude(server, &reporter);
+	if (reporter.critical)
+	{
+		if (end_initial_log(&reporter, &thread_ret, initial_logger) && *(int *)thread_ret != 1)
+			report_critical(reporter_pipe[2]);
+		get_stamp(reporter.buffer);
+		snprintf(&reporter.buffer[22], PIPE_BUF - 22, "CRITICAL: could not start taskmasterd, exiting process\n");
+		return (early_error(reporter.buffer, reporter_pipe, "/tmp/.taskmasterd_tmp.log", server));
+	}
+	if (!end_initial_log(&reporter, &thread_ret, initial_logger))
+		return (early_error(reporter.buffer, reporter_pipe, "/tmp/.taskmasterd_tmp.log", server));
+	close(reporter_pipe[0]);
+	close(reporter_pipe[1]);
+	reporter_pipe[0] = 0;
+	reporter_pipe[1] = 0;
+	if (!transfer_logs(reporter_pipe[2], server, &reporter))
+		return (early_error(reporter.buffer, reporter_pipe, "/tmp/.taskmasterd_tmp.log", server));
+	reporter_pipe[2] = 0;
+	if (!start_logging_thread(server, false))
+	{
+		server = server->cleaner(server);
+		return (1);
+	}
+	reporter.report_fd = server->log_pipe[1];
+	priorities = create_priorities(server, &reporter);
+	if (reporter.critical)
+	{
+		strcpy(reporter.buffer, "CRITICAL: Could not build priorities, exiting taskmasterd\n");
+		report(&reporter, true);
+		if (!end_logging_thread(&reporter, server->logging_thread))
+		{
+			if (write(2, reporter.buffer, strlen(reporter.buffer))) {}
+		}	
+		server = server->cleaner(server);
+		return (1);
+	}
+	if (server->daemon)
+	{
+		ret = daemonize(server);
+		if (ret != -1)
+		{
+			if (priorities)
+				priorities->destructor(priorities);
+			server->cleaner(server);
+			exit(ret);
+		}
+	}
+	else
+	{
+		server->pid = getpid();
+	}
+	reporter.report_fd = server->log_pipe[1];
+	create_pid_file(server, &reporter);
+	if (reporter.critical)
+	{
+		cleanup(server, priorities, false, &reporter);
+		return (1);
+	}
+	strcpy(reporter.buffer, "INFO: Starting taskmasterd\n");
+	report(&reporter, false);
+	if (!priorities)
+	{
+		strcpy(reporter.buffer, "DEBUG: No priorities to start\n");
+		report(&reporter, false);
+	}
+	else
+	{
+		strcpy(reporter.buffer, "DEBUG: Launching priorities\n");
+		report(&reporter, false);
+		launch(priorities, server->log_pipe[1]);
+	}
+	return (main_routine(server, priorities, &reporter));
 }
