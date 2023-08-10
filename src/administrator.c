@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/10 13:24:37 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/10 18:11:34 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -278,6 +278,8 @@ int handle_command(struct s_process *process, char *buf) {
 		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s has received order to send sig %d to process", process->name, (int)buf[3]);
 		report(&reporter, false);
 		kill(process->pid, (int)buf[3]);
+	} else if (!strncmp(buf, "fg", 2)) {
+		// add fd to epoll and send it log
 	}
 	return (0);
 }

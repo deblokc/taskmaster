@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/10 13:13:25 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/10 18:13:45 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -339,9 +339,28 @@ void check_server(int sock_fd, int efd, struct s_server *serv) {
 								}
 							} else if (!strcmp(cmd->cmd, "avail")) {   //main thread return available process
 							} else if (!strcmp(cmd->cmd, "fg")) {      //administrator send logging and stdin
+								snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: controller has sent fg command\n");
+								report(&reporter, false);
+								if (cmd->arg) {
+									for (struct s_program *current = serv->begin(serv); current; current = current->itnext(current)) {
+										if (!strncmp(current->name, cmd->arg[0], strlen(current->name))) {
+											for (int i = 0; i < current->numprocs; i++) {
+												if (!strcmp(current->processes[i].name, cmd->arg[0])) {
+													char buf[PIPE_BUF + 1];
+													bzero(buf, PIPE_BUF + 1);
+													snprintf(buf, PIPE_BUF + 1, "fg %d", client->poll.data.fd);
+													if (write(current->processes[i].com[1], buf, strlen(buf))) {}
+													snprintf(client->buf, PIPE_BUF + 1, "fg");
+													break ;
+												}
+											}
+											break ;
+										}
+									}
+								}
 							} else if (!strcmp(cmd->cmd, "reload")) {  //restart daemon
 							} else if (!strcmp(cmd->cmd, "restart")) { //administrator stop then start process
-								snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: controller has sent start command\n");
+								snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: controller has sent restart command\n");
 								report(&reporter, false);
 								if (cmd->arg) {
 									send_command_multiproc(cmd, serv);
@@ -360,7 +379,7 @@ void check_server(int sock_fd, int efd, struct s_server *serv) {
 									send_command_multiproc(cmd, serv);
 								}
 							} else if (!strcmp(cmd->cmd, "pid")) {     //main thread send pid of process
-								snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: controller has sent clear command\n");
+								snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: controller has sent pid command\n");
 								report(&reporter, false);
 								if (cmd->arg) {
 									if (!strcmp(cmd->arg[0], "all")) {

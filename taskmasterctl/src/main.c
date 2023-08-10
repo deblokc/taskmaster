@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 15:17:03 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/09 18:45:18 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/10 17:21:19 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -110,6 +110,67 @@ void help(char *full_arg) {
 	}
 }
 
+void foreground(int efd, struct epoll_event sock) {
+	struct epoll_event tmp;
+	char *line;
+	int ret;
+
+	while (!g_sig) {
+		line = ft_readline(NULL);
+		if (line) {
+			sock.events = EPOLLOUT;
+			epoll_ctl(efd, EPOLL_CTL_MOD, sock.data.fd, &sock);
+
+			ret = epoll_wait(efd, &tmp, 1, 60 * 1000);
+			if (ret > 0) {
+				if (tmp.events & EPOLLOUT) {
+					char buf[PIPE_BUF + 1];
+					snprintf(buf, PIPE_BUF + 1, "data:%s", line);
+					send(tmp.data.fd, buf, strlen(buf), 0);
+				}
+			} else if (ret == 0) {
+				printf("SOCKET TIMED OUT\n");
+				return ;
+			} else {
+				perror("epoll_wait(EPOLLOUT)");
+				return ;
+			}
+
+			sock.events = EPOLLIN;
+			epoll_ctl(efd, EPOLL_CTL_MOD, sock.data.fd, &sock);
+
+			ret = epoll_wait(efd, &tmp, 1, 60 * 1000);
+			if (ret > 0) {
+				if (tmp.events & EPOLLIN) {
+					char buf[PIPE_BUF + 1];
+					bzero(buf, PIPE_BUF + 1);
+					recv(tmp.data.fd, buf, PIPE_BUF, 0);
+					printf("%s", buf);
+				}
+			} else if (ret == 0) {
+				printf("SOCKET TIMED OUT\n");
+				return ;
+			} else {
+				perror("epoll_wait(EPOLLIN)");
+				return ;
+			}
+		}
+	}
+	sock.events = EPOLLOUT;
+	epoll_ctl(efd, EPOLL_CTL_MOD, sock.data.fd, &sock);
+
+	ret = epoll_wait(efd, &tmp, 1, 60 * 1000);
+	if (ret > 0) {
+		if (tmp.events & EPOLLOUT) {
+			send(tmp.data.fd, "exit", strlen("exit"), 0);
+		}
+	} else if (ret == 0) {
+		printf("SOCKET TIMED OUT\n");
+	} else {
+		perror("epoll_wait(EPOLLOUT)");
+	}
+}
+
 void remote_exec(char *cmd, int efd, struct epoll_event sock) {
 	struct epoll_event tmp;
 
@@ -146,7 +207,9 @@ void remote_exec(char *cmd, int efd, struct epoll_event sock) {
 			char buf[PIPE_BUF + 1];
 			bzero(buf, PIPE_BUF + 1);
 			recv(tmp.data.fd, buf, PIPE_BUF, 0);
-			// WIlL NEED A CONDITION FOR CONNECTION WITH AN ADMINISTRATOR (tail/fg)
+			if (!strcmp(buf, "fg")) {
+				foreground(efd, sock);
+			}
 			printf("%s", buf); // DUMBLY PRINT RESPONSE
 		}
 	} else if (ret == 0) {
