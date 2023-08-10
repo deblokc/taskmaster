@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/10 12:53:24 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/10 13:24:37 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -331,6 +331,12 @@ void *administrator(void *arg) {
 					report(&reporter, false);
 					closeall(process, epollfd);
 					close(epollfd);
+					if (process->stdout_logger.logfd > 0) {
+						close(process->stdout_logger.logfd);
+					}
+					if (process->stderr_logger.logfd > 0) {
+						close(process->stderr_logger.logfd);
+					}
 					return NULL;
 				}
 			} else {
@@ -346,6 +352,12 @@ void *administrator(void *arg) {
 				kill(process->pid, SIGKILL);
 				closeall(process, epollfd);
 				close(epollfd);
+				if (process->stdout_logger.logfd > 0) {
+					close(process->stdout_logger.logfd);
+				}
+				if (process->stderr_logger.logfd > 0) {
+					close(process->stderr_logger.logfd);
+				}
 				return NULL;
 			}
 
@@ -410,6 +422,12 @@ void *administrator(void *arg) {
 								kill(process->pid, SIGKILL);
 								closeall(process, epollfd);
 								close(epollfd);
+								if (process->stdout_logger.logfd > 0) {
+									close(process->stdout_logger.logfd);
+								}
+								if (process->stderr_logger.logfd > 0) {
+									close(process->stderr_logger.logfd);
+								}
 								return NULL;
 							}
 						} else {
@@ -422,6 +440,12 @@ void *administrator(void *arg) {
 								kill(process->pid, SIGKILL);
 								closeall(process, epollfd);
 								close(epollfd);
+								if (process->stdout_logger.logfd > 0) {
+									close(process->stdout_logger.logfd);
+								}
+								if (process->stderr_logger.logfd > 0) {
+									close(process->stderr_logger.logfd);
+								}
 								return NULL;
 							}
 							process->bool_exit = true;
@@ -477,6 +501,12 @@ void *administrator(void *arg) {
 								kill(process->pid, SIGKILL);
 								closeall(process, epollfd);
 								close(epollfd);
+								if (process->stdout_logger.logfd > 0) {
+									close(process->stdout_logger.logfd);
+								}
+								if (process->stderr_logger.logfd > 0) {
+									close(process->stderr_logger.logfd);
+								}
 								return NULL;
 							}
 						} else {
@@ -489,6 +519,12 @@ void *administrator(void *arg) {
 								kill(process->pid, SIGKILL);
 								closeall(process, epollfd);
 								close(epollfd);
+								if (process->stdout_logger.logfd > 0) {
+									close(process->stdout_logger.logfd);
+								}
+								if (process->stderr_logger.logfd > 0) {
+									close(process->stderr_logger.logfd);
+								}
 								return NULL;
 							}
 							process->bool_exit = true;
@@ -507,6 +543,12 @@ void *administrator(void *arg) {
 				kill(process->pid, SIGKILL);
 				closeall(process, epollfd);
 				close(epollfd);
+				if (process->stdout_logger.logfd > 0) {
+					close(process->stdout_logger.logfd);
+				}
+				if (process->stderr_logger.logfd > 0) {
+					close(process->stderr_logger.logfd);
+				}
 				return NULL;
 			}
 
@@ -546,6 +588,12 @@ void *administrator(void *arg) {
 								snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s's administrator exited\n", process->name);
 								report(&reporter, false);
 								close(epollfd);
+								if (process->stdout_logger.logfd > 0) {
+									close(process->stdout_logger.logfd);
+								}
+								if (process->stderr_logger.logfd > 0) {
+									close(process->stderr_logger.logfd);
+								}
 								return NULL;
 							}
 							break ;
@@ -569,6 +617,12 @@ void *administrator(void *arg) {
 								snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s's administrator exited\n", process->name);
 								report(&reporter, false);
 								close(epollfd);
+								if (process->stdout_logger.logfd > 0) {
+									close(process->stdout_logger.logfd);
+								}
+								if (process->stderr_logger.logfd > 0) {
+									close(process->stderr_logger.logfd);
+								}
 								return NULL;
 							}
 							break ;
@@ -584,6 +638,12 @@ void *administrator(void *arg) {
 								kill(process->pid, SIGKILL);
 								closeall(process, epollfd);
 								close(epollfd);
+								if (process->stdout_logger.logfd > 0) {
+									close(process->stdout_logger.logfd);
+								}
+								if (process->stderr_logger.logfd > 0) {
+									close(process->stderr_logger.logfd);
+								}
 								return NULL;
 							}
 						} else {
@@ -596,6 +656,12 @@ void *administrator(void *arg) {
 								kill(process->pid, SIGKILL);
 								closeall(process, epollfd);
 								close(epollfd);
+								if (process->stdout_logger.logfd > 0) {
+									close(process->stdout_logger.logfd);
+								}
+								if (process->stderr_logger.logfd > 0) {
+									close(process->stderr_logger.logfd);
+								}
 								return NULL;
 							}
 							process->bool_exit = true;
@@ -613,6 +679,12 @@ void *administrator(void *arg) {
 					snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s's administrator exited\n", process->name);
 					report(&reporter, false);
 					close(epollfd);
+					if (process->stdout_logger.logfd > 0) {
+						close(process->stdout_logger.logfd);
+					}
+					if (process->stderr_logger.logfd > 0) {
+						close(process->stderr_logger.logfd);
+					}
 					return NULL;
 				}
 			}
@@ -627,12 +699,24 @@ void *administrator(void *arg) {
 						report(&reporter, false);
 						if (handle_command(process, buf)) {
 							close(epollfd);
+							if (process->stdout_logger.logfd > 0) {
+								close(process->stdout_logger.logfd);
+							}
+							if (process->stderr_logger.logfd > 0) {
+								close(process->stderr_logger.logfd);
+							}
 							return NULL;
 						}
 					} else {
 						snprintf(reporter.buffer, PIPE_BUF - 22, "ERROR: %s's administrator could not read from main thread, exiting to avoid hanging\n", process->name);
 						report(&reporter, false);
 						close(epollfd);
+						if (process->stdout_logger.logfd > 0) {
+							close(process->stdout_logger.logfd);
+						}
+						if (process->stderr_logger.logfd > 0) {
+							close(process->stderr_logger.logfd);
+						}
 						return NULL;
 					}
 				}
