@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/10 16:23:17 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/10 16:29:51 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -91,8 +91,6 @@ void child_exec(struct s_process *proc) {
 		snprintf(reporter.buffer, PIPE_BUF - 22, "CRITICAL: %s command \"%s\" not found\n", proc->name, proc->program->command);
 		report(&reporter, false);
 	} else {
-		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s execveing command \"%s\"\n", proc->name, proc->program->command);
-		report(&reporter, false);
 		if (setsid() == -1)
 		{
 			snprintf(reporter.buffer, PIPE_BUF - 22, "CRITICAL: %s could not become a session leader\n", proc->name);
@@ -115,6 +113,8 @@ void child_exec(struct s_process *proc) {
 			free(proc->name);
 			exit(1);
 		}
+		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s execveing command \"%s\"\n", proc->name, proc->program->command);
+		report(&reporter, false);
 		execve(command, proc->program->args, environ);
 		perror("execve");
 	}

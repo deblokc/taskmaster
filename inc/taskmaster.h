@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/10 15:49:17 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/10 17:30:39 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -56,7 +56,6 @@ enum log_level {
 struct s_report {
 	bool				critical;
 	char				buffer[PIPE_BUF + 1];
-	char				stamp[22];
 	int					report_fd;
 };
 
@@ -196,7 +195,7 @@ void				*administrator(void *arg);
 void				launch(struct s_priority *lst, int log_fd);
 void				wait_priorities(struct s_priority *lst);
 void				prelude(struct s_server *server, struct s_report *reporter);
-void				transfer_logs(int tmp_fd, struct s_server *server);
+bool				transfer_logs(int tmp_fd, struct s_server *server, struct s_report *reporter);
 bool				write_log(struct s_logger *logger, char* log_string);
 bool				write_process_log(struct s_logger *logger, char* log_string);
 char				*get_stamp(char* stamp_str);
@@ -210,6 +209,9 @@ bool				block_signals(struct s_report *reporter);
 bool				block_signals_thread(struct s_report *reporter);
 bool				unblock_signals_thread(struct s_report *reporter);
 void				handler(int sig);
+bool				end_initial_log(struct s_report *reporter, void **thread_ret, pthread_t initial_logger);
+bool				end_logging_thread(struct s_report *reporter, pthread_t logger);
+void				create_pid_file(struct s_server *server, struct s_report *reporter);
 
 
 void				exit_admins(struct s_server *serv);
