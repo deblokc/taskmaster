@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/09 19:00:05 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/10 12:53:24 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -329,12 +329,13 @@ void *administrator(void *arg) {
 				if (exec(process, epollfd)) {
 					snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s got a fatal error in exec\n", process->name);
 					report(&reporter, false);
+					closeall(process, epollfd);
+					close(epollfd);
 					return NULL;
 				}
 			} else {
 				snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s will not instantly restart\n", process->name);
 				report(&reporter, false);
-				return NULL;
 			}
 		}
 		if (process->status == STARTING) {
@@ -342,6 +343,9 @@ void *administrator(void *arg) {
 			if (gettimeofday(&tmp, NULL)) {
 				snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s got a fatal error in gettimeofday\n", process->name);
 				report(&reporter, false);
+				kill(process->pid, SIGKILL);
+				closeall(process, epollfd);
+				close(epollfd);
 				return NULL;
 			}
 
@@ -403,6 +407,9 @@ void *administrator(void *arg) {
 							snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s's administrator received something from main thread while STARTING\n", process->name);
 							report(&reporter, false);
 							if (handle_command(process, buf)) {
+								kill(process->pid, SIGKILL);
+								closeall(process, epollfd);
+								close(epollfd);
 								return NULL;
 							}
 						} else {
@@ -412,6 +419,9 @@ void *administrator(void *arg) {
 							if (gettimeofday(&process->stop, NULL)) {
 								snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s got a fatal error in gettimeofday\n", process->name);
 								report(&reporter, false);
+								kill(process->pid, SIGKILL);
+								closeall(process, epollfd);
+								close(epollfd);
 								return NULL;
 							}
 							process->bool_exit = true;
@@ -464,6 +474,9 @@ void *administrator(void *arg) {
 							snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s's administrator received something from main thread while RUNNING\n", process->name);
 							report(&reporter, false);
 							if (handle_command(process, buf)) {
+								kill(process->pid, SIGKILL);
+								closeall(process, epollfd);
+								close(epollfd);
 								return NULL;
 							}
 						} else {
@@ -473,6 +486,9 @@ void *administrator(void *arg) {
 							if (gettimeofday(&process->stop, NULL)) {
 								snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s got a fatal error in gettimeofday\n", process->name);
 								report(&reporter, false);
+								kill(process->pid, SIGKILL);
+								closeall(process, epollfd);
+								close(epollfd);
 								return NULL;
 							}
 							process->bool_exit = true;
@@ -488,6 +504,9 @@ void *administrator(void *arg) {
 			if (gettimeofday(&tmp, NULL)) {
 				snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s got a fatal error in gettimeofday\n", process->name);
 				report(&reporter, false);
+				kill(process->pid, SIGKILL);
+				closeall(process, epollfd);
+				close(epollfd);
 				return NULL;
 			}
 
@@ -526,6 +545,7 @@ void *administrator(void *arg) {
 							if (process->bool_exit) { // if need to exit administrator
 								snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s's administrator exited\n", process->name);
 								report(&reporter, false);
+								close(epollfd);
 								return NULL;
 							}
 							break ;
@@ -548,6 +568,7 @@ void *administrator(void *arg) {
 							if (process->bool_exit) { // if need to exit administrator
 								snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s's administrator exited\n", process->name);
 								report(&reporter, false);
+								close(epollfd);
 								return NULL;
 							}
 							break ;
@@ -560,6 +581,9 @@ void *administrator(void *arg) {
 							snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s's administrator received something from main thread while RUNNING\n", process->name);
 							report(&reporter, false);
 							if (handle_command(process, buf)) {
+								kill(process->pid, SIGKILL);
+								closeall(process, epollfd);
+								close(epollfd);
 								return NULL;
 							}
 						} else {
@@ -569,6 +593,9 @@ void *administrator(void *arg) {
 							if (gettimeofday(&process->stop, NULL)) {
 								snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s got a fatal error in gettimeofday\n", process->name);
 								report(&reporter, false);
+								kill(process->pid, SIGKILL);
+								closeall(process, epollfd);
+								close(epollfd);
 								return NULL;
 							}
 							process->bool_exit = true;
@@ -581,9 +608,11 @@ void *administrator(void *arg) {
 				report(&reporter, false);
 				process->stop.tv_sec = 0;
 				process->stop.tv_usec = 0;
+				closeall(process, epollfd);
 				if (process->bool_exit) { // if need to exit administrator
 					snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s's administrator exited\n", process->name);
 					report(&reporter, false);
+					close(epollfd);
 					return NULL;
 				}
 			}
@@ -597,18 +626,14 @@ void *administrator(void *arg) {
 						snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s's administrator received something from main thread while STOPPED\n", process->name);
 						report(&reporter, false);
 						if (handle_command(process, buf)) {
+							close(epollfd);
 							return NULL;
 						}
 					} else {
 						snprintf(reporter.buffer, PIPE_BUF - 22, "ERROR: %s's administrator could not read from main thread, exiting to avoid hanging\n", process->name);
 						report(&reporter, false);
-						process->status = STOPPING;
-						if (gettimeofday(&process->stop, NULL)) {
-							snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s got a fatal error in gettimeofday\n", process->name);
-							report(&reporter, false);
-							return NULL;
-						}
-						process->bool_exit = true;
+						close(epollfd);
+						return NULL;
 					}
 				}
 			}

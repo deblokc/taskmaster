@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/07 10:59:08 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/09 18:13:01 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/10 13:12:33 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -82,7 +82,11 @@ void wait_process(struct s_program *lst) {
 		}
 		if (lst->numprocs == 1) {
 			pthread_join(lst->processes[0].handle, NULL);
+			close(lst->processes[0].com[0]);
+			close(lst->processes[0].com[1]);
 			free(lst->processes[0].name);
+			free(lst->processes[0].stdout_logger.logfile);
+			free(lst->processes[0].stderr_logger.logfile);
 			lst->processes[0].name = NULL;
 			free(lst->processes);
 			lst->processes = NULL;
@@ -91,7 +95,11 @@ void wait_process(struct s_program *lst) {
 			int j = 0;
 			for (; j < lst->numprocs; j++) {
 				pthread_join(lst->processes[j].handle, NULL);
+				close(lst->processes[j].com[0]);
+				close(lst->processes[j].com[1]);
 				free(lst->processes[j].name);
+				free(lst->processes[j].stdout_logger.logfile);
+				free(lst->processes[j].stderr_logger.logfile);
 				lst->processes[j].name = NULL;
 			}
 			free(lst->processes);
