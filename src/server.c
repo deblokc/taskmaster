@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/10 13:13:25 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/10 16:21:13 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -415,12 +415,8 @@ void check_server(int sock_fd, int efd, struct s_server *serv) {
 								memcpy(client->buf, unknown_cmd, strlen(unknown_cmd));
 							}
 							if (cmd->arg) {
-								for (int i = 0; cmd->arg[i]; i++) {
-									free(cmd->arg[i]);
-								}
 								free(cmd->arg);
 							}
-							free(cmd->cmd);
 							free(cmd);
 							// execute cmd
 						}
