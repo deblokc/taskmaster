@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/09 18:07:11 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/10 15:49:17 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -206,6 +206,10 @@ bool				parse_socket(struct s_server *server, yaml_document_t *document, int val
 bool				start_logging_thread(struct s_server *server, bool daemonized);
 int					daemonize(struct s_server *server);
 bool				end_logging_thread(struct s_report *reporter, pthread_t logger);
+bool				block_signals(struct s_report *reporter);
+bool				block_signals_thread(struct s_report *reporter);
+bool				unblock_signals_thread(struct s_report *reporter);
+void				handler(int sig);
 
 
 void				exit_admins(struct s_server *serv);

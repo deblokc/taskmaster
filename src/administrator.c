@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/10 13:24:37 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/10 16:23:17 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -93,6 +93,28 @@ void child_exec(struct s_process *proc) {
 	} else {
 		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s execveing command \"%s\"\n", proc->name, proc->program->command);
 		report(&reporter, false);
+		if (setsid() == -1)
+		{
+			snprintf(reporter.buffer, PIPE_BUF - 22, "CRITICAL: %s could not become a session leader\n", proc->name);
+			report(&reporter, false);
+			close(proc->log);
+			close(proc->stdin[0]);
+			close(proc->stdout[1]);
+			close(proc->stderr[1]);
+			free(command);
+			free(proc->name);
+			exit(1);
+		}
+		if (!unblock_signals_thread(&reporter))
+		{
+			close(proc->log);
+			close(proc->stdin[0]);
+			close(proc->stdout[1]);
+			close(proc->stderr[1]);
+			free(command);
+			free(proc->name);
+			exit(1);
+		}
 		execve(command, proc->program->args, environ);
 		perror("execve");
 	}

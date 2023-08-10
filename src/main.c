@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/09 17:52:40 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/10 15:31:50 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,15 +18,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/epoll.h>
-#define SOCK_PATH "/tmp/taskmaster.sock"
 
-volatile sig_atomic_t	g_sig = 0;
-
-void handle(int sig)
-{
-	(void)sig;
-	g_sig = 1;
-}
 
 void	create_pid_file(struct s_server *server, struct s_report *reporter)
 {
@@ -128,12 +120,6 @@ int main(int ac, char **av)
 	struct s_server *server = NULL;
 	struct s_priority *priorities = NULL;
 
-	if (getopt(ac, av, "r:") != -1)
-	{
-		if (optarg == NULL)
-			return (1);
-		return(atoi(optarg));
-	}
 	if (ac != 2)
 	{
 		if (write(2, "Usage: ", strlen("Usage: ")) == -1 || write(2, av[0], strlen(av[0])) == -1 || write(2, " CONFIGURATION-FILE\n", strlen(" CONFIGURATION-FILE\n")) == -1)
@@ -143,11 +129,11 @@ int main(int ac, char **av)
 	}
 	else if (pipe2(reporter_pipe, O_DIRECT | O_NONBLOCK) == -1)
 	{
+		if (write(2, "CRITICAL: Could not create pipe\n", strlen("CRITICAL: Could not create pipe\n"))) {}
 		ret = 1;
 	}
 	else
 	{
-		signal(SIGINT, &handle);
 		reporter.critical = false;
 		reporter.report_fd = reporter_pipe[1];
 		bzero(reporter.buffer, PIPE_BUF + 1);
@@ -162,9 +148,20 @@ int main(int ac, char **av)
 			close(reporter_pipe[1]);
 			return (1);
 		}
+		if (!block_signals(&reporter))
+		{
+			if (write(2, "CRITICAL: could not block signals, exiting process\n", strlen("CRITICAL, could not block signals, exiting process\n")))
+			{
+			}
+			close(reporter_pipe[0]);
+			close(reporter_pipe[1]);
+			close(reporter_pipe[2]);
+			unlink("/tmp/.taskmasterd_tmp.log");
+			return (1);
+		}
 		if (pthread_create(&initial_logger, NULL, initial_log, reporter_pipe))
 		{
-			if (write(2, "CRITICAL, could not create initial log thread, exiting process\n", strlen("CRITICAL, could not create initial log thread, exiting process\n")))
+			if (write(2, "CRITICAL: could not create initial log thread, exiting process\n", strlen("CRITICAL, could not create initial log thread, exiting process\n")))
 			{
 			}
 			close(reporter_pipe[0]);

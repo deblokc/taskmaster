@@ -1,0 +1,212 @@
+[2023-08-10 16:07:55] DEBUG: Buiding server
+[2023-08-10 16:07:56] DEBUG: Path to binary path resolved: /mnt/nfs/homes/bdetune/42Cursus/42Unix/taskmaster/./taskmaster
+[2023-08-10 16:07:56] DEBUG: Path to configuration file resolved: /mnt/nfs/homes/bdetune/42Cursus/42Unix/taskmaster/config_files/config.yml
+[2023-08-10 16:07:56] DEBUG: Parsing YAML document
+[2023-08-10 16:07:56] DEBUG: Parsing 'programs' block
+[2023-08-10 16:07:56] DEBUG: Parsing program 'exception'
+[2023-08-10 16:07:56] DEBUG: Parsing command in program 'exception'
+[2023-08-10 16:07:56] DEBUG: Parsing numprocs in program 'exception'
+[2023-08-10 16:07:56] WARNING: Encountered unknown key 'retry' in program 'exception'
+[2023-08-10 16:07:56] DEBUG: Parsing umask in program 'exception'
+[2023-08-10 16:07:56] DEBUG: Parsing exitcodes in program exception
+[2023-08-10 16:07:56] DEBUG: Parsing exitcodes in program 'exception'
+[2023-08-10 16:07:56] DEBUG: Parsing exitcodes in program 'exception'
+[2023-08-10 16:07:56] DEBUG: Parsing autorestart in program exception
+[2023-08-10 16:07:56] DEBUG: Parsing stopsignal in program exception
+[2023-08-10 16:07:56] DEBUG: Parsing priority in program 'exception'
+[2023-08-10 16:07:56] DEBUG: inserting valid program 'exception' in tree
+[2023-08-10 16:07:56] DEBUG: Parsing 'server' block
+[2023-08-10 16:07:56] DEBUG: Parsing daemon in 'server'
+[2023-08-10 16:07:56] DEBUG: Parsing logfile in 'server'
+[2023-08-10 16:07:56] DEBUG: Parsing loglevel in 'server'
+[2023-08-10 16:07:56] DEBUG: Parsing 'socket' block
+[2023-08-10 16:07:56] DEBUG: Parsing enable in 'server'
+[2023-08-10 16:07:56] DEBUG: Parsing socketpath in 'server'
+[2023-08-10 16:07:56] DEBUG: Parsing umask in 'server'
+[2023-08-10 16:07:56] DEBUG: Ready for logging
+[2023-08-10 16:07:56] DEBUG: Adding program exception in list of priorities
+[2023-08-10 16:07:56] INFO: Starting taskmasterd
+[2023-08-10 16:07:56] DEBUG: Launching priorities
+[2023-08-10 16:07:56] DEBUG: Administrator for exception_6 created
+[2023-08-10 16:07:56] DEBUG: Administrator for exception_3 created
+[2023-08-10 16:07:56] DEBUG: Administrator for exception_1 created
+[2023-08-10 16:07:56] DEBUG: Administrator for exception_4 created
+[2023-08-10 16:07:56] DEBUG: Administrator for exception_2 created
+[2023-08-10 16:07:56] INFO: exception_4 is now STARTING
+[2023-08-10 16:07:56] DEBUG: exception_4 has raw cmd /bin/sh
+[2023-08-10 16:07:56] DEBUG: exception_4 starting epoll time to wait : 3000
+[2023-08-10 16:07:56] DEBUG: Administrator for exception_5 created
+[2023-08-10 16:07:56] DEBUG: Administrator for exception_10 created
+[2023-08-10 16:07:56] DEBUG: Administrator for exception_9 created
+[2023-08-10 16:07:56] INFO: exception_3 is now STARTING
+[2023-08-10 16:07:56] DEBUG: exception_3 has raw cmd /bin/sh
+[2023-08-10 16:07:56] DEBUG: exception_4 execveing command "/bin/sh"
+[2023-08-10 16:07:56] INFO: exception_6 is now STARTING
+[2023-08-10 16:07:56] DEBUG: exception_6 has raw cmd /bin/sh
+[2023-08-10 16:07:56] INFO: exception_9 is now STARTING
+[2023-08-10 16:07:56] DEBUG: exception_9 has raw cmd /bin/sh
+[2023-08-10 16:07:56] INFO: exception_2 is now STARTING
+[2023-08-10 16:07:56] DEBUG: exception_3 starting epoll time to wait : 3000
+[2023-08-10 16:07:56] DEBUG: exception_6 starting epoll time to wait : 3000
+[2023-08-10 16:07:56] DEBUG: exception_3 execveing command "/bin/sh"
+[2023-08-10 16:07:56] DEBUG: exception_2 has raw cmd /bin/sh
+[2023-08-10 16:07:56] INFO: exception_5 is now STARTING
+[2023-08-10 16:07:56] DEBUG: Administrator for exception_0 created
+[2023-08-10 16:07:56] DEBUG: exception_9 execveing command "/bin/sh"
+[2023-08-10 16:07:56] DEBUG: exception_6 execveing command "/bin/sh"
+[2023-08-10 16:07:56] DEBUG: Administrator for exception_8 created
+[2023-08-10 16:07:56] DEBUG: exception_2 execveing command "/bin/sh"
+[2023-08-10 16:07:56] DEBUG: exception_9 starting epoll time to wait : 3000
+[2023-08-10 16:07:56] DEBUG: Administrator for exception_7 created
+[2023-08-10 16:07:56] INFO: exception_7 is now STARTING
+[2023-08-10 16:07:56] INFO: exception_0 is now STARTING
+[2023-08-10 16:07:56] INFO: exception_1 is now STARTING
+[2023-08-10 16:07:56] DEBUG: exception_0 has raw cmd /bin/sh
+[2023-08-10 16:07:56] DEBUG: exception_2 starting epoll time to wait : 3000
+[2023-08-10 16:07:56] DEBUG: exception_5 has raw cmd /bin/sh
+[2023-08-10 16:07:56] DEBUG: exception_0 starting epoll time to wait : 3000
+[2023-08-10 16:07:56] DEBUG: exception_5 starting epoll time to wait : 3000
+[2023-08-10 16:07:56] DEBUG: exception_0 execveing command "/bin/sh"
+[2023-08-10 16:07:56] INFO: exception_8 is now STARTING
+[2023-08-10 16:07:56] DEBUG: exception_1 has raw cmd /bin/sh
+[2023-08-10 16:07:56] DEBUG: exception_1 starting epoll time to wait : 3000
+[2023-08-10 16:07:56] DEBUG: exception_5 execveing command "/bin/sh"
+[2023-08-10 16:07:56] DEBUG: exception_7 has raw cmd /bin/sh
+[2023-08-10 16:07:56] DEBUG: exception_1 execveing command "/bin/sh"
+[2023-08-10 16:07:56] DEBUG: exception_7 starting epoll time to wait : 3000
+[2023-08-10 16:07:56] DEBUG: exception_8 has raw cmd /bin/sh
+[2023-08-10 16:07:56] DEBUG: exception_8 starting epoll time to wait : 3000
+[2023-08-10 16:07:56] INFO: exception_10 is now STARTING
+[2023-08-10 16:07:56] DEBUG: exception_10 has raw cmd /bin/sh
+[2023-08-10 16:07:56] DEBUG: exception_7 execveing command "/bin/sh"
+[2023-08-10 16:07:56] DEBUG: exception_10 starting epoll time to wait : 3000
+[2023-08-10 16:07:56] DEBUG: exception_8 execveing command "/bin/sh"
+[2023-08-10 16:07:56] DEBUG: exception_10 execveing command "/bin/sh"
+[2023-08-10 16:07:59] INFO: exception_4 is now RUNNING
+[2023-08-10 16:07:59] DEBUG: exception_4 starting epoll time to wait : 0
+[2023-08-10 16:07:59] INFO: exception_6 is now RUNNING
+[2023-08-10 16:07:59] DEBUG: exception_6 starting epoll time to wait : 0
+[2023-08-10 16:07:59] INFO: exception_3 is now RUNNING
+[2023-08-10 16:07:59] DEBUG: exception_3 starting epoll time to wait : 0
+[2023-08-10 16:07:59] INFO: exception_9 is now RUNNING
+[2023-08-10 16:07:59] DEBUG: exception_9 starting epoll time to wait : 0
+[2023-08-10 16:07:59] INFO: exception_2 is now RUNNING
+[2023-08-10 16:07:59] DEBUG: exception_2 starting epoll time to wait : 0
+[2023-08-10 16:07:59] INFO: exception_0 is now RUNNING
+[2023-08-10 16:07:59] INFO: exception_5 is now RUNNING
+[2023-08-10 16:07:59] DEBUG: exception_0 starting epoll time to wait : 0
+[2023-08-10 16:07:59] DEBUG: exception_5 starting epoll time to wait : 0
+[2023-08-10 16:07:59] INFO: exception_1 is now RUNNING
+[2023-08-10 16:07:59] DEBUG: exception_1 starting epoll time to wait : 0
+[2023-08-10 16:07:59] INFO: exception_7 is now RUNNING
+[2023-08-10 16:07:59] DEBUG: exception_7 starting epoll time to wait : 0
+[2023-08-10 16:07:59] INFO: exception_8 is now RUNNING
+[2023-08-10 16:07:59] DEBUG: exception_8 starting epoll time to wait : 0
+[2023-08-10 16:07:59] INFO: exception_10 is now RUNNING
+[2023-08-10 16:07:59] DEBUG: exception_10 starting epoll time to wait : 0
+[2023-08-10 16:09:23] DEBUG: Buiding server
+[2023-08-10 16:09:23] DEBUG: Path to binary path resolved: /mnt/nfs/homes/bdetune/42Cursus/42Unix/taskmaster/./taskmaster
+[2023-08-10 16:09:23] DEBUG: Path to configuration file resolved: /mnt/nfs/homes/bdetune/42Cursus/42Unix/taskmaster/config_files/config.yml
+[2023-08-10 16:09:23] DEBUG: Parsing YAML document
+[2023-08-10 16:09:23] DEBUG: Parsing 'programs' block
+[2023-08-10 16:09:23] DEBUG: Parsing program 'exception'
+[2023-08-10 16:09:23] DEBUG: Parsing command in program 'exception'
+[2023-08-10 16:09:23] DEBUG: Parsing numprocs in program 'exception'
+[2023-08-10 16:09:23] WARNING: Encountered unknown key 'retry' in program 'exception'
+[2023-08-10 16:09:23] DEBUG: Parsing umask in program 'exception'
+[2023-08-10 16:09:23] DEBUG: Parsing exitcodes in program exception
+[2023-08-10 16:09:23] DEBUG: Parsing exitcodes in program 'exception'
+[2023-08-10 16:09:23] DEBUG: Parsing exitcodes in program 'exception'
+[2023-08-10 16:09:23] DEBUG: Parsing autorestart in program exception
+[2023-08-10 16:09:23] DEBUG: Parsing stopsignal in program exception
+[2023-08-10 16:09:23] DEBUG: Parsing priority in program 'exception'
+[2023-08-10 16:09:23] DEBUG: inserting valid program 'exception' in tree
+[2023-08-10 16:09:23] DEBUG: Parsing 'server' block
+[2023-08-10 16:09:23] DEBUG: Parsing daemon in 'server'
+[2023-08-10 16:09:23] DEBUG: Parsing logfile in 'server'
+[2023-08-10 16:09:23] DEBUG: Parsing loglevel in 'server'
+[2023-08-10 16:09:23] DEBUG: Parsing 'socket' block
+[2023-08-10 16:09:23] DEBUG: Parsing enable in 'server'
+[2023-08-10 16:09:23] DEBUG: Parsing socketpath in 'server'
+[2023-08-10 16:09:23] DEBUG: Parsing umask in 'server'
+[2023-08-10 16:09:23] DEBUG: Ready for logging
+[2023-08-10 16:09:23] DEBUG: Adding program exception in list of priorities
+[2023-08-10 16:09:23] INFO: Starting taskmasterd
+[2023-08-10 16:09:23] DEBUG: Launching priorities
+[2023-08-10 16:09:23] DEBUG: Administrator for exception_0 created
+[2023-08-10 16:09:23] DEBUG: Administrator for exception_3 created
+[2023-08-10 16:09:23] DEBUG: Administrator for exception_8 created
+[2023-08-10 16:09:23] DEBUG: Administrator for exception_10 created
+[2023-08-10 16:09:23] DEBUG: Administrator for exception_6 created
+[2023-08-10 16:09:23] DEBUG: Administrator for exception_1 created
+[2023-08-10 16:09:23] INFO: exception_8 is now STARTING
+[2023-08-10 16:09:23] DEBUG: exception_8 has raw cmd /bin/sh
+[2023-08-10 16:09:23] DEBUG: Administrator for exception_5 created
+[2023-08-10 16:09:23] INFO: exception_6 is now STARTING
+[2023-08-10 16:09:23] DEBUG: exception_6 has raw cmd /bin/sh
+[2023-08-10 16:09:23] DEBUG: exception_6 starting epoll time to wait : 2999
+[2023-08-10 16:09:23] DEBUG: Administrator for exception_2 created
+[2023-08-10 16:09:23] DEBUG: exception_6 execveing command "/bin/sh"
+[2023-08-10 16:09:23] INFO: exception_1 is now STARTING
+[2023-08-10 16:09:23] DEBUG: exception_1 has raw cmd /bin/sh
+[2023-08-10 16:09:23] DEBUG: Administrator for exception_4 created
+[2023-08-10 16:09:23] DEBUG: exception_8 starting epoll time to wait : 3000
+[2023-08-10 16:09:23] DEBUG: Administrator for exception_7 created
+[2023-08-10 16:09:23] INFO: exception_0 is now STARTING
+[2023-08-10 16:09:23] DEBUG: exception_8 execveing command "/bin/sh"
+[2023-08-10 16:09:23] INFO: exception_5 is now STARTING
+[2023-08-10 16:09:23] INFO: exception_4 is now STARTING
+[2023-08-10 16:09:23] DEBUG: exception_4 has raw cmd /bin/sh
+[2023-08-10 16:09:23] INFO: exception_7 is now STARTING
+[2023-08-10 16:09:23] INFO: exception_2 is now STARTING
+[2023-08-10 16:09:23] DEBUG: exception_1 execveing command "/bin/sh"
+[2023-08-10 16:09:23] DEBUG: exception_7 has raw cmd /bin/sh
+[2023-08-10 16:09:23] DEBUG: exception_5 has raw cmd /bin/sh
+[2023-08-10 16:09:23] DEBUG: exception_7 starting epoll time to wait : 3000
+[2023-08-10 16:09:23] DEBUG: exception_4 execveing command "/bin/sh"
+[2023-08-10 16:09:23] DEBUG: exception_2 has raw cmd /bin/sh
+[2023-08-10 16:09:23] DEBUG: exception_5 starting epoll time to wait : 3000
+[2023-08-10 16:09:23] DEBUG: exception_7 execveing command "/bin/sh"
+[2023-08-10 16:09:23] INFO: exception_10 is now STARTING
+[2023-08-10 16:09:23] DEBUG: exception_10 has raw cmd /bin/sh
+[2023-08-10 16:09:23] DEBUG: exception_10 starting epoll time to wait : 3000
+[2023-08-10 16:09:23] DEBUG: exception_5 execveing command "/bin/sh"
+[2023-08-10 16:09:23] DEBUG: exception_2 starting epoll time to wait : 3000
+[2023-08-10 16:09:23] DEBUG: Administrator for exception_9 created
+[2023-08-10 16:09:23] DEBUG: exception_2 execveing command "/bin/sh"
+[2023-08-10 16:09:23] DEBUG: exception_4 starting epoll time to wait : 3000
+[2023-08-10 16:09:23] DEBUG: exception_10 execveing command "/bin/sh"
+[2023-08-10 16:09:23] INFO: exception_3 is now STARTING
+[2023-08-10 16:09:23] DEBUG: exception_3 has raw cmd /bin/sh
+[2023-08-10 16:09:23] DEBUG: exception_0 has raw cmd /bin/sh
+[2023-08-10 16:09:23] INFO: exception_9 is now STARTING
+[2023-08-10 16:09:23] DEBUG: exception_9 has raw cmd /bin/sh
+[2023-08-10 16:09:23] DEBUG: exception_9 starting epoll time to wait : 3000
+[2023-08-10 16:09:23] DEBUG: exception_0 execveing command "/bin/sh"
+[2023-08-10 16:09:23] DEBUG: exception_3 execveing command "/bin/sh"
+[2023-08-10 16:09:23] DEBUG: exception_0 starting epoll time to wait : 3000
+[2023-08-10 16:09:23] DEBUG: exception_1 starting epoll time to wait : 3000
+[2023-08-10 16:09:23] DEBUG: exception_3 starting epoll time to wait : 3000
+[2023-08-10 16:09:23] DEBUG: exception_9 execveing command "/bin/sh"
+[2023-08-10 16:09:26] INFO: exception_6 is now RUNNING
+[2023-08-10 16:09:26] DEBUG: exception_6 starting epoll time to wait : 0
+[2023-08-10 16:09:26] INFO: exception_8 is now RUNNING
+[2023-08-10 16:09:26] DEBUG: exception_8 starting epoll time to wait : 0
+[2023-08-10 16:09:26] INFO: exception_7 is now RUNNING
+[2023-08-10 16:09:26] DEBUG: exception_7 starting epoll time to wait : 0
+[2023-08-10 16:09:26] INFO: exception_5 is now RUNNING
+[2023-08-10 16:09:26] DEBUG: exception_5 starting epoll time to wait : 0
+[2023-08-10 16:09:26] INFO: exception_10 is now RUNNING
+[2023-08-10 16:09:26] DEBUG: exception_10 starting epoll time to wait : 0
+[2023-08-10 16:09:26] INFO: exception_2 is now RUNNING
+[2023-08-10 16:09:26] DEBUG: exception_2 starting epoll time to wait : 0
+[2023-08-10 16:09:26] INFO: exception_4 is now RUNNING
+[2023-08-10 16:09:26] DEBUG: exception_4 starting epoll time to wait : 0
+[2023-08-10 16:09:26] INFO: exception_9 is now RUNNING
+[2023-08-10 16:09:26] DEBUG: exception_9 starting epoll time to wait : 0
+[2023-08-10 16:09:26] INFO: exception_0 is now RUNNING
+[2023-08-10 16:09:26] DEBUG: exception_0 starting epoll time to wait : 0
+[2023-08-10 16:09:26] INFO: exception_3 is now RUNNING
+[2023-08-10 16:09:26] INFO: exception_1 is now RUNNING
+[2023-08-10 16:09:26] DEBUG: exception_1 starting epoll time to wait : 0
+[2023-08-10 16:09:26] DEBUG: exception_3 starting epoll time to wait : 0
