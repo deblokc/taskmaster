@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/09 17:15:08 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/09 17:52:40 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -303,8 +303,9 @@ int main(int ac, char **av)
 				epoll_ctl(efd, EPOLL_CTL_ADD, server->socket.sockfd, &sock);
 				while (!g_sig)
 				{
-					check_server(server->socket.sockfd, efd);
+					check_server(server->socket.sockfd, efd, server);
 				}
+				exit_admins(server);
 			}
 			else
 			{

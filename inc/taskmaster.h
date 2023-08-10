@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/09 16:52:38 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/09 18:07:11 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -131,7 +131,10 @@ struct s_program {
 struct s_process {
 	char				*name;
 	int					pid;
+	bool				bool_start;
+	bool				bool_exit;
 	struct timeval		start;
+	struct timeval		stop;
 	_Atomic int			status;
 	struct s_program	*program;
 	int					count_restart;
@@ -140,6 +143,10 @@ struct s_process {
 	int					stderr[2];
 	int					log;
 	int					com[2];
+	bool				stdoutlog;
+	struct s_logger		stdout_logger;
+	bool				stderrlog;
+	struct s_logger		stderr_logger;
 	pthread_t			handle;
 };
 
@@ -191,6 +198,7 @@ void				wait_priorities(struct s_priority *lst);
 void				prelude(struct s_server *server, struct s_report *reporter);
 void				transfer_logs(int tmp_fd, struct s_server *server);
 bool				write_log(struct s_logger *logger, char* log_string);
+bool				write_process_log(struct s_logger *logger, char* log_string);
 char				*get_stamp(char* stamp_str);
 void				*main_logger(void *void_server);
 void				init_socket(struct s_socket *socket);
@@ -199,9 +207,11 @@ bool				start_logging_thread(struct s_server *server, bool daemonized);
 int					daemonize(struct s_server *server);
 bool				end_logging_thread(struct s_report *reporter, pthread_t logger);
 
-void				 create_server(struct s_server *server, struct s_report *reporter);
-void handle(int sig);
-void check_server(int sock_fd, int efd);
+
+void				exit_admins(struct s_server *serv);
+void				create_server(struct s_server *server, struct s_report *reporter);
+void				handle(int sig);
+void				check_server(int sock_fd, int efd, struct s_server *serv);
 
 extern volatile sig_atomic_t g_sig;
 

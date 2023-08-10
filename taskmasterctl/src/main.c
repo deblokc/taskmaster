@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 15:17:03 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/26 18:30:16 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/09 18:45:18 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,7 +41,9 @@ void help(char *full_arg) {
 	if (!strlen(arg)) {
 		printf("default commands (type help <command>):\n");
 		printf("=======================================\n");
-		printf("TOUTES LES COMMANDES QUON AURA\n");
+		printf("exit maintail quit signal stop avail fg\n");
+		printf("reload restart start tail clear help pid\n");
+		printf("shutdown status update\n");
 	} else {
 		if (!strcmp(arg, "exit")) {
 			printf("exit\tExit the taskmaster shell.\n");
@@ -116,10 +118,9 @@ void remote_exec(char *cmd, int efd, struct epoll_event sock) {
 	 *  THIS MEANS IT WILL ALWAYS FIRST `SEND A REQUEST` (OR MORE ACCURATELLY
 	 *  TRANSFER THE COMMAND) AND THEN `PRINT THE RESPONSE` WITHOUT ANY THOUGH
 	 */
-	printf("remote exec\n");
-
 	if (strlen(cmd) > PIPE_BUF) {
 		printf("line too long...\n");
+		return ;
 	}
 
 	sock.events = EPOLLOUT;
@@ -145,7 +146,8 @@ void remote_exec(char *cmd, int efd, struct epoll_event sock) {
 			char buf[PIPE_BUF + 1];
 			bzero(buf, PIPE_BUF + 1);
 			recv(tmp.data.fd, buf, PIPE_BUF, 0);
-			printf("%s\n", buf); // DUMBLY PRINT RESPONSE
+			// WIlL NEED A CONDITION FOR CONNECTION WITH AN ADMINISTRATOR (tail/fg)
+			printf("%s", buf); // DUMBLY PRINT RESPONSE
 		}
 	} else if (ret == 0) {
 		printf("SOCKET TIMED OUT\n");
