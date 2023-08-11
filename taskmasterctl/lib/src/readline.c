@@ -130,7 +130,8 @@ char *ft_readline(char *prompt) {
 		free(global->new->line);
 		free(global->new);
 		global->new = NULL;
-		global->last->next = NULL;
+		if (global->last)
+			global->last->next = NULL;
 	}
 	return (ret);
 }

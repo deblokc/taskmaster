@@ -19,8 +19,6 @@
 #include <sys/un.h>
 #include <sys/epoll.h>
 
-volatile _Atomic int efd = 0;
-
 static void	cleanup(struct s_server *server, struct s_priority *priorities, bool remove_pidfile, struct s_report *reporter)
 {
 	if (efd > 0)
@@ -61,46 +59,61 @@ int	early_error(char* msg, int* reporter_pipe, char* tmp_log, struct s_server *s
 
 int	main_routine(struct s_server *server, struct s_priority *priorities, struct s_report *reporter)
 {
-	if (!install_signal_handler(reporter) || !unblock_signals_thread(reporter))
+	int					nb_events;
+	struct s_client		*clients = NULL;
+	struct epoll_event	events[10];
+
+	if (!install_signal_handler(reporter) || !unblock_signals_thread(reporter)
+		|| (server->socket.enable && !init_epoll(server, reporter)))
 	{
 		exit_admins(server);
-		if (priorities)
-		{
-			strcpy(reporter->buffer, "DEBUG: Waiting priorities\n");
-			report(reporter, false);
-			wait_priorities(priorities);
-		}
+		wait_priorities(priorities);
 		cleanup(server, priorities, true, reporter);
 		return (1);
 	}
-	if (server->socket.enable)
+	bzero(events, sizeof(*events) * 10);
+	while (true)
 	{
-		struct epoll_event sock;
-		bzero(&sock, sizeof(sock));
-		sock.data.fd = server->socket.sockfd;
-		sock.events = EPOLLIN;
-		efd = epoll_create(1);
-		epoll_ctl(efd, EPOLL_CTL_ADD, server->socket.sockfd, &sock);
-		while (!g_sig)
+		if (!server->socket.enable)
 		{
-			check_server(server->socket.sockfd, efd, server);
+			pause();
 		}
-		exit_admins(server);
-	}
-	else
-	{
-		while (!g_sig)
+		else
 		{
+			while ((nb_events = epoll_wait(efd, events, 10, 5000)) >= 0)
+			{
+				check_server(server, events, nb_events, &clients, reporter);
+				if (g_sig)
+					break ;
+			}
+		}
+		if (g_sig)
+		{
+			if (g_sig == SIGHUP)
+			{
+				strcpy(reporter->buffer, "INFO: taskmasterd received signal to reload configuration\n");
+				report(reporter, false);
+				g_sig = 0;
+			}
+			else if (g_sig == -1)
+			{
+				strcpy(reporter->buffer, "INFO: taskmasterd received signal to update configuration\n");
+				report(reporter, false);
+				g_sig = 0;
+			}
+			else
+			{
+				strcpy(reporter->buffer, "INFO: taskmasterd received signal to shutdown\n");
+				report(reporter, false);
+				delete_clients(&clients);
+				exit_admins(server);
+				wait_priorities(priorities);
+				cleanup(server, priorities, true, reporter);
+				return (0);
+			}
 		}
 	}
-	if (priorities)
-	{
-		strcpy(reporter->buffer, "DEBUG: Waiting priorities\n");
-		report(reporter, false);
-		wait_priorities(priorities);
-	}
-	cleanup(server, priorities, true, reporter);
-	return (1);
+	return (0);
 }
 
 int main(int ac, char **av)
@@ -158,7 +171,7 @@ int main(int ac, char **av)
 	}
 	if (server->socket.enable)
 	{
-		create_server(server, &reporter);
+		create_socket(server, &reporter);
 		if (reporter.critical)
 		{
 			if (end_initial_log(&reporter, &thread_ret, initial_logger) && *(int *)thread_ret != 1)

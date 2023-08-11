@@ -1,7 +1,18 @@
 programs:
     exception:
         command: /bin/sh
-        numprocs: 11
+        numprocs: 2
+        retry: 3
+        umask: 022
+        exitcodes:
+            - 0
+            - 1
+        autorestart: onerror
+        stopsignal: TERM
+        priority: 3
+    solo:
+        command: sleep 5
+        numprocs: 1
         retry: 3
         umask: 022
         exitcodes:
@@ -10,6 +21,7 @@ programs:
         autorestart: onerror
         stopsignal: KILL
         priority: 3
+
 server:
     daemon: false
     logfile: taskmaster.log

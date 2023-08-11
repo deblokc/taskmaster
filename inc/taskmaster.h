@@ -14,6 +14,7 @@
 # define TASKMASTER_H
 # define _GNU_SOURCE
 # include <errno.h>
+# include <sys/epoll.h>
 # include <limits.h>
 # include <stdbool.h>
 # include <sys/time.h>
@@ -70,6 +71,12 @@ struct s_logger {
 	int		logfile_backups;
 	int		logfd;
 	int		umask;
+};
+
+struct s_client {
+	struct epoll_event	poll;
+	char				buf[PIPE_BUF + 1];
+	struct s_client		*next;
 };
 
 struct s_socket {
@@ -213,12 +220,14 @@ bool				end_initial_log(struct s_report *reporter, void **thread_ret, pthread_t 
 bool				end_logging_thread(struct s_report *reporter, pthread_t logger);
 bool				install_signal_handler(struct s_report *reporter);
 void				create_pid_file(struct s_server *server, struct s_report *reporter);
+bool				init_epoll(struct s_server *server, struct s_report *reporter);
 
 
 void				exit_admins(struct s_server *serv);
-void				create_server(struct s_server *server, struct s_report *reporter);
+void				create_socket(struct s_server *server, struct s_report *reporter);
 void				handle(int sig);
-void				check_server(int sock_fd, int efd, struct s_server *serv);
+void				check_server(struct s_server *server, struct epoll_event *events, int nb_events, struct s_client **clients_lst, struct s_report *reporter);
+void				delete_clients(struct s_client **clients_lst);
 
 extern volatile sig_atomic_t g_sig;
 extern volatile _Atomic int efd;
