@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/17 19:17:19 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/17 19:25:31 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -361,8 +361,6 @@ void handle_logging_client(struct s_process *process, struct epoll_event event, 
 		return ;
 	}
 	if (event.events & EPOLLOUT) {
-		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s is sending \"%s\" to client %d\n", process->name, client->buf, client->poll.data.fd);
-		report(&reporter, false);
 		send(event.data.fd, client->buf, strlen(client->buf), 0);
 		bzero(client->buf, PIPE_BUF + 1);
 		client->poll.events = EPOLLIN;
@@ -396,8 +394,6 @@ void handle_logging_client(struct s_process *process, struct epoll_event event, 
 			}
 			return ;
 		}
-		snprintf(reporter.buffer, PIPE_BUF, "DEBUG: %s received \"%s\" from client with socket fd %d\n", process->name, buf, client->poll.data.fd);
-		report(&reporter, false);
 		if (write(process->stdin[1], buf, strlen(buf))) {}
 	}
 }
