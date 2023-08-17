@@ -62,6 +62,7 @@ int	main_routine(struct s_server *server, struct s_priority *priorities, struct 
 	int					nb_events;
 	struct s_client		*clients = NULL;
 	struct epoll_event	events[10];
+	//struct s_program	*program_tree = NULL;
 
 	if (!install_signal_handler(reporter) || !unblock_signals_thread(reporter)
 		|| (server->socket.enable && !init_epoll(server, reporter)))
@@ -99,6 +100,7 @@ int	main_routine(struct s_server *server, struct s_priority *priorities, struct 
 			{
 				strcpy(reporter->buffer, "INFO: taskmasterd received signal to update configuration\n");
 				report(reporter, false);
+				//program_tree = update_configuration(server);
 				g_sig = 0;
 			}
 			else
