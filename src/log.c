@@ -124,15 +124,16 @@ bool	write_process_log(struct s_logger *logger, char* log_string)
 	return (true);
 }
 
-void	transfer_logs(int tmp_fd, struct s_server *server)
+bool	transfer_logs(int tmp_fd, struct s_server *server, struct s_report *reporter)
 {
 	bool	ret = true;
 	char*	line = NULL;
 
 	if (lseek(tmp_fd, 0, SEEK_SET) == -1)
 	{
-		if (write(2, "CRITICAL: Could not read temporary log\n", strlen("CRITICAL: Could not read temporary log\n"))) {}
-		return ;
+		get_stamp(reporter->buffer);
+		strcpy(&reporter->buffer[22], "CRITICAL: Could not read temporary log, exiting process\n");
+		return (false);
 	}
 	while ((line = get_next_line(tmp_fd)) != NULL)
 	{
@@ -188,10 +189,13 @@ void	transfer_logs(int tmp_fd, struct s_server *server)
 	}
 	if (ret == false && server->daemon == false)
 	{
-		if (write(2, "ERROR: Error while writing to logfile\n", strlen("ERROR: Error while writing to logfile\n")) == -1) {}
+		get_stamp(reporter->buffer);
+		strcpy(&reporter->buffer[22], "ERROR: Error while writing to logfile, initial logs might be incomplete\n");
+		if (write(2, reporter->buffer, strlen(reporter->buffer))) {}
 	}
 	close(tmp_fd);
 	remove("/tmp/.taskmasterd_tmp.log");
+	return (true);
 }
 
 void	*main_logger(void *void_server)
@@ -324,6 +328,42 @@ bool	start_logging_thread(struct s_server *server, bool daemonized)
 		{
 		}
 		write_log(&server->logger, reporter.buffer);
+		return (false);
+	}
+	return (true);
+}
+
+bool end_initial_log(struct s_report *reporter, void **thread_ret, pthread_t initial_logger)
+{
+	strcpy(reporter->buffer, "ENDLOG\n");
+	if (!report(reporter, false))
+	{
+		get_stamp(reporter->buffer);
+		strcpy(&reporter->buffer[22], "CRITICAL: Could not stop initial logger, exiting process\n");
+		return (false);
+	}
+	if (pthread_join(initial_logger, thread_ret))
+	{
+		get_stamp(reporter->buffer);
+		strcpy(&reporter->buffer[22], "CRITICAL: Could not join initial logger, exiting process\n");
+		return (false);
+	}
+	return (true);
+}
+
+bool end_logging_thread(struct s_report *reporter, pthread_t logger)
+{
+	strcpy(reporter->buffer, "ENDLOG\n");
+	if (!report(reporter, false))
+	{
+		get_stamp(reporter->buffer);
+		strcpy(&reporter->buffer[22], "CRITICAL: Could not stop logging thread, exiting process\n");
+		return (false);
+	}
+	if (pthread_join(logger, NULL))
+	{
+		get_stamp(reporter->buffer);
+		strcpy(&reporter->buffer[22], "CRITICAL: Could not join logging thread, exiting process\n");
 		return (false);
 	}
 	return (true);

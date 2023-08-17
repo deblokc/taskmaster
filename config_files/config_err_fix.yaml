@@ -14,16 +14,15 @@ programs:
         command: /bin/sh -c "echo 32; sleep 5"
         numprocs: 2
         retry: 3
-    useless:
-        command: "a        a "
-        umask: 022
 server:
     unixsocket:
         file: /mnt/nfs/homes/bdetune/taskmasterd.sock
         chmod: 0o744
         username: bdetune
         chown: :user
+    daemon: false
     logfile: logs/taskmaster.log
-    logfile_maxbytes: 256
     loglevel: DEBUG
     umask: 66
+socket:
+    enable: true

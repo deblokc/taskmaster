@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/25 18:58:58 by bdetune           #+#    #+#             */
-/*   Updated: 2023/08/08 14:14:14 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/10 16:46:54 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,6 +18,33 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <fcntl.h>
+
+void	create_pid_file(struct s_server *server, struct s_report *reporter)
+{
+	int	fd;
+	
+	if (!server->pidfile)
+		fd = open("taskmasterd.pid", O_CREAT | O_EXCL | O_TRUNC | O_RDWR, 0666 & ~server->umask);
+	else
+		fd = open(server->pidfile, O_CREAT | O_EXCL | O_TRUNC | O_RDWR, 0666 & ~server->umask);
+	if (fd  < 0)
+	{
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not create pid file, exiting process\n");
+		report(reporter, true);
+		return ;
+	}
+	snprintf(reporter->buffer, PIPE_BUF, "%d\n", server->pid);
+	if (write(fd, reporter->buffer, strlen(reporter->buffer)) == -1)
+	{
+		if (server->pidfile)
+			unlink(server->pidfile);
+		else
+			unlink("taskmasterd.pid");
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not write pid to file, exiting process\n");
+		report(reporter, true);
+	}
+	close(fd);
+}
 
 static void update_umask(struct s_server *server)
 {
