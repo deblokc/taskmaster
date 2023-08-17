@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/17 14:41:35 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/17 19:17:19 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -226,7 +226,33 @@ void closeall(struct s_process *process, int epollfd) {
 	waitpid(process->pid, NULL, 0);
 }
 
-int handle_command(struct s_process *process, char *buf) {
+struct s_logging_client *new_logging_client(struct s_logging_client **list, int client_fd, struct s_report *reporter) {
+	struct s_logging_client	*runner;
+	struct s_logging_client	*new_client;
+
+	new_client = calloc(1, sizeof(struct s_logging_client));
+	if (!new_client)
+	{
+		strcpy(reporter->buffer, "CRITICAL: Could not calloc new client, connection will be ignored\n");
+		report(reporter, false);
+		close(client_fd);
+		return (NULL);
+	}
+	new_client->poll.data.fd = client_fd;
+	bzero(new_client->buf, PIPE_BUF + 1);
+	if (*list) {
+		runner = *list;
+		while (runner->next) {
+			runner = runner->next;
+		}
+		runner->next = new_client;
+	} else {
+		*list = new_client;
+	}
+	return (new_client);
+}
+
+int handle_command(struct s_process *process, char *buf, int epollfd) {
 	struct s_report reporter;
 	reporter.report_fd = process->log;
 
@@ -301,13 +327,84 @@ int handle_command(struct s_process *process, char *buf) {
 		report(&reporter, false);
 		kill(process->pid, (int)buf[3]);
 	} else if (!strncmp(buf, "fg", 2)) {
+		int fd = atoi(buf + 2);
+		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s has received order to foregroung client with fd %d\n", process->name, fd);
+		report(&reporter, false);
+		if (fd <= 0) {
+			snprintf(reporter.buffer, PIPE_BUF - 22, "CRITICAL: %s's new client has corrupted fd %d, ignoring this client\n", process->name, fd);
+			report(&reporter, false);
+			return (0);
+		}
+		struct s_logging_client *client = new_logging_client(&(process->list), fd, &reporter);
+		if (!client) {
+			snprintf(reporter.buffer, PIPE_BUF - 22, "CRITICAL: %s's new client could not be created, ignoring this client\n", process->name);
+			report(&reporter, false);
+			return (0);
+		}
+		epoll_ctl(efd, EPOLL_CTL_DEL, fd, &client->poll);
+		snprintf(client->buf, PIPE_BUF, "CECI EST UN MESSAGE NUL\n");
+		client->poll.events = EPOLLOUT | EPOLLIN;
+		epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &client->poll);
 		// add fd to epoll and send it log
 	}
 	return (0);
 }
 
+void handle_logging_client(struct s_process *process, struct epoll_event event, int epollfd) {
+	struct s_report reporter;
+	reporter.report_fd = process->log;
+	struct s_logging_client	*client = process->list;
+	while (client && client->poll.data.fd != event.data.fd) {
+		client = client->next;
+	}
+	if (!client) {
+		return ;
+	}
+	if (event.events & EPOLLOUT) {
+		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s is sending \"%s\" to client %d\n", process->name, client->buf, client->poll.data.fd);
+		report(&reporter, false);
+		send(event.data.fd, client->buf, strlen(client->buf), 0);
+		bzero(client->buf, PIPE_BUF + 1);
+		client->poll.events = EPOLLIN;
+		if (epoll_ctl(epollfd, EPOLL_CTL_MOD, client->poll.data.fd, &client->poll)) {
+			snprintf(reporter.buffer, PIPE_BUF, "ERROR: Could not modify client event in epoll_ctl STARTING for client %d\n", client->poll.data.fd);
+			report(&reporter, false);
+		}
+	} else if (event.events & EPOLLIN) {
+		char buf[PIPE_BUF + 1];
+		bzero(buf, PIPE_BUF + 1);
+		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s received data from client %d\n", process->name, client->poll.data.fd);
+		report(&reporter, false);
+		if (recv(client->poll.data.fd, buf, PIPE_BUF, MSG_DONTWAIT) <= 0) {
+			snprintf(reporter.buffer, PIPE_BUF, "INFO: Client disconnected\n");
+			report(&reporter, false);
+			epoll_ctl(epollfd, EPOLL_CTL_DEL, client->poll.data.fd, &client->poll);
+			client->poll.events = EPOLLIN;
+			epoll_ctl(efd, EPOLL_CTL_ADD, client->poll.data.fd, &client->poll);
+			if (client == process->list) {
+				process->list = client->next;
+				close(client->poll.data.fd);
+				free(client);
+			} else {
+				struct s_logging_client *head = process->list;
+				while (head->next != client) {
+					head = head->next;
+				}
+				head->next = client->next;
+				close(client->poll.data.fd);
+				free(client);
+			}
+			return ;
+		}
+		snprintf(reporter.buffer, PIPE_BUF, "DEBUG: %s received \"%s\" from client with socket fd %d\n", process->name, buf, client->poll.data.fd);
+		report(&reporter, false);
+		if (write(process->stdin[1], buf, strlen(buf))) {}
+	}
+}
+
 void *administrator(void *arg) {
 	struct s_process *process = (struct s_process *)arg;
+	process->list = NULL;
 	struct s_report reporter;
 	reporter.report_fd = process->log;
 	snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: Administrator for %s created\n", process->name);
@@ -470,7 +567,7 @@ void *administrator(void *arg) {
 						if (read(in.data.fd, buf, PIPE_BUF) > 0) {
 							snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s's administrator received something from main thread while STARTING\n", process->name);
 							report(&reporter, false);
-							if (handle_command(process, buf)) {
+							if (handle_command(process, buf, epollfd)) {
 								kill(process->pid, SIGKILL);
 								closeall(process, epollfd);
 								close(epollfd);
@@ -502,6 +599,9 @@ void *administrator(void *arg) {
 							}
 							process->bool_exit = true;
 						}
+					}
+					if (process->list) {
+						handle_logging_client(process, events[0], epollfd);
 					}
 				}
 			} else if (((long long)process->program->startsecs * 1000) - (tmp_micro - start_micro) > INT_MAX) { // if timeout and not because time to wait is bigger than an int
@@ -549,7 +649,7 @@ void *administrator(void *arg) {
 						if (read(in.data.fd, buf, PIPE_BUF) > 0) {
 							snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s's administrator received something from main thread while RUNNING\n", process->name);
 							report(&reporter, false);
-							if (handle_command(process, buf)) {
+							if (handle_command(process, buf, epollfd)) {
 								kill(process->pid, SIGKILL);
 								closeall(process, epollfd);
 								close(epollfd);
@@ -581,6 +681,9 @@ void *administrator(void *arg) {
 							}
 							process->bool_exit = true;
 						}
+					}
+					if (process->list) {
+						handle_logging_client(process, events[i], epollfd);
 					}
 				}
 			} else {
@@ -686,7 +789,7 @@ void *administrator(void *arg) {
 						if (read(in.data.fd, buf, PIPE_BUF) > 0) {
 							snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s's administrator received something from main thread while RUNNING\n", process->name);
 							report(&reporter, false);
-							if (handle_command(process, buf)) {
+							if (handle_command(process, buf, epollfd)) {
 								kill(process->pid, SIGKILL);
 								closeall(process, epollfd);
 								close(epollfd);
@@ -719,6 +822,9 @@ void *administrator(void *arg) {
 							process->bool_exit = true;
 						}
 					}
+					if (process->list) {
+						handle_logging_client(process, events[i], epollfd);
+					}
 				}
 			} else { // if timeout
 				process->status = STOPPED;
@@ -749,7 +855,7 @@ void *administrator(void *arg) {
 					if (read(in.data.fd, buf, PIPE_BUF) > 0) {
 						snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s's administrator received something from main thread while STOPPED\n", process->name);
 						report(&reporter, false);
-						if (handle_command(process, buf)) {
+						if (handle_command(process, buf, epollfd)) {
 							close(epollfd);
 							if (process->stdout_logger.logfd > 0) {
 								close(process->stdout_logger.logfd);
@@ -771,6 +877,9 @@ void *administrator(void *arg) {
 						}
 						return NULL;
 					}
+				}
+				if (process->list) {
+					handle_logging_client(process, events[i], epollfd);
 				}
 			}
 		}
