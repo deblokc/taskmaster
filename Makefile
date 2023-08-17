@@ -6,7 +6,7 @@
 #    By: tnaton <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/06/16 11:17:59 by tnaton            #+#    #+#              #
-#    Updated: 2023/08/08 16:34:07 by bdetune          ###   ########.fr        #
+#    Updated: 2023/08/10 15:27:33 by bdetune          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -30,6 +30,7 @@ SRCS = main.c \
 	   parser/free_errors.c \
 	   gnl/get_next_line.c \
 	   gnl/get_next_line_utils.c \
+	   signal.c \
 	   report.c \
 	   prelude_server.c \
 	   log.c \
