@@ -6,12 +6,13 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 15:17:03 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/18 12:33:07 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/18 16:57:57 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <errno.h>
 #include <limits.h>
+#include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -110,60 +111,72 @@ void help(char *full_arg) {
 	}
 }
 
-void foreground(int efd, struct epoll_event sock) {
-	struct epoll_event tmp;
-	char *line;
-	int ret;
+void *thread_log(void *arg) {
+	struct epoll_event *sock = (struct epoll_event *)arg;
+	int efd = epoll_create(1);
+	sock->events = EPOLLIN;
+	epoll_ctl(efd, EPOLL_CTL_ADD, sock->data.fd, sock);
 
+	struct epoll_event event;
+
+	char buf[PIPE_BUF + 1];
+	bzero(buf, PIPE_BUF + 1);
 	while (!g_sig) {
-		line = ft_readline(NULL);
+		if (epoll_wait(efd, &event, 1, 0) > 0) {
+			if (event.data.fd == sock->data.fd) {
+				bzero(buf, PIPE_BUF + 1);
+				if (recv(event.data.fd, buf, PIPE_BUF, 0) > 0) {
+					printf("%s", buf);
+				}
+			}
+		}
+	}
+	epoll_ctl(efd, EPOLL_CTL_DEL, sock->data.fd, sock);
+	close(efd);
+	return NULL;
+}
+
+void foreground(int efd, struct epoll_event sock) {
+	int ret;
+	struct epoll_event event;
+	char *line;
+	pthread_t thread;
+
+	pthread_create(&thread, NULL, &thread_log, &sock);
+	while (!g_sig) {
+		line = ft_readline("");
 		if (line) {
 			sock.events = EPOLLOUT;
 			epoll_ctl(efd, EPOLL_CTL_MOD, sock.data.fd, &sock);
 
-			ret = epoll_wait(efd, &tmp, 1, 60 * 1000);
+			ret = epoll_wait(efd, &event, 1, 100);
 			if (ret > 0) {
-				if (tmp.events & EPOLLOUT) {
+				if (event.events & EPOLLOUT) {
 					char buf[PIPE_BUF + 1];
 					bzero(buf, PIPE_BUF + 1);
 					snprintf(buf, PIPE_BUF + 1, "data:%s\n", line);
-					send(tmp.data.fd, buf, strlen(buf), 0);
+					send(event.data.fd, buf, strlen(buf), 0);
 				}
 			} else if (ret == 0) {
-				printf("SOCKET TIMED OUT\n");
+				printf("socket timed out\n");
+				g_sig = 1;
 				return ;
 			} else {
-				perror("epoll_wait(EPOLLOUT)");
+				perror("epoll_wait");
+				g_sig = 1;
 				return ;
 			}
-
-			sock.events = EPOLLIN;
-			epoll_ctl(efd, EPOLL_CTL_MOD, sock.data.fd, &sock);
-
-			ret = epoll_wait(efd, &tmp, 1, 60 * 1000);
-			if (ret > 0) {
-				if (tmp.events & EPOLLIN) {
-					char buf[PIPE_BUF + 1];
-					bzero(buf, PIPE_BUF + 1);
-					recv(tmp.data.fd, buf, PIPE_BUF, 0);
-					printf("%s", buf);
-				}
-			} else if (ret == 0) {
-				printf("SOCKET TIMED OUT\n");
-				return ;
-			} else {
-				perror("epoll_wait(EPOLLIN)");
-				return ;
-			}
+			free(line);
+		} else {
+			g_sig = 1;
 		}
 	}
-	sock.events = EPOLLOUT;
-	epoll_ctl(efd, EPOLL_CTL_MOD, sock.data.fd, &sock);
+	pthread_join(thread, NULL);
 
-	ret = epoll_wait(efd, &tmp, 1, 60 * 1000);
+	ret = epoll_wait(efd, &event, 1, 60 * 1000);
 	if (ret > 0) {
-		if (tmp.events & EPOLLOUT) {
-			send(tmp.data.fd, "exit", strlen("exit"), 0);
+		if (event.events & EPOLLOUT) {
+			send(event.data.fd, "exit", strlen("exit"), 0);
 		}
 	} else if (ret == 0) {
 		printf("SOCKET TIMED OUT\n");
@@ -208,10 +221,12 @@ void remote_exec(char *cmd, int efd, struct epoll_event sock) {
 			char buf[PIPE_BUF + 1];
 			bzero(buf, PIPE_BUF + 1);
 			recv(tmp.data.fd, buf, PIPE_BUF, 0);
-			if (!strcmp(buf, "fg")) {
+			if (!strncmp(buf, "fg", 2)) {
+				printf("%s", buf + 2);
 				foreground(efd, sock);
+			} else {
+				printf("%s", buf); // DUMBLY PRINT RESPONSE
 			}
-			printf("%s", buf); // DUMBLY PRINT RESPONSE
 		}
 	} else if (ret == 0) {
 		printf("SOCKET TIMED OUT\n");

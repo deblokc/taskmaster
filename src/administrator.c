@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/18 14:56:05 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/18 17:02:32 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -342,7 +342,8 @@ int handle_command(struct s_process *process, char *buf, int epollfd) {
 			return (0);
 		}
 		epoll_ctl(efd, EPOLL_CTL_DEL, fd, &client->poll);
-		snprintf(client->buf, PIPE_BUF, "CECI EST UN MESSAGE NUL\n");
+		// NEED TO SEND "OLD" LOG
+		snprintf(client->buf, PIPE_BUF, "CECI EST LE LOG D'AVANT\n");
 		client->poll.events = EPOLLOUT | EPOLLIN;
 		epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &client->poll);
 		// add fd to epoll and send it log
@@ -374,14 +375,17 @@ void handle_logging_client(struct s_process *process, struct epoll_event event, 
 		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s received data from client %d\n", process->name, client->poll.data.fd);
 		report(&reporter, false);
 		if (recv(client->poll.data.fd, buf, PIPE_BUF, MSG_DONTWAIT) <= 5) {
-			snprintf(reporter.buffer, PIPE_BUF, "INFO: Client disconnected\n");
+			snprintf(reporter.buffer, PIPE_BUF - 22, "INFO: Client %d disconnected from %s\n", client->poll.data.fd, process->name);
 			report(&reporter, false);
 			epoll_ctl(epollfd, EPOLL_CTL_DEL, client->poll.data.fd, &client->poll);
+
 			client->poll.events = EPOLLIN;
-			epoll_ctl(efd, EPOLL_CTL_ADD, client->poll.data.fd, &client->poll);
+			if (epoll_ctl(efd, EPOLL_CTL_ADD, client->poll.data.fd, &client->poll) < 0) {
+				snprintf(reporter.buffer, PIPE_BUF, "DEBUG: Could not add client %d back to main thread's epoll\n", client->poll.data.fd);
+				report(&reporter, false);
+			}
 			if (client == process->list) {
 				process->list = client->next;
-				close(client->poll.data.fd);
 				free(client);
 			} else {
 				struct s_logging_client *head = process->list;
@@ -389,7 +393,6 @@ void handle_logging_client(struct s_process *process, struct epoll_event event, 
 					head = head->next;
 				}
 				head->next = client->next;
-				close(client->poll.data.fd);
 				free(client);
 			}
 			return ;
@@ -738,7 +741,7 @@ void *administrator(void *arg) {
 				snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s did not stop before %ds, sending SIGKILL\n", process->name, process->program->stopwaitsecs);
 				report(&reporter, false);
 				process->status = STOPPED;
-				// kill(process->pid, SIGKILL);
+				kill(process->pid, SIGKILL);
 				// need to epoll_wait 0 to return instantly
 				tmp_micro = (process->program->stopwaitsecs * 1000);
 				stop_micro = 0;
