@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/17 19:25:31 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/18 14:56:05 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -180,7 +180,7 @@ int exec(struct s_process *process, int epollfd) {
 		return 1;
 	}
 
-	// change to running
+	// change to starting
 	process->status = STARTING;
 
 	return 0;
@@ -373,7 +373,7 @@ void handle_logging_client(struct s_process *process, struct epoll_event event, 
 		bzero(buf, PIPE_BUF + 1);
 		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s received data from client %d\n", process->name, client->poll.data.fd);
 		report(&reporter, false);
-		if (recv(client->poll.data.fd, buf, PIPE_BUF, MSG_DONTWAIT) <= 0) {
+		if (recv(client->poll.data.fd, buf, PIPE_BUF, MSG_DONTWAIT) <= 5) {
 			snprintf(reporter.buffer, PIPE_BUF, "INFO: Client disconnected\n");
 			report(&reporter, false);
 			epoll_ctl(epollfd, EPOLL_CTL_DEL, client->poll.data.fd, &client->poll);
@@ -394,7 +394,31 @@ void handle_logging_client(struct s_process *process, struct epoll_event event, 
 			}
 			return ;
 		}
-		if (write(process->stdin[1], buf, strlen(buf))) {}
+		char msg[PIPE_BUF / 2];
+		bzero(msg, PIPE_BUF / 2);
+		memcpy(msg, buf, PIPE_BUF / 2);
+		msg[(PIPE_BUF / 2) - 1] = '\0';
+		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s received \"%s\" from client %d\n", process->name, msg, client->poll.data.fd);
+		report(&reporter, false);
+		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s is sending \"%s\" to its process\n", process->name, msg + 5);
+		report(&reporter, false);
+		if (write(process->stdin[1], buf + 5, strlen(buf + 5)) < 0) {
+			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s could not write to its process\n", process->name);
+			report(&reporter, false);
+		}
+	}
+}
+
+void send_clients(struct s_process *process, int epollfd, char *buf) {
+	struct s_logging_client *tmp = process->list;
+	char trunc[PIPE_BUF + 1];
+
+	memcpy(trunc, buf, PIPE_BUF + 1);
+	while (tmp) {
+		snprintf(tmp->buf + strlen(tmp->buf), PIPE_BUF + 1 - strlen(tmp->buf), "%s", trunc);
+		tmp->poll.events = EPOLLIN | EPOLLOUT;
+		epoll_ctl(epollfd, EPOLL_CTL_MOD, tmp->poll.data.fd, &(tmp->poll));
+		tmp = tmp->next;
 	}
 }
 
@@ -506,6 +530,7 @@ void *administrator(void *arg) {
 							if (process->stdoutlog) {
 								write_process_log(&(process->stdout_logger), buf);
 							}
+							send_clients(process, epollfd, buf);
 						} else {
 							if (process->bool_exit) {
 								snprintf(reporter.buffer, PIPE_BUF - 22, "INFO: %s has STOPPED\n", process->name);
@@ -535,6 +560,7 @@ void *administrator(void *arg) {
 							if (process->stderrlog) {
 								write_process_log(&(process->stderr_logger), buf);
 							}
+							send_clients(process, epollfd, buf);
 						} else {
 							if (process->bool_exit) {
 								snprintf(reporter.buffer, PIPE_BUF - 22, "INFO: %s has STOPPED\n", process->name);
@@ -618,6 +644,7 @@ void *administrator(void *arg) {
 							if (process->stdoutlog) {
 								write_process_log(&(process->stdout_logger), buf);
 							}
+							send_clients(process, epollfd, buf);
 						} else {
 							closeall(process, epollfd);
 							process->status = EXITED;
@@ -632,6 +659,7 @@ void *administrator(void *arg) {
 							if (process->stderrlog) {
 								write_process_log(&(process->stderr_logger), buf);
 							}
+							send_clients(process, epollfd, buf);
 						} else {
 							closeall(process, epollfd);
 							process->status = EXITED;
@@ -728,6 +756,7 @@ void *administrator(void *arg) {
 							if (process->stdoutlog) {
 								write_process_log(&(process->stdout_logger), buf);
 							}
+							send_clients(process, epollfd, buf);
 						} else {
 							closeall(process, epollfd);
 							process->status = STOPPED;
@@ -757,6 +786,7 @@ void *administrator(void *arg) {
 							if (process->stderrlog) {
 								write_process_log(&(process->stderr_logger), buf);
 							}
+							send_clients(process, epollfd, buf);
 						} else {
 							closeall(process, epollfd);
 							process->status = STOPPED;

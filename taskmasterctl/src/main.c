@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 15:17:03 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/10 17:21:19 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/18 12:33:07 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -125,7 +125,8 @@ void foreground(int efd, struct epoll_event sock) {
 			if (ret > 0) {
 				if (tmp.events & EPOLLOUT) {
 					char buf[PIPE_BUF + 1];
-					snprintf(buf, PIPE_BUF + 1, "data:%s", line);
+					bzero(buf, PIPE_BUF + 1);
+					snprintf(buf, PIPE_BUF + 1, "data:%s\n", line);
 					send(tmp.data.fd, buf, strlen(buf), 0);
 				}
 			} else if (ret == 0) {
