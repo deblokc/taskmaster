@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/18 17:02:32 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/18 17:16:14 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -386,6 +386,7 @@ void handle_logging_client(struct s_process *process, struct epoll_event event, 
 			}
 			if (client == process->list) {
 				process->list = client->next;
+				bzero(client->buf, PIPE_BUF + 1);
 				free(client);
 			} else {
 				struct s_logging_client *head = process->list;
@@ -393,6 +394,7 @@ void handle_logging_client(struct s_process *process, struct epoll_event event, 
 					head = head->next;
 				}
 				head->next = client->next;
+				bzero(client->buf, PIPE_BUF + 1);
 				free(client);
 			}
 			return ;
@@ -749,6 +751,7 @@ void *administrator(void *arg) {
 			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s stopping epoll time to wait : %lld\n", process->name, ((long long)process->program->stopwaitsecs * 1000) - (tmp_micro - stop_micro));
 			report(&reporter, false);
 			nfds = epoll_wait(epollfd, events, 3, (int)((process->program->stopwaitsecs * 1000) - (tmp_micro - stop_micro)));
+			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s nfds %d\n", process->name, nfds);
 			if (nfds) { // if not timeout
 				for (int i = 0; i < nfds; i++) {
 				/* handles fds as needed */
