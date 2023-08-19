@@ -362,6 +362,8 @@ void handle_logging_client(struct s_process *process, struct epoll_event event, 
 		return ;
 	}
 	if (event.events & EPOLLOUT) {
+		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: sending something to client %d\n", client->poll.data.fd);
+		report(&reporter, false);
 		send(event.data.fd, client->buf, strlen(client->buf), 0);
 		bzero(client->buf, PIPE_BUF + 1);
 		client->poll.events = EPOLLIN;
@@ -416,9 +418,9 @@ void handle_logging_client(struct s_process *process, struct epoll_event event, 
 
 void send_clients(struct s_process *process, int epollfd, char *buf) {
 	struct s_logging_client *tmp = process->list;
-	char trunc[PIPE_BUF + 1];
+	char trunc[PIPE_BUF - 20 + 1];
 
-	memcpy(trunc, buf, PIPE_BUF + 1);
+	memcpy(trunc, buf, PIPE_BUF - 20 + 1);
 	while (tmp) {
 		snprintf(tmp->buf + strlen(tmp->buf), PIPE_BUF + 1 - strlen(tmp->buf), "%s", trunc);
 		tmp->poll.events = EPOLLIN | EPOLLOUT;

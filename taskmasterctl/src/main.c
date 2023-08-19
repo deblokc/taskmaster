@@ -140,19 +140,20 @@ void foreground(int efd, struct epoll_event sock) {
 	int ret;
 	struct epoll_event event;
 	char *line;
+	char buf[PIPE_BUF + 1];
+	bzero(buf, PIPE_BUF + 1);
 	pthread_t thread;
 
+	sock.events = EPOLLOUT;
+	epoll_ctl(efd, EPOLL_CTL_MOD, sock.data.fd, &sock);
 	pthread_create(&thread, NULL, &thread_log, &sock);
 	while (!g_sig) {
 		line = ft_readline("");
 		if (line) {
-			sock.events = EPOLLOUT;
-			epoll_ctl(efd, EPOLL_CTL_MOD, sock.data.fd, &sock);
 
 			ret = epoll_wait(efd, &event, 1, 100);
 			if (ret > 0) {
 				if (event.events & EPOLLOUT) {
-					char buf[PIPE_BUF + 1];
 					bzero(buf, PIPE_BUF + 1);
 					snprintf(buf, PIPE_BUF + 1, "data:%s\n", line);
 					send(event.data.fd, buf, strlen(buf), 0);
@@ -183,6 +184,10 @@ void foreground(int efd, struct epoll_event sock) {
 	} else {
 		perror("epoll_wait(EPOLLOUT)");
 	}
+	while (recv(sock.data.fd, buf, PIPE_BUF, MSG_DONTWAIT) >= 0) { 
+		bzero(buf, PIPE_BUF + 1);
+	}
+	fflush(stdout);
 }
 
 void remote_exec(char *cmd, int efd, struct epoll_event sock) {
@@ -224,6 +229,7 @@ void remote_exec(char *cmd, int efd, struct epoll_event sock) {
 			if (!strncmp(buf, "fg", 2)) {
 				printf("%s", buf + 2);
 				foreground(efd, sock);
+				g_sig = 0;
 			} else {
 				printf("%s", buf); // DUMBLY PRINT RESPONSE
 			}
