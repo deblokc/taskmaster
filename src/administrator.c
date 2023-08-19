@@ -753,7 +753,6 @@ void *administrator(void *arg) {
 			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s stopping epoll time to wait : %lld\n", process->name, ((long long)process->program->stopwaitsecs * 1000) - (tmp_micro - stop_micro));
 			report(&reporter, false);
 			nfds = epoll_wait(epollfd, events, 3, (int)((process->program->stopwaitsecs * 1000) - (tmp_micro - stop_micro)));
-			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s nfds %d\n", process->name, nfds);
 			if (nfds) { // if not timeout
 				for (int i = 0; i < nfds; i++) {
 				/* handles fds as needed */

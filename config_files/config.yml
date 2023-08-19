@@ -11,7 +11,7 @@ programs:
         stopsignal: TERM
         priority: 3
     solo:
-        command: /bin/sh -c cat /dev/random
+        command: /bin/sh -c yes
         numprocs: 1
         retry: 3
         umask: 022
