@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/21 19:21:12 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/21 19:55:07 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -386,6 +386,9 @@ int handle_command(struct s_process *process, char *buf, int epollfd) {
 		client->poll.events = EPOLLOUT | EPOLLIN;
 		epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &client->poll);
 		// add fd to epoll and send it log
+	} else if (!strncmp(buf, "tail", 4)) {
+		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s has received order to tail\n", process->name);
+		report(&reporter, false);
 	}
 	return (0);
 }

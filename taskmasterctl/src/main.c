@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 15:17:03 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/21 15:50:12 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/21 19:36:30 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -43,13 +43,13 @@ void help(char *full_arg) {
 		printf("default commands (type help <command>):\n");
 		printf("=======================================\n");
 		printf("exit maintail quit signal stop avail fg\n");
-		printf("reload restart start tail clear help pid\n");
+		printf("reload restart start tail help pid\n");
 		printf("shutdown status update\n");
 	} else {
 		if (!strcmp(arg, "exit")) {
 			printf("exit\tExit the taskmaster shell.\n");
 		} else if (!strcmp(arg, "maintail")) {
-			printf("maintail -f\t\t\tContinuous tail of taskmaster main log file (Ctrl-C to exit)\n");
+			printf("maintail -f\t\t\tContinuous tail of taskmaster main log file (Ctrl-D to exit)\n");
 			printf("maintail -100\t\t\tlast 100 *bytes* of taskmaster main log file\n");
 			printf("maintail\t\t\tlast 1600 *bytes* of taskmaster main log file\n");
 		} else if (!strcmp(arg, "quit")) {
@@ -66,7 +66,7 @@ void help(char *full_arg) {
 			printf("avail\t\t\tDisplay all configured processes\n");
 		} else if (!strcmp(arg, "fg")) {
 			printf("fg <process>\tConnect to a process in foreground mode\n");
-			printf("\t\tCtrl-C to exit\n");
+			printf("\t\tCtrl-D to exit\n");
 		} else if (!strcmp(arg, "reload")) {
 			printf("reload\t\tRestart the remote taskmasterd.\n");
 		} else if (!strcmp(arg, "restart")) {
@@ -82,13 +82,9 @@ void help(char *full_arg) {
 			printf("tail [-f] <name>\t[stdout|stderr] (default stdout)\n");
 			printf("Ex:\n");
 			printf("tail -f <name>\t\tContinuous tail of named process stdout\n");
-			printf("\t\t\tCtrl-C to exit\n");
+			printf("\t\t\tCtrl-D to exit\n");
 			printf("tail -100 <name>\tlast 100 *bytes* of process stdout\n");
 			printf("tail <name> stderr\tlast 1600 *bytes* of process stderr\n");
-		} else if (!strcmp(arg, "clear")) {
-			printf("clear <name>\t\t\tClear a process' log files\n");
-			printf("clear <name> <name>\t\tClear multiple process' log files\n");
-			printf("clear all\t\t\tClear all process' log files\n");
 		} else if (!strcmp(arg, "help")) {
 			printf("help\t\t\tPrint a list of available commands\n");
 			printf("help <command>\t\tPrint help for <command>\n");

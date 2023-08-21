@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/21 19:23:47 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/21 20:01:17 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -415,6 +415,8 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 						if (cmd->arg) {
 							for (struct s_program *current = server->begin(server); current; current = current->itnext(current)) {
 								if (!strncmp(current->name, cmd->arg[0], strlen(current->name))) {
+									if (!current->processes)
+										continue ;
 									for (int i = 0; i < current->numprocs; i++) {
 										if (!strcmp(current->processes[i].name, cmd->arg[0])) {
 											char buf[PIPE_BUF + 1];
@@ -449,11 +451,86 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 							send_command_multiproc(cmd, server);
 						}
 					} else if (!strcmp(cmd->cmd, "tail")) {    //administrator send logging
-					} else if (!strcmp(cmd->cmd, "clear")) {   //administrator clear logging
-						snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: controller has sent clear command\n");
+						snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: controller has sent tail command\n");
 						report(reporter, false);
 						if (cmd->arg) {
-							send_command_multiproc(cmd, server);
+							char buf[PIPE_BUF + 1];
+							char *name = NULL;
+							if (cmd->arg[0][0] == '-') { // if specified size
+								if (!strcmp(cmd->arg[0], "-f")) {
+									// infinite tail
+									if (cmd->arg[1]) {
+										name = cmd->arg[1];
+										if (cmd->arg[2]) { // if specified output
+											if (!strcmp(cmd->arg[1], "stdout")) {
+												// send to cmd->arg[1] infinite bytes of stdout
+												snprintf(buf, PIPE_BUF + 1, "tail f 1");
+											} else if (!strcmp(cmd->arg[1], "stderr")) {
+												// send to cmd->arg[1] infinite bytes of stderr
+												snprintf(buf, PIPE_BUF + 1, "tail f 2");
+											}
+										} else { // default output is stdout
+											//send to cmd->arg[1] infinite bytes of stdout
+											snprintf(buf, PIPE_BUF + 1, "tail f 1");
+										}
+									} else {
+										// no program to send to, not doing it
+									}
+								} else {
+									int val = atoi(cmd->arg[0] + 1);
+									// if val is positiv/non-null
+									if (val) {
+										if (cmd->arg[1]) {
+											name = cmd->arg[1];
+											if (cmd->arg[2]) { // if specified output
+												if (!strcmp(cmd->arg[1], "stdout")) {
+													// send to cmd->arg[1] n bytes of stdout
+													snprintf(buf, PIPE_BUF + 1, "tail %s 1", cmd->arg[0]);
+												} else if (!strcmp(cmd->arg[1], "stderr")) {
+													// send to cmd->arg[1] n bytes of stderr
+													snprintf(buf, PIPE_BUF + 1, "tail %s 2", cmd->arg[0]);
+												}
+											} else { // default output is stdout
+												//send to cmd->arg[1] n bytes of stdout
+												snprintf(buf, PIPE_BUF + 1, "tail %s 1", cmd->arg[0]);
+											}
+										} else {
+											// no program to send to, not doing it
+										}
+									}
+								}
+							} else { // if no size default 1600 bytes
+								name = cmd->arg[0];
+								if (cmd->arg[1]) {
+									if (!strcmp(cmd->arg[1], "stdout")) {
+										// send to cmd->arg[0] 1600 bytes of stdout
+										snprintf(buf, PIPE_BUF + 1, "tail 1600 1");
+									} else if (!strcmp(cmd->arg[1], "stderr")) {
+										// send to cmd->arg[0] 1600 bytes of stderr
+										snprintf(buf, PIPE_BUF + 1, "tail 1600 2");
+									}
+								} else { // default output is stdout
+									// send to cmd->arg[0] 1600 bytes of stdout
+									snprintf(buf, PIPE_BUF + 1, "tail 1600 1");
+								}
+							}
+							if (!name)
+								return ;
+							snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: sending tail command\n");
+							report(reporter, false);
+							for (struct s_program *current = server->begin(server); current; current = current->itnext(current)) {
+								if (!strncmp(current->name, name, strlen(current->name))) {
+									if (!current->processes)
+										continue ;
+									for (int i = 0; i < current->numprocs; i++) {
+										if (!strcmp(current->processes[i].name, cmd->arg[0])) {
+											if (write(current->processes[i].com[1], buf, strlen(buf))) {}
+											break ;
+										}
+									}
+									break ;
+								}
+							}
 						}
 					} else if (!strcmp(cmd->cmd, "pid")) {     //main thread send pid of process
 						snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: controller has sent pid command\n");
