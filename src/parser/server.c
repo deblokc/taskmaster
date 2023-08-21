@@ -36,6 +36,8 @@ static struct s_server	*free_server(struct s_server *self)
 		free(self->config_file);
 	if (self->bin_path)
 		free(self->bin_path);
+	if (server->priorities)
+		server->priorities->destructor(server->priorities);
 	self->socket.destructor(&self->socket);
 	self->delete_tree(self);
 	free(self);
