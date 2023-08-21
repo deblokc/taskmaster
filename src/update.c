@@ -8,6 +8,7 @@ static struct s_program *get_programs(yaml_document_t * document, struct s_repor
 	yaml_node_t		*key_node;
 
 	bzero(&server, sizeof(server));
+	init_server(&server);
 	snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Parsing YAML document\n");
 	report(reporter, false);
 	current_node = yaml_document_get_root_node(document);
@@ -88,33 +89,104 @@ struct s_program	*get_current_programs(struct s_server *server, struct s_report 
 	return (program_tree);
 }
 
-bool	program_issame(struct s_program *p1, struct s_program *p2)
+static bool	program_issame(struct s_program *p1, struct s_program *p2)
 {
+	int				i;
+	struct s_env	*p1_env_runner;
+	struct s_env	*p2_env_runner;
+
 	if ((p1->command && !p2->command) || (!p1->command && p2->command)
 		|| (p1->args && !p2->args) || (!p1->args && p2->args)
 		|| (p1->exitcodes && !p2->exitcodes) || (!p1->exitcodes && p2->exitcodes)
 		|| (p1->workingdir && !p2->workingdir) || (!p1->workingdir && p2->workingdir)
 		|| (p1->user && !p2->user) || (!p1->user && p2->user)
 		|| (p1->group && !p2->group) || (!p1->group && p2->group)
+		|| (p1->stdout_logger.logfile && !p2->stdout_logger.logfile) || (!p1->stdout_logger.logfile && p2->stdout_logger.logfile)
+		|| (p1->stderr_logger.logfile && !p2->stderr_logger.logfile) || (!p1->stderr_logger.logfile && p2->stderr_logger.logfile)
+		|| (p1->env && !p2->env) || (!p1->env && p2->env)
 		)
-		return(false); 
+		return(false);
+	if (p1->command && p2->command && strcmp(p1->command, p2->command))
+		return (false);
 	if (p1->args && p2->args)
 	{
-		for (int i = 0; p1->args[i]; ++i)
+		i = 0;
+		for (; p1->args[i]; ++i)
 		{
 			if (!p2->args[i] || strcmp(p1->args[i], p2->args[i]))
 				return (false);
 		}
+		if (p2->args[i] != NULL)
+			return (false);
 	}
-	if (
+	if (p1->exitcodes && p2->exitcodes)
+	{
+		i = 0;
+		for (; p1->exitcodes[i] != -1; ++i)
+		{
+			if (p1->exitcodes[i] != p2->exitcodes[i])
+				return (false);
+		}
+		if (p2->exitcodes[i] != -1)
+			return (false);
+	}
+	if (p1->stdout_logger.logfile && p2->stdout_logger.logfile && strcmp(p1->stdout_logger.logfile, p2->stdout_logger.logfile))
+		return (false);
+	if (p1->stderr_logger.logfile && p2->stderr_logger.logfile && strcmp(p1->stderr_logger.logfile, p2->stderr_logger.logfile))
+		return (false);
+	if (p1->workingdir && p2->workingdir && strcmp(p1->workingdir, p2->workingdir))
+		return (false);
+	if (p1->user && p2->user && strcmp(p1->user, p2->user))
+		return (false);
+	if (p1->group && p2->group && strcmp(p1->group, p2->group))
+		return (false);
+	p1_env_runner = p1->env;
+	p2_env_runner = p2->env;
+	while (p1_env_runner)
+	{
+		if (!p2_env_runner)
+			return (false);
+		if (strcmp(p1_env_runner->value, p2_env_runner->value))
+			return (false);
+		p1_env_runner = p1_env_runner->next;
+		p2_env_runner = p2_env_runner->next;
+	}
+	if (p2_env_runner)
+		return (false);
+	if (p1->numprocs != p2->numprocs
+		|| p1->priority != p2->priority
+		|| p1->autostart != p2->autostart
+		|| p1->startsecs != p2->startsecs
+		|| p1->startretries != p2->startretries
+		|| p1->autorestart != p2->autorestart
+		|| p1->stopsignal != p2->stopsignal
+		|| p1->stopwaitsecs != p2->stopwaitsecs
+		|| p1->stopasgroup != p2->stopasgroup
+		|| p1->stdoutlog != p2->stdoutlog
+		|| p1->stdout_logger.logfile_maxbytes != p2->stdout_logger.logfile_maxbytes
+		|| p1->stdout_logger.logfile_backups != p2->stdout_logger.logfile_backups
+		|| p1->stdout_logger.umask != p2->stdout_logger.umask
+		|| p1->stderrlog != p2->stderrlog
+		|| p1->stderr_logger.logfile_maxbytes != p2->stderr_logger.logfile_maxbytes
+		|| p1->stderr_logger.logfile_backups != p2->stderr_logger.logfile_backups
+		|| p1->stderr_logger.umask != p2->stderr_logger.umask
+		|| p1->umask != p2->umask)
+	{
+		return (false);
+	}
+	return (true);
 }
 
-void	find_to_stop(struct s_server *server, struct s_priority **to_stop, struct s_report *reporter)
+static void	find_to_stop(struct s_server *server, struct s_priority **to_stop)
 {
 	struct s_priority	*old_current;
 	struct s_priority	*new_current;
 	struct s_program	*old_runner;
 	struct s_program	*new_runner;
+	struct s_program	*previous_old;
+	struct s_program	*previous_new;
+	struct s_program	*next_old;
+	struct s_program	*next_new;
 
 	if (!to_stop || !*to_stop)
 		return ;
@@ -128,19 +200,52 @@ void	find_to_stop(struct s_server *server, struct s_priority **to_stop, struct s
 		{
 			old_runner = old_current->begin;
 			new_runner = new_current->begin;
+			previous_old = NULL;
+			previous_new = NULL;
 			while (old_runner)
 			{
 				while (new_runner && strcmp(new_runner->name, old_runner->name) < 0)
-					new_runner = new_runner->next;
-				if (new_runner && !strcmp(new_runner->name, old_runner->name))
 				{
-					if (program_issame(new_runner, old_runner))
+					previous_new = new_runner;
+					new_runner = new_runner->next;
+				}
+				if (new_runner && !strcmp(new_runner->name, old_runner->name) && program_issame(new_runner, old_runner))
+				{
+					if (!previous_old)
+						old_current->begin = old_runner->next;
+					else
+						previous_old->next = old_runner->next;
+					if (!previous_new)
+						new_current->begin = old_runner;
+					else
+						previous_new->next = old_runner;
+					next_old = old_runner->next;
+					next_new = new_runner->next;
+					if (server->program_tree == new_runner)
+						server->program_tree = old_runner;
+					old_runner->next = new_runner->next;
+					old_runner->left = new_runner->left;
+					old_runner->right = new_runner->right;
+					old_runner->parent = new_runner->parent;
+					if (old_runner->parent)
 					{
-					
+						if (old_runner->parent->left == new_runner)
+							old_runner->parent->left = old_runner;
+						else
+							old_runner->parent->right = old_runner;
+
 					}
+					if (old_runner->left)
+						old_runner->left->parent = old_runner;
+					if (old_runner->right)
+						old_runner->right->parent = old_runner;
+					new_runner->cleaner(new_runner);
+					new_runner = next_new;
+					old_runner = next_old;
 				}
 				else
 				{
+					previous_old = old_runner;
 					old_runner = old_runner->next;
 				}
 			}
@@ -152,13 +257,15 @@ void	find_to_stop(struct s_server *server, struct s_priority **to_stop, struct s
 void	update_configuration(struct s_server *server, struct s_program *program_tree, struct s_report *reporter)
 {
 	struct s_program	*old_tree = server->program_tree;
-	struct s_program	*tmp_tree = NULL;
 	struct s_priority	*to_stop = server->priorities;
 
 	server->priorities = NULL;
 	server->program_tree = program_tree;
+	update_umask(server);
 	if (program_tree)
 	{
+		strcpy(reporter->buffer, "DEBUG: Finding programs to stop\n");
+		report(reporter, false);
 		server->priorities = create_priorities(server, reporter);
 		if (reporter->critical)
 		{
@@ -171,6 +278,15 @@ void	update_configuration(struct s_server *server, struct s_program *program_tre
 			server->program_tree = old_tree;
 			return ;
 		}
-		find_to_stop(server, &to_stop, reporter);
+		find_to_stop(server, &to_stop);
+	}
+	else
+	{
+		strcpy(reporter->buffer, "DEBUG: No new programs\n");
+		report(reporter, false);
+	}
+	if (to_stop)
+	{
+		to_stop->print_priorities(to_stop);
 	}
 }

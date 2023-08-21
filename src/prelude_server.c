@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/25 18:58:58 by bdetune           #+#    #+#             */
-/*   Updated: 2023/08/10 16:46:54 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/21 17:09:18 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,7 +46,7 @@ void	create_pid_file(struct s_server *server, struct s_report *reporter)
 	close(fd);
 }
 
-static void update_umask(struct s_server *server)
+void update_umask(struct s_server *server)
 {
 	server->logger.umask = server->umask;
 	for (struct s_program* current = server->begin(server); current; current = current->itnext(current))

@@ -6,7 +6,7 @@
 #    By: tnaton <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/06/16 11:17:59 by tnaton            #+#    #+#              #
-#    Updated: 2023/08/10 15:27:33 by bdetune          ###   ########.fr        #
+#    Updated: 2023/08/21 16:04:46 by bdetune          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -37,7 +37,8 @@ SRCS = main.c \
 	   daemon.c \
 	   administrator.c \
 	   server.c \
-	   launcher.c
+	   launcher.c \
+	   update.c
 
 INC = taskmaster.h
 

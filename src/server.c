@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/10 16:21:13 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/21 17:42:09 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -194,6 +194,8 @@ void	delete_clients(struct s_client **clients_lst)
 
 void exit_admins(struct s_server *serv) {
 	for (struct s_program *current = serv->begin(serv); current; current = current->itnext(current)) {
+		if (!current->processes)
+			continue ;
 		for (int i = 0; i < current->numprocs; i++) {
 			if (write(current->processes[i].com[1], "exit", strlen("exit"))) {}
 		}

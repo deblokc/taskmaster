@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 19:48:45 by bdetune           #+#    #+#             */
-/*   Updated: 2023/08/09 14:55:42 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/21 16:05:37 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,8 +36,8 @@ static struct s_server	*free_server(struct s_server *self)
 		free(self->config_file);
 	if (self->bin_path)
 		free(self->bin_path);
-	if (server->priorities)
-		server->priorities->destructor(server->priorities);
+	if (self->priorities)
+		self->priorities->destructor(self->priorities);
 	self->socket.destructor(&self->socket);
 	self->delete_tree(self);
 	free(self);
