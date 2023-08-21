@@ -11,7 +11,7 @@ programs:
         stopsignal: TERM
         priority: 3
     solo:
-        command: /bin/bash -c yes
+        command: /bin/bash -c "sleep 10"
         numprocs: 1
         retry: 3
         umask: 022

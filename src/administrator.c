@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/21 14:07:06 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/21 19:03:08 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,6 +20,7 @@
 #include <string.h>
 #include <sys/epoll.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -35,7 +36,7 @@ char *getcmd(struct s_process *proc) {
 			if (envpath) {
 				char *path;
 				path = strtok(envpath, ":");
-				while (path) {// size of path + '/'    +    size of command   +   '\0'
+				while (path) { // size of path + '/'    +    size of command   +   '\0'
 					size_t size = (strlen(path) + 1 + strlen(proc->program->command) + 1);
 					command = (char *)calloc(size, sizeof(char));
 					if (!command) {
@@ -348,8 +349,46 @@ int handle_command(struct s_process *process, char *buf, int epollfd) {
 			return (0);
 		}
 		epoll_ctl(efd, EPOLL_CTL_DEL, fd, &client->poll);
-		// NEED TO SEND "OLD" LOG
-		snprintf(client->buf, PIPE_BUF, "CECI EST LE LOG D'AVANT\n");
+		// sending "old" log
+		size_t stdout_logsize = 0;
+		size_t stderr_logsize = 0;
+		struct stat tmp;
+
+		if (process->stdoutlog) {
+			if (!fstat(process->stdout_logger.logfd, &tmp)) {
+				stdout_logsize = (size_t)tmp.st_size;
+				if (stdout_logsize > PIPE_BUF / 2) {
+					stdout_logsize = PIPE_BUF / 2;
+				}
+			}
+		}
+		if (process->stderrlog) {
+			if (!fstat(process->stderr_logger.logfd, &tmp)) {
+				stderr_logsize = (size_t)tmp.st_size;
+				if (stderr_logsize > PIPE_BUF / 2) {
+					stderr_logsize = PIPE_BUF / 2;
+				}
+			}
+		}
+		if (stdout_logsize + stderr_logsize > 0) {
+			client->log = (char *)calloc(sizeof(char), stdout_logsize + stderr_logsize);
+			if (process->stdoutlog) {
+				lseek(process->stdout_logger.logfd, -(int)stdout_logsize, SEEK_END);
+				if (read(process->stdout_logger.logfd, client->log, stdout_logsize)) {}
+				snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: read %s from stdout\n", client->log);
+				report(&reporter, false);
+			}
+			if (process->stderrlog) {
+				lseek(process->stderr_logger.logfd, -(int)stderr_logsize, SEEK_END);
+				if (read(process->stderr_logger.logfd, client->log + strlen(client->log), stderr_logsize)) {}
+				snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: read %s from stderr\n", client->log + stdout_logsize);
+				report(&reporter, false);
+			}
+			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: sending  >%s< as old log\n", client->log + stdout_logsize);
+			report(&reporter, false);
+		} else {
+			snprintf(client->buf, PIPE_BUF, "\n");
+		}
 		client->poll.events = EPOLLOUT | EPOLLIN;
 		epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &client->poll);
 		// add fd to epoll and send it log
@@ -370,8 +409,14 @@ void handle_logging_client(struct s_process *process, struct epoll_event event, 
 	if (event.events & EPOLLOUT) {
 		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: sending something to client %d\n", client->poll.data.fd);
 		report(&reporter, false);
-		send(event.data.fd, client->buf, strlen(client->buf), 0);
-		bzero(client->buf, PIPE_BUF + 1);
+		if (strlen(client->buf)) {
+			send(event.data.fd, client->buf, strlen(client->buf), 0);
+			bzero(client->buf, PIPE_BUF + 1);
+		} else {
+			send(event.data.fd, client->log, strlen(client->log), 0);
+			free(client->log);
+			client->log = NULL;
+		}
 		client->poll.events = EPOLLIN;
 		if (epoll_ctl(epollfd, EPOLL_CTL_MOD, client->poll.data.fd, &client->poll)) {
 			snprintf(reporter.buffer, PIPE_BUF, "ERROR: Could not modify client event in epoll_ctl STARTING for client %d\n", client->poll.data.fd);

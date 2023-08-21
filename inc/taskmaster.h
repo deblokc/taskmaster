@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/18 14:52:57 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/21 16:14:40 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -82,6 +82,7 @@ struct s_client {
 struct s_logging_client {
 	struct epoll_event		poll;
 	char					buf[PIPE_BUF + 1];
+	char					*log;
 	bool					fg;
 	struct s_logging_client	*next;
 };

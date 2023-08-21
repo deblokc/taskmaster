@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 15:17:03 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/18 16:57:57 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/21 15:50:12 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -131,6 +131,7 @@ void *thread_log(void *arg) {
 			}
 		}
 	}
+	fflush(stdout);
 	epoll_ctl(efd, EPOLL_CTL_DEL, sock->data.fd, sock);
 	close(efd);
 	return NULL;
@@ -150,7 +151,6 @@ void foreground(int efd, struct epoll_event sock) {
 	while (!g_sig) {
 		line = ft_readline("");
 		if (line) {
-
 			ret = epoll_wait(efd, &event, 1, 100);
 			if (ret > 0) {
 				if (event.events & EPOLLOUT) {
@@ -184,8 +184,12 @@ void foreground(int efd, struct epoll_event sock) {
 	} else {
 		perror("epoll_wait(EPOLLOUT)");
 	}
-	while (recv(sock.data.fd, buf, PIPE_BUF, MSG_DONTWAIT) >= 0) { 
+	int i = 0;
+	while (i < 42) { 
+		recv(sock.data.fd, buf, PIPE_BUF, MSG_DONTWAIT);
 		bzero(buf, PIPE_BUF + 1);
+		usleep(10);
+		i++;
 	}
 	fflush(stdout);
 }
