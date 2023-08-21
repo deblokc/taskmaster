@@ -1,6 +1,6 @@
 programs:
     exception:
-        command: /bin/sh
+        command: /bin/bash
         numprocs: 2
         retry: 3
         umask: 022
@@ -11,7 +11,7 @@ programs:
         stopsignal: TERM
         priority: 3
     solo:
-        command: /bin/sh -c yes
+        command: /bin/bash -c yes
         numprocs: 1
         retry: 3
         umask: 022

@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/18 17:16:14 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/21 14:07:06 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -220,9 +220,15 @@ void closeall(struct s_process *process, int epollfd) {
 	report(&reporter, false);
 	epoll_ctl(epollfd, EPOLL_CTL_DEL, process->stdout[0], NULL);
 	epoll_ctl(epollfd, EPOLL_CTL_DEL, process->stderr[0], NULL);
-	close(process->stdin[1]);
-	close(process->stdout[0]);
-	close(process->stderr[0]);
+	if (process->stdin[1] >= 0) {
+		close(process->stdin[1]);
+	}
+	if (process->stdout[0] >= 0) {
+		close(process->stdout[0]);
+	}
+	if (process->stderr[0] >= 0) {
+		close(process->stderr[0]);
+	}
 	waitpid(process->pid, NULL, 0);
 }
 
@@ -264,7 +270,7 @@ int handle_command(struct s_process *process, char *buf, int epollfd) {
 			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s was not already stopped, sending him signal %d to stop him\n", process->name, process->program->stopsignal);
 			report(&reporter, false);
 			process->status = STOPPING;
-			kill(process->pid, process->program->stopsignal);
+			killpg(process->pid, process->program->stopsignal);
 			if (gettimeofday(&process->stop, NULL)) {
 				snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s got a fatal error in gettimeofday\n", process->name);
 				report(&reporter, false);
@@ -284,7 +290,7 @@ int handle_command(struct s_process *process, char *buf, int epollfd) {
 			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s was not already stopped, sending him signal %d to stop him\n", process->name, process->program->stopsignal);
 			report(&reporter, false);
 			process->status = STOPPING;
-			kill(process->pid, process->program->stopsignal);
+			killpg(process->pid, process->program->stopsignal);
 			if (gettimeofday(&process->stop, NULL)) {
 				snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s got a fatal error in gettimeofday\n", process->name);
 				report(&reporter, false);
@@ -313,7 +319,7 @@ int handle_command(struct s_process *process, char *buf, int epollfd) {
 			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s was not stopped, stopping it for restart\n", process->name);
 			report(&reporter, false);
 			process->status = STOPPING;
-			kill(process->pid, process->program->stopsignal);
+			killpg(process->pid, process->program->stopsignal);
 			if (gettimeofday(&process->stop, NULL)) {
 				snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s got a fatal error in gettimeofday\n", process->name);
 				report(&reporter, false);
@@ -325,7 +331,7 @@ int handle_command(struct s_process *process, char *buf, int epollfd) {
 		// sig command
 		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s has received order to send sig %d to process", process->name, (int)buf[3]);
 		report(&reporter, false);
-		kill(process->pid, (int)buf[3]);
+		killpg(process->pid, (int)buf[3]);
 	} else if (!strncmp(buf, "fg", 2)) {
 		int fd = atoi(buf + 2);
 		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s has received order to foregroung client with fd %d\n", process->name, fd);
@@ -497,7 +503,7 @@ void *administrator(void *arg) {
 			if (gettimeofday(&tmp, NULL)) {
 				snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s got a fatal error in gettimeofday\n", process->name);
 				report(&reporter, false);
-				kill(process->pid, SIGKILL);
+				killpg(process->pid, SIGKILL);
 				closeall(process, epollfd);
 				close(epollfd);
 				if (process->stdout_logger.logfd > 0) {
@@ -597,7 +603,7 @@ void *administrator(void *arg) {
 							snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s's administrator received something from main thread while STARTING\n", process->name);
 							report(&reporter, false);
 							if (handle_command(process, buf, epollfd)) {
-								kill(process->pid, SIGKILL);
+								killpg(process->pid, SIGKILL);
 								closeall(process, epollfd);
 								close(epollfd);
 								if (process->stdout_logger.logfd > 0) {
@@ -615,7 +621,7 @@ void *administrator(void *arg) {
 							if (gettimeofday(&process->stop, NULL)) {
 								snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s got a fatal error in gettimeofday\n", process->name);
 								report(&reporter, false);
-								kill(process->pid, SIGKILL);
+								killpg(process->pid, SIGKILL);
 								closeall(process, epollfd);
 								close(epollfd);
 								if (process->stdout_logger.logfd > 0) {
@@ -681,7 +687,7 @@ void *administrator(void *arg) {
 							snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s's administrator received something from main thread while RUNNING\n", process->name);
 							report(&reporter, false);
 							if (handle_command(process, buf, epollfd)) {
-								kill(process->pid, SIGKILL);
+								killpg(process->pid, SIGKILL);
 								closeall(process, epollfd);
 								close(epollfd);
 								if (process->stdout_logger.logfd > 0) {
@@ -699,7 +705,7 @@ void *administrator(void *arg) {
 							if (gettimeofday(&process->stop, NULL)) {
 								snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s got a fatal error in gettimeofday\n", process->name);
 								report(&reporter, false);
-								kill(process->pid, SIGKILL);
+								killpg(process->pid, SIGKILL);
 								closeall(process, epollfd);
 								close(epollfd);
 								if (process->stdout_logger.logfd > 0) {
@@ -726,7 +732,7 @@ void *administrator(void *arg) {
 			if (gettimeofday(&tmp, NULL)) {
 				snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s got a fatal error in gettimeofday\n", process->name);
 				report(&reporter, false);
-				kill(process->pid, SIGKILL);
+				killpg(process->pid, SIGKILL);
 				closeall(process, epollfd);
 				close(epollfd);
 				if (process->stdout_logger.logfd > 0) {
@@ -745,7 +751,13 @@ void *administrator(void *arg) {
 				snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s did not stop before %ds, sending SIGKILL\n", process->name, process->program->stopwaitsecs);
 				report(&reporter, false);
 				process->status = STOPPED;
-				kill(process->pid, SIGKILL);
+				close(process->stdout[0]);
+				close(process->stderr[0]);
+				close(process->stdin[1]);
+				process->stdout[0] = -1;
+				process->stderr[0] = -1;
+				process->stdin[1] = -1;
+				killpg(process->pid, SIGKILL);
 				// need to epoll_wait 0 to return instantly
 				tmp_micro = (process->program->stopwaitsecs * 1000);
 				stop_micro = 0;
@@ -823,7 +835,7 @@ void *administrator(void *arg) {
 							snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s's administrator received something from main thread while RUNNING\n", process->name);
 							report(&reporter, false);
 							if (handle_command(process, buf, epollfd)) {
-								kill(process->pid, SIGKILL);
+								killpg(process->pid, SIGKILL);
 								closeall(process, epollfd);
 								close(epollfd);
 								if (process->stdout_logger.logfd > 0) {
@@ -841,7 +853,7 @@ void *administrator(void *arg) {
 							if (gettimeofday(&process->stop, NULL)) {
 								snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s got a fatal error in gettimeofday\n", process->name);
 								report(&reporter, false);
-								kill(process->pid, SIGKILL);
+								killpg(process->pid, SIGKILL);
 								closeall(process, epollfd);
 								close(epollfd);
 								if (process->stdout_logger.logfd > 0) {
