@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/19 19:03:58 by bdetune           #+#    #+#             */
-/*   Updated: 2023/08/07 19:19:24 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/21 17:39:59 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,6 +24,7 @@ static struct s_program *cleaner(struct s_program *self)
 		free(self->name);
 	if (self->command)
 		free(self->command);
+	// Args are pointing inside the command string, they are not allocated, hence freeing the table is enough
 	if (self->args)
 		free(self->args);
 	if (self->exitcodes)

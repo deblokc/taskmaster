@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/18 16:38:58 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/21 19:23:47 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -192,11 +192,24 @@ void	delete_clients(struct s_client **clients_lst)
 	*clients_lst = NULL;
 }
 
-void exit_admins(struct s_server *serv) {
-	for (struct s_program *current = serv->begin(serv); current; current = current->itnext(current)) {
-		for (int i = 0; i < current->numprocs; i++) {
-			if (write(current->processes[i].com[1], "exit", strlen("exit"))) {}
+void exit_admins(struct s_priority *priorities) {
+	struct s_priority	*current;
+	struct s_program	*prog;
+
+	current = priorities;
+	while (current)
+	{
+		prog = current->begin;
+		while (prog) {
+			if (prog->processes)
+			{
+				for (int i = 0; i < prog->numprocs; i++) {
+					if (write(prog->processes[i].com[1], "exit", strlen("exit"))) {}
+				}
+			}
+			prog = prog->next;
 		}
+		current = current->next;
 	}
 }
 
@@ -481,6 +494,8 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 							for (int i = 0; cmd->arg[i]; i++) {
 								for (struct s_program *current = server->begin(server); current; current = current->itnext(current)) {
 									if (!strncmp(current->name, cmd->arg[i], strlen(current->name))) {
+										if (!current->processes)
+											continue ;
 										for (int j = 0; j < current->numprocs; j++) {
 											if (!strcmp(cmd->arg[i], current->processes[j].name)) {
 												snprintf(client->buf + strlen(client->buf), PIPE_BUF + 1, "%s : %s\n", current->processes[j].name, status[current->processes[j].status]);
@@ -491,6 +506,8 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 							}
 						} else {
 							for (struct s_program *current = server->begin(server); current; current = current->itnext(current)) {
+								if (!current->processes)
+									continue ;
 								for (int i = 0; i < current->numprocs; i++) {
 									snprintf(client->buf + strlen(client->buf), PIPE_BUF + 1, "%s : %s\n", current->processes[i].name, status[current->processes[i].status]);
 								}

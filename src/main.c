@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/10 19:09:09 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/21 18:20:55 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,7 +19,7 @@
 #include <sys/un.h>
 #include <sys/epoll.h>
 
-static void	cleanup(struct s_server *server, struct s_priority *priorities, bool remove_pidfile, struct s_report *reporter)
+static void	cleanup(struct s_server *server, bool remove_pidfile, struct s_report *reporter)
 {
 	if (efd > 0)
 		close(efd);
@@ -27,8 +27,6 @@ static void	cleanup(struct s_server *server, struct s_priority *priorities, bool
 	{
 		if (write(2, reporter->buffer, strlen(reporter->buffer))) {}
 	}
-	if (priorities)
-		priorities->destructor(priorities);
 	if (remove_pidfile)
 	{
 		if (!server->pidfile)
@@ -57,19 +55,20 @@ int	early_error(char* msg, int* reporter_pipe, char* tmp_log, struct s_server *s
 	return (1);
 }
 
-int	main_routine(struct s_server *server, struct s_priority *priorities, struct s_report *reporter)
+int	main_routine(struct s_server *server, struct s_report *reporter)
 {
 	int					nb_events;
 	struct s_client		*clients = NULL;
 	struct epoll_event	events[10];
-	//struct s_program	*program_tree = NULL;
+	struct s_program	*program_tree = NULL;
+	struct s_program	*tmp_tree = NULL;
 
 	if (!install_signal_handler(reporter) || !unblock_signals_thread(reporter)
 		|| (server->socket.enable && !init_epoll(server, reporter)))
 	{
-		exit_admins(server);
-		wait_priorities(priorities);
-		cleanup(server, priorities, true, reporter);
+		exit_admins(server->priorities);
+		wait_priorities(server->priorities);
+		cleanup(server, true, reporter);
 		return (1);
 	}
 	bzero(events, sizeof(*events) * 10);
@@ -100,7 +99,24 @@ int	main_routine(struct s_server *server, struct s_priority *priorities, struct 
 			{
 				strcpy(reporter->buffer, "INFO: taskmasterd received signal to update configuration\n");
 				report(reporter, false);
-				//program_tree = update_configuration(server);
+				program_tree = get_current_programs(server, reporter);
+				if (reporter->critical)
+				{
+					strcpy(reporter->buffer, "CRITICAL: Could not update configuration, taskmasterd will continue with current configuration\n");
+					report(reporter, false);
+					if (program_tree)
+					{
+						tmp_tree = server->program_tree;
+						server->program_tree = program_tree;
+						server->delete_tree(server);
+						server->program_tree = tmp_tree;
+						program_tree = NULL;
+					}
+				}
+				else
+				{
+					update_configuration(server, program_tree, reporter);
+				}
 				g_sig = 0;
 			}
 			else
@@ -108,9 +124,9 @@ int	main_routine(struct s_server *server, struct s_priority *priorities, struct 
 				strcpy(reporter->buffer, "INFO: taskmasterd received signal to shutdown\n");
 				report(reporter, false);
 				delete_clients(&clients);
-				exit_admins(server);
-				wait_priorities(priorities);
-				cleanup(server, priorities, true, reporter);
+				exit_admins(server->priorities);
+				wait_priorities(server->priorities);
+				cleanup(server, true, reporter);
 				return (0);
 			}
 		}
@@ -126,7 +142,6 @@ int main(int ac, char **av)
 	pthread_t initial_logger;
 	struct s_report reporter;
 	struct s_server *server = NULL;
-	struct s_priority *priorities = NULL;
 
 	bzero(reporter_pipe, sizeof(int) * 4);
 	bzero(reporter.buffer, PIPE_BUF + 1);
@@ -207,7 +222,7 @@ int main(int ac, char **av)
 		return (1);
 	}
 	reporter.report_fd = server->log_pipe[1];
-	priorities = create_priorities(server, &reporter);
+	server->priorities = create_priorities(server, &reporter);
 	if (reporter.critical)
 	{
 		strcpy(reporter.buffer, "CRITICAL: Could not build priorities, exiting taskmasterd\n");
@@ -224,8 +239,6 @@ int main(int ac, char **av)
 		ret = daemonize(server);
 		if (ret != -1)
 		{
-			if (priorities)
-				priorities->destructor(priorities);
 			server->cleaner(server);
 			exit(ret);
 		}
@@ -238,12 +251,12 @@ int main(int ac, char **av)
 	create_pid_file(server, &reporter);
 	if (reporter.critical)
 	{
-		cleanup(server, priorities, false, &reporter);
+		cleanup(server, false, &reporter);
 		return (1);
 	}
 	strcpy(reporter.buffer, "INFO: Starting taskmasterd\n");
 	report(&reporter, false);
-	if (!priorities)
+	if (!server->priorities)
 	{
 		strcpy(reporter.buffer, "DEBUG: No priorities to start\n");
 		report(&reporter, false);
@@ -252,7 +265,7 @@ int main(int ac, char **av)
 	{
 		strcpy(reporter.buffer, "DEBUG: Launching priorities\n");
 		report(&reporter, false);
-		launch(priorities, server->log_pipe[1]);
+		launch(server->priorities, server->log_pipe[1]);
 	}
-	return (main_routine(server, priorities, &reporter));
+	return (main_routine(server, &reporter));
 }

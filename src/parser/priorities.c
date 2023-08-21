@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/04 18:26:30 by bdetune           #+#    #+#             */
-/*   Updated: 2023/08/07 12:52:25 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/21 18:39:55 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -143,7 +143,7 @@ static void	add_priority(struct s_priority** head, struct s_program *current, st
 	
 	snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Adding program %s in list of priorities\n", current->name);
 	report(reporter, false);
-	if (head && current->autostart)
+	if (head)
 	{
 		if (!*head)
 		{
