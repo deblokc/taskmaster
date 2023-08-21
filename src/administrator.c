@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/21 19:03:08 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/21 19:21:12 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -375,17 +375,11 @@ int handle_command(struct s_process *process, char *buf, int epollfd) {
 			if (process->stdoutlog) {
 				lseek(process->stdout_logger.logfd, -(int)stdout_logsize, SEEK_END);
 				if (read(process->stdout_logger.logfd, client->log, stdout_logsize)) {}
-				snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: read %s from stdout\n", client->log);
-				report(&reporter, false);
 			}
 			if (process->stderrlog) {
 				lseek(process->stderr_logger.logfd, -(int)stderr_logsize, SEEK_END);
 				if (read(process->stderr_logger.logfd, client->log + strlen(client->log), stderr_logsize)) {}
-				snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: read %s from stderr\n", client->log + stdout_logsize);
-				report(&reporter, false);
 			}
-			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: sending  >%s< as old log\n", client->log + stdout_logsize);
-			report(&reporter, false);
 		} else {
 			snprintf(client->buf, PIPE_BUF, "\n");
 		}
