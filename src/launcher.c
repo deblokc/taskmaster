@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/07 10:59:08 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/21 17:43:44 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/21 18:32:16 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -78,7 +78,6 @@ char	*itoa(int n)
 void wait_process(struct s_program *lst) {
 	for (int i = 0; lst; i++, lst = lst->next) {
 		if (!lst->processes) {
-			printf("NO PROCESSES ???\n");
 			continue ;
 		}
 		if (lst->numprocs == 1) {
@@ -91,7 +90,6 @@ void wait_process(struct s_program *lst) {
 			lst->processes[0].name = NULL;
 			free(lst->processes);
 			lst->processes = NULL;
-			printf("joined one proc\n");
 		} else {
 			int j = 0;
 			for (; j < lst->numprocs; j++) {
@@ -105,7 +103,6 @@ void wait_process(struct s_program *lst) {
 			}
 			free(lst->processes);
 			lst->processes = NULL;
-			printf("joined %d proc\n", j);
 		}
 	}
 }
@@ -142,6 +139,8 @@ void create_process(struct s_program *lst, int log_fd) {
 	 */
 
 	for (int i = 0; lst; i++, lst = lst->next) {
+		if (lst->processes)
+			continue ;
 		printf("creating processes for %s\n", lst->name);
 		lst->processes = (struct s_process *)calloc(sizeof(struct s_process), (size_t)lst->numprocs);
 		if (!lst->processes) {

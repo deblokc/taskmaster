@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/21 17:46:16 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/21 18:20:55 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -66,7 +66,7 @@ int	main_routine(struct s_server *server, struct s_report *reporter)
 	if (!install_signal_handler(reporter) || !unblock_signals_thread(reporter)
 		|| (server->socket.enable && !init_epoll(server, reporter)))
 	{
-		exit_admins(server);
+		exit_admins(server->priorities);
 		wait_priorities(server->priorities);
 		cleanup(server, true, reporter);
 		return (1);
@@ -124,7 +124,7 @@ int	main_routine(struct s_server *server, struct s_report *reporter)
 				strcpy(reporter->buffer, "INFO: taskmasterd received signal to shutdown\n");
 				report(reporter, false);
 				delete_clients(&clients);
-				exit_admins(server);
+				exit_admins(server->priorities);
 				wait_priorities(server->priorities);
 				cleanup(server, true, reporter);
 				return (0);

@@ -1,3 +1,15 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   update.c                                           :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2023/08/21 18:53:01 by bdetune           #+#    #+#             */
+/*   Updated: 2023/08/21 18:55:10 by bdetune          ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include "taskmaster.h"
 #include <stdio.h>
 
@@ -254,6 +266,29 @@ static void	find_to_stop(struct s_server *server, struct s_priority **to_stop)
 	}
 }
 
+static void	free_to_stop(struct s_priority *priorities)
+{
+	struct s_priority	*current;
+	struct s_priority	*prio_next;
+	struct s_program	*prog;
+	struct s_program	*prog_next;
+
+	current = priorities;
+	while (current)
+	{
+		prog = current->begin;
+		while (prog)
+		{
+			prog_next = prog->next;
+			prog->cleaner(prog);
+			prog = prog_next;
+		}
+		prio_next = current->next;
+		free(current);
+		current = prio_next;
+	}
+}
+
 void	update_configuration(struct s_server *server, struct s_program *program_tree, struct s_report *reporter)
 {
 	struct s_program	*old_tree = server->program_tree;
@@ -285,8 +320,10 @@ void	update_configuration(struct s_server *server, struct s_program *program_tre
 		strcpy(reporter->buffer, "DEBUG: No new programs\n");
 		report(reporter, false);
 	}
-	if (to_stop)
-	{
-		to_stop->print_priorities(to_stop);
-	}
+	exit_admins(to_stop);
+	wait_priorities(to_stop);
+	free_to_stop(to_stop);
+	block_signals_thread(reporter);
+	launch(server->priorities, reporter->report_fd);
+	unblock_signals_thread(reporter);
 }

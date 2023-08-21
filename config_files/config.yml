@@ -1,14 +1,15 @@
 programs:
     exception:
         command: /bin/sh
-        numprocs: 2
+        numprocs: 3
         retry: 3
         exitcodes:
             - 0
             - 1
+        autostart: false
         autorestart: onerror
         stopsignal: TERM
-        priority: 3
+        priority: 5
     solo:
         command: sleep 5
         numprocs: 1
@@ -19,7 +20,7 @@ programs:
             - 1
         autorestart: onerror
         stopsignal: TERM
-        priority: 5
+        priority: 1
 
 server:
     daemon: false
