@@ -1,4 +1,5 @@
 #include "taskmaster.h"
+#include "curl.h"
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -200,12 +201,16 @@ bool	transfer_logs(int tmp_fd, struct s_server *server, struct s_report *reporte
 
 void	*main_logger(void *void_server)
 {
+	bool				log_discord;
 	struct s_server		*server;
 	int					nb_events;
 	int					epoll_fd;
 	ssize_t				ret;
 	char				buffer[PIPE_BUF + 1];
 	struct epoll_event	event;
+	CURL				*handle;
+	CURLcode			*res;
+	struct curl_slist	*slist = NULL;
 
 	server = (struct s_server*)void_server;
 	bzero(&event, sizeof(event));
@@ -243,6 +248,37 @@ void	*main_logger(void *void_server)
 		if (!server->daemon)
 		{
 			if (write(2, buffer, strlen(buffer)) == -1) {}
+		}
+	}
+	log_discord = server->log_discord;
+	if (log_discord && !server->discord_token)
+	{
+		get_stamp(buffer);
+		strcpy(&buffer[22], "CRITICAL: Cannot log to discord, no token supplied\n");
+		write_log(&server->logger, buffer);
+		if (!server->daemon)
+		{
+			if (write(2, buffer, strlen(buffer)) == -1) {}
+		}
+		log_discord = false;
+	}
+	else if (log_discord)
+	{
+		handle = curl_easy_init();
+		if (!handle)
+		{
+			get_stamp(buffer);
+			strcpy(&buffer[22], "CRITICAL: Could not init curl, logging to discord will be disabled\n");
+			write_log(&server->logger, buffer);
+			if (!server->daemon)
+			{
+				if (write(2, buffer, strlen(buffer)) == -1) {}
+			}
+			log_discord = false;
+		}
+		else
+		{
+
 		}
 	}
 	while (true)
