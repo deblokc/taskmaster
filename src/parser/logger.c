@@ -1,22 +1,22 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   taskmasterctl.h                                    :+:      :+:    :+:   */
+/*   logger.c                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
+/*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2023/06/22 16:45:18 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/25 15:45:45 by tnaton           ###   ########.fr       */
+/*   Created: 2023/06/19 18:56:48 by bdetune           #+#    #+#             */
+/*   Updated: 2023/08/08 13:43:04 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-struct s_command {
-	char	*cmd;
-	char	*arg;
-};
+#include "taskmaster.h"
+#include <string.h>
 
-FILE *fopen_history(void);
-void add_old_history(FILE *file);
-void add_file_history(char *line, FILE *file);
+void	default_logger(struct s_logger *logger)
+{
+	logger->logfd = -1;
+	logger->logfile_maxbytes = 5*1024*1024;
+	logger->logfile_backups = 10;
+}
 
-char *ft_readline(char *prompt);

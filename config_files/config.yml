@@ -1,30 +1,33 @@
 programs:
     exception:
-        command: /bin/sh -c "echo 32; sleep 5"
-        numprocs: 2
+        command: /bin/sh
+        numprocs: 3
         retry: 3
-        umask: 0o022
+        exitcodes:
+            - 0
+            - 1
+        autostart: false
+        autorestart: onerror
+        stopsignal: TERM
+        priority: 5
+    solo:
+        command: sleep 5
+        numprocs: 1
+        retry: 3
+        umask: 022
         exitcodes:
             - 0
             - 1
         autorestart: onerror
-        stopsignal: USR2
-        priority: 3
-    echoeing:
-        command: echo 1
-        retry: 3
-        umask: 0o027
-        user: bdetune
-        workingdir: /
-        env:
-            PATH: ""
-            PATH: "/"
-            pwd: "~"
+        stopsignal: TERM
+        priority: 1
+
 server:
-    unixsocket:
-        file: /mnt/nfs/homes/bdetune/taskmasterd.sock
-        chmod: 0o744
-        username: bdetune
-        chown: :user
-    logfile: /mnt/nfs/homes/bdetune/taskmaster.log
-    loglevel: ERRO
+    daemon: false
+    logfile: taskmaster.log
+    loglevel: DEBUG
+
+socket:
+    enable: true
+    socketpath: /tmp/taskmaster.sock
+    umask: 077

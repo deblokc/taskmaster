@@ -6,120 +6,264 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 15:17:03 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/18 15:55:57 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/09 18:45:18 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
+#include <errno.h>
+#include <limits.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
+#include <sys/epoll.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <unistd.h>
 #include "taskmasterctl.h"
 #include "readline.h"
 
-/* * * * * LIST OF COMMAND IN SUPERVISORCTL * * * * 
+int g_sig = 0;
 
-add <name> [...]	Activates any updates in config for process/group
+void help(char *full_arg) {
+	char *arg = NULL;
+	int i = 0;
+	while (full_arg[i] && full_arg[i] != ' ') {
+		i++;
+	}
+	while (full_arg[i] && full_arg[i] == ' ') {
+		i++;
+	}
+	arg = full_arg + i;
 
-exit	Exit the supervisor shell.
+	if (!strlen(arg)) {
+		printf("default commands (type help <command>):\n");
+		printf("=======================================\n");
+		printf("exit maintail quit signal stop avail fg\n");
+		printf("reload restart start tail clear help pid\n");
+		printf("shutdown status update\n");
+	} else {
+		if (!strcmp(arg, "exit")) {
+			printf("exit\tExit the taskmaster shell.\n");
+		} else if (!strcmp(arg, "maintail")) {
+			printf("maintail -f\t\t\tContinuous tail of taskmaster main log file (Ctrl-C to exit)\n");
+			printf("maintail -100\t\t\tlast 100 *bytes* of taskmaster main log file\n");
+			printf("maintail\t\t\tlast 1600 *bytes* of taskmaster main log file\n");
+		} else if (!strcmp(arg, "quit")) {
+			printf("quit\tExit the taskmaster shell.\n");
+		} else if (!strcmp(arg, "signal")) {
+			printf("signal <signal name> <name>\t\tSignal a process\n");
+			printf("signal <signal name> <name> <name>\tSignal multiple processes or groups\n");
+			printf("signal <signal name> all\t\tSignal all processes\n");
+		} else if (!strcmp(arg, "stop")) {
+			printf("stop <name>\t\tStop a process\n");
+			printf("stop <name> <name>\tStop multiple processes or groups\n");
+			printf("stop all\t\tStop all processes\n");
+		} else if (!strcmp(arg, "avail")) {
+			printf("avail\t\t\tDisplay all configured processes\n");
+		} else if (!strcmp(arg, "fg")) {
+			printf("fg <process>\tConnect to a process in foreground mode\n");
+			printf("\t\tCtrl-C to exit\n");
+		} else if (!strcmp(arg, "reload")) {
+			printf("reload\t\tRestart the remote taskmasterd.\n");
+		} else if (!strcmp(arg, "restart")) {
+			printf("restart <name>\t\tRestart a process\n");
+			printf("restart <name> <name>\tRestart multiple processes or groups\n");
+			printf("restart all\t\tRestart all processes\n");
+			printf("Note: restart does not reread config files. For that, see reread and update.\n");
+		} else if (!strcmp(arg, "start")) {
+			printf("start <name>\t\tStart a process\n");
+			printf("start <name> <name>\tStart multiple processes or groups\n");
+			printf("start all\t\tStart all processes\n");
+		} else if (!strcmp(arg, "tail")) {
+			printf("tail [-f] <name>\t[stdout|stderr] (default stdout)\n");
+			printf("Ex:\n");
+			printf("tail -f <name>\t\tContinuous tail of named process stdout\n");
+			printf("\t\t\tCtrl-C to exit\n");
+			printf("tail -100 <name>\tlast 100 *bytes* of process stdout\n");
+			printf("tail <name> stderr\tlast 1600 *bytes* of process stderr\n");
+		} else if (!strcmp(arg, "clear")) {
+			printf("clear <name>\t\t\tClear a process' log files\n");
+			printf("clear <name> <name>\t\tClear multiple process' log files\n");
+			printf("clear all\t\t\tClear all process' log files\n");
+		} else if (!strcmp(arg, "help")) {
+			printf("help\t\t\tPrint a list of available commands\n");
+			printf("help <command>\t\tPrint help for <command>\n");
+		} else if (!strcmp(arg, "pid")) {
+			printf("pid\t\t\tGet the PID of taskmasterd.\n");
+			printf("pid <name>\t\tGet the PID of a single child process by name.\n");
+			printf("pid all\t\t\tGet the PID of every child process, one per line.\n");
+		} else if (!strcmp(arg, "shutdown")) {
+			printf("shutdown\t\tShut the remote taskmasterd down.\n");
+		} else if (!strcmp(arg, "status")) {
+			printf("status <name>\t\tGet status for a single process\n");
+			printf("status <name> <name>\tGet status for multiple named processes\n");
+			printf("status\t\t\tGet all process status info\n");
+		} else if (!strcmp(arg, "update")) {
+			printf("update\t\t\tReload config and add/remove as necessary, and will restart affected programs\n");
+			printf("update all\t\tReload config and add/remove as necessary, and will restart affected programs\n");
+		} else {
+			printf("*** No help on %s\n", arg);
+		}
+	}
+}
 
-maintail -f 	Continuous tail of supervisor main log file (Ctrl-C to exit)
-maintail -100	last 100 *bytes* of supervisord main log file
-maintail	last 1600 *bytes* of supervisor main log file
+void remote_exec(char *cmd, int efd, struct epoll_event sock) {
+	struct epoll_event tmp;
 
-quit	Exit the supervisor shell.
+	/*
+	 *  THE LOGIC WITH WHICH IVE MADE THIS CTL IS THAT IT IS AN EMPTY SHELL.
+	 *  THIS MEANS IT WILL ALWAYS FIRST `SEND A REQUEST` (OR MORE ACCURATELLY
+	 *  TRANSFER THE COMMAND) AND THEN `PRINT THE RESPONSE` WITHOUT ANY THOUGH
+	 */
+	if (strlen(cmd) > PIPE_BUF) {
+		printf("line too long...\n");
+		return ;
+	}
 
-reread 			Reload the daemon's configuration files without add/remove
+	sock.events = EPOLLOUT;
+	epoll_ctl(efd, EPOLL_CTL_MOD, sock.data.fd, &sock);
 
-signal <signal name> <name>		Signal a process
-signal <signal name> <gname>:*		Signal all processes in a group
-signal <signal name> <name> <name>	Signal multiple processes or groups
-signal <signal name> all		Signal all processes
+	int ret = epoll_wait(efd, &tmp, 1, 60 * 1000); // wait for max a minute
+	if (ret > 0) {
+		if (tmp.events & EPOLLOUT) { // SEND PHASE
+			send(tmp.data.fd, cmd, strlen(cmd), 0);
+		}
+	} else if (ret == 0) {
+		printf("SOCKET TIMED OUT\n");
+	} else {
+		perror("epoll_wait(EPOLLOUT)");
+	}
 
-stop <name>		Stop a process
-stop <gname>:*		Stop all processes in a group
-stop <name> <name>	Stop multiple processes or groups
-stop all		Stop all processes
+	sock.events = EPOLLIN;
+	epoll_ctl(efd, EPOLL_CTL_MOD, sock.data.fd, &sock);
 
-version			Show the version of the remote supervisord process
+	ret = epoll_wait(efd, &tmp, 1, 60 * 1000); // wait for max a minute
+	if (ret > 0) {
+		if (tmp.events & EPOLLIN) { // RECV PHASE
+			char buf[PIPE_BUF + 1];
+			bzero(buf, PIPE_BUF + 1);
+			recv(tmp.data.fd, buf, PIPE_BUF, 0);
+			// WIlL NEED A CONDITION FOR CONNECTION WITH AN ADMINISTRATOR (tail/fg)
+			printf("%s", buf); // DUMBLY PRINT RESPONSE
+		}
+	} else if (ret == 0) {
+		printf("SOCKET TIMED OUT\n");
+	} else {
+		perror("epoll_wait(EPOLLIN)");
+	}
+}
 
-avail			Display all configured processes
+void get_cmd(char *cmd, char *full_cmd) {
+	if (strlen(full_cmd) < 4) {
+		return ;
+	} else if (full_cmd[4] != ' ' && full_cmd[4] != '\0') {
+		return ;
+	} else {
+		memcpy(cmd, full_cmd, 4);
+	}
+}
 
-fg <process>	Connect to a process in foreground mode
-		Ctrl-C to exit
+int exec(char *full_cmd, int efd, struct epoll_event sock) {
+	int ret = 0;
+	char cmd[5];
 
-open <url>	Connect to a remote supervisord process.
-		(for UNIX domain socket, use unix:///socket/path)
+	bzero(cmd, 5);
+	get_cmd(cmd, full_cmd);
+	if (strlen(cmd)) {
+		if (!strcmp(cmd, "help")) {
+			help(full_cmd);
+		} else if (!strcmp(cmd, "exit") || !strcmp(cmd, "quit")) {
+			ret = 1;
+		} else {
+			remote_exec(full_cmd, efd, sock);
+		}
+	} else {
+		remote_exec(full_cmd, efd, sock);
+	}
+	return (ret);
+}
 
-reload 		Restart the remote supervisord.
+char *process_line(char *line) {
+	int i = 0;
+	while (line[i] && line[i] == ' ') {
+		i++;
+	}
+	char *cmd = line + i;
+	if (strlen(cmd)) {
+		return cmd;
+	} else {
+		return NULL;
+	}
+}
 
-restart <name>		Restart a process
-restart <gname>:*	Restart all processes in a group
-restart <name> <name>	Restart multiple processes or groups
-restart all		Restart all processes
-Note: restart does not reread config files. For that, see reread and update.
+void sig_handler(int sig) {
+	(void)sig;
+	g_sig = 1;
+}
 
-start <name>		Start a process
-start <gname>:*		Start all processes in a group
-start <name> <name>	Start multiple processes or groups
-start all		Start all processes
+#define SOCK_PATH "/tmp/taskmaster.sock"
 
-tail [-f] <name> [stdout|stderr] (default stdout)
-Ex:
-tail -f <name>		Continuous tail of named process stdout
-			Ctrl-C to exit.
-tail -100 <name>	last 100 *bytes* of process stdout
-tail <name> stderr	last 1600 *bytes* of process stderr
-
-clear <name>		Clear a process' log files.
-clear <name> <name>	Clear multiple process' log files
-clear all		Clear all process' log files
-
-help		Print a list of available actions
-help <action>	Print help for <action>
-
-pid			Get the PID of supervisord.
-pid <name>		Get the PID of a single child process by name.
-pid all			Get the PID of every child process, one per line.
-
-remove <name> [...]	Removes process/group from active config
-
-shutdown 	Shut the remote supervisord down.
-
-status <name>		Get status for a single process
-status <gname>:*	Get status for all processes in a group
-status <name> <name>	Get status for multiple named processes
-status			Get all process status info
-
-update			Reload config and add/remove as necessary, and will restart affected programs
-update all		Reload config and add/remove as necessary, and will restart affected programs
-update <gname> [...]	Update specific groups
-
-* * * * * * * * * * * * * * * * * * * * * * * * * * */
+int open_socket(void) {
+	int fd;
+	struct sockaddr_un addr;
+	
+	fd = socket(AF_UNIX, SOCK_STREAM, 0);
+	if (fd < 0) {
+		perror("socket");
+	}
+	bzero(&addr, sizeof(addr));
+	addr.sun_family = AF_UNIX;
+	strcpy(addr.sun_path, SOCK_PATH);
+	if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+		perror("connect");
+	}
+	return (fd);
+}
 
 int main(int ac, char **av) {
 	(void)ac;
 	(void)av;
-	char *tab[] = {"add", "exit", "maintail", "quit", "reread", "signal", "stop", "version",\
-		"avail", "fg", "open", "reload", "restart", "start", "tail",\
+	char *tab[] = {"add", "exit", "maintail", "quit", "reread", "signal", "stop",\
+				"avail", "fg", "reload", "restart", "start", "tail",\
 			"clear", "help", "pid", "remove", "shutdown", "status", "update", NULL};
 
-	printf("%s\n", ctermid(NULL));
-	printf("%s\n", ttyname(0));
+	int socket = open_socket();
+	struct epoll_event sock;
+	bzero(&sock, sizeof(sock));
+	sock.data.fd = socket;
+	sock.events = 0;
+	int efd = epoll_create(1);
+	epoll_ctl(efd, EPOLL_CTL_ADD, socket, &sock);
 
+	// SETUP EPOLL, IT CAN NOW BE CALLED IN NEEDED FUNCTION
+
+	signal(SIGINT, &sig_handler);
 	complete_init(tab);
 
 	FILE *file = fopen_history();
 	add_old_history(file);
 
 	char *line = ft_readline("taskmasterctl>");
+	char *cmd = NULL;
 	while (line != NULL) {
 		// process line (remove space n sht)
-
-		// add to history and read another line
-		add_history(line);
-		add_file_history(line, file);
+		char *tmp = strdup(line);
+		cmd = process_line(line);
+		if (cmd) {
+			if (exec(cmd, efd, sock)) {
+				free(line);
+				free(tmp);
+				break ;
+			}
+			// add to history and read another line
+			add_history(tmp);
+			add_file_history(tmp, file);
+		}
 		free(line);
+		free(tmp);
 		line = ft_readline("taskmasterctl>");
 	}
 	clear_history();
