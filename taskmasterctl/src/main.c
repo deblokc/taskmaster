@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 15:17:03 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/22 19:53:24 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/22 20:14:29 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,7 +42,7 @@ void help(char *full_arg) {
 	if (!strlen(arg)) {
 		printf("default commands (type help <command>):\n");
 		printf("=======================================\n");
-		printf("exit maintail quit signal stop avail fg\n");
+		printf("exit maintail quit signal stop fg\n");
 		printf("reload restart start tail help pid\n");
 		printf("shutdown status update\n");
 	} else {
@@ -62,8 +62,6 @@ void help(char *full_arg) {
 			printf("stop <name>\t\tStop a process\n");
 			printf("stop <name> <name>\tStop multiple processes or groups\n");
 			printf("stop all\t\tStop all processes\n");
-		} else if (!strcmp(arg, "avail")) {
-			printf("avail\t\t\tDisplay all configured processes\n");
 		} else if (!strcmp(arg, "fg")) {
 			printf("fg <process>\tConnect to a process in foreground mode\n");
 			printf("\t\tCtrl-D to exit\n");
