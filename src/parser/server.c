@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 19:48:45 by bdetune           #+#    #+#             */
-/*   Updated: 2023/08/21 16:05:37 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/22 16:40:05 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,6 +24,10 @@ static struct s_server	*free_server(struct s_server *self)
 		free(self->logger.logfile);
 	if (self->logger.logfd >= 0)
 		close(self->logger.logfd);
+	if (self->discord_token)
+		free(self->discord_token);
+	if (self->discord_channel)
+		free(self->discord_channel);
 	if (self->pidfile)
 		free(self->pidfile);
 	if (self->user)
@@ -49,38 +53,40 @@ void	init_server(struct s_server * server)
 	register_treefn_serv(server);
 	server->cleaner = free_server;
 	server->loglevel = WARN;
+	server->log_discord = false;
+	server->loglevel_discord = CRITICAL;
 	server->umask = 022;
-	server->daemon= false;
+	server->daemon = false;
 	server->log_pipe[0] = -1;
 	server->log_pipe[1] = -1;
 	default_logger(&server->logger);
 	init_socket(&server->socket);
 }
 
-static void add_loglevel(struct s_server *server, yaml_node_t *value, struct s_report *reporter)
+static void add_loglevel(enum log_level *log_level_field, char* field_name, yaml_node_t *value, struct s_report *reporter)
 {
-	snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Parsing loglevel in 'server'\n");
+	snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Parsing %s in 'server'\n", field_name);
 	report(reporter, false);
 	if (value->type != YAML_SCALAR_NODE)
 	{
-		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Wrong format for loglevel in 'server', expected a scalar value, encountered %s\n", value->tag);
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Wrong format for %s in 'server', expected a scalar value, encountered %s\n", field_name, value->tag);
 		report(reporter, true);
 	}
 	else
 	{
 		if (!strcmp((char *)value->data.scalar.value, "CRITICAL"))
-			server->loglevel = CRITICAL;
+			*log_level_field = CRITICAL;
 		else if (!strcmp((char *)value->data.scalar.value, "ERROR"))
-			server->loglevel = ERROR;
+			*log_level_field = ERROR;
 		else if (!strcmp((char *)value->data.scalar.value, "WARN"))
-			server->loglevel = WARN;
+			*log_level_field = WARN;
 		else if (!strcmp((char *)value->data.scalar.value, "INFO"))
-			server->loglevel = INFO;
+			*log_level_field = INFO;
 		else if (!strcmp((char *)value->data.scalar.value, "DEBUG"))
-			server->loglevel = DEBUG;
+			*log_level_field = DEBUG;
 		else
 		{
-			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Wrong value for loglevel in 'server', accepted values are: CRITICAL ; ERROR ; WARN ; INFO ; DEBUG\n");
+			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Wrong value for %s in 'server', accepted values are: CRITICAL ; ERROR ; WARN ; INFO ; DEBUG\n", field_name);
 			report(reporter, true);
 		}
 	}
@@ -95,6 +101,14 @@ static void add_value(struct s_server *server, yaml_document_t *document, char* 
 		add_number(NULL, "logfile_maxbytes", &server->logger.logfile_maxbytes, value, 100, 1024*1024*1024, reporter);
 	else if (!strcmp("logfile_backups", key))
 		add_number(NULL, "logfile_backups", &server->logger.logfile_backups, value, 0, 100, reporter);
+	else if (!strcmp("log_discord", key))
+		add_bool(NULL, "log_discord", &server->log_discord, value, reporter);
+	else if (!strcmp("loglevel_discord", key))
+		add_loglevel(&server->loglevel_discord, "loglevel_discord", value, reporter);
+	else if (!strcmp("discord_token", key))
+		add_char(NULL, "discord_token", &server->discord_token, value, reporter);
+	else if (!strcmp("discord_channel", key))
+		add_char(NULL, "discord_channel", &server->discord_channel, value, reporter);
 	else if (!strcmp("pidfile", key))
 		add_char(NULL, "pidfile", &server->pidfile, value, reporter);
 	else if (!strcmp("user", key))
@@ -106,7 +120,7 @@ static void add_value(struct s_server *server, yaml_document_t *document, char* 
 	else if (!strcmp("daemon", key))
 		add_bool(NULL, "daemon", &server->daemon, value, reporter);
 	else if (!strcmp("loglevel", key))
-		add_loglevel(server, value, reporter);
+		add_loglevel(&server->loglevel, "loglevel", value, reporter);
 	else if (!strcmp("env", key))
 		parse_env(NULL, value, document, &server->env, reporter);
 	else
