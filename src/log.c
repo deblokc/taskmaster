@@ -255,163 +255,272 @@ static CURL	*init_curl(struct curl_slist **slist, char *token)
 	return (handle);
 }
 
-void	log_discord(struct s_server *server, CURL *handle, char* channel, struct curl_slist *slist, char *data)
+void	log_discord(struct s_discord_logger *discord_logger, char *data)
 {
+	bool		has_error = false;
 	char		payload[PIPE_BUF + 15];		
 	static int	failed_attempts = 0;
 
-	if (should_log(server->loglevel_discord, &data[22]))
+	data[strlen(data) - 1] = '\0';
+	snprintf(payload, PIPE_BUF + 15, "{\"content\": \"%s\"}", data);
+	if (!register_curl_opt(discord_logger->handle, discord_logger->channel, discord_logger->slist, payload))
 	{
-		data[strlen(data) - 1] = '\0';
-		snprintf(payload, PIPE_BUF + 15, "{\"content\": \"%s\"}", data);
-		if (!register_curl_opt(handle, channel, slist, payload))
+		++failed_attempts;
+		strcpy(discord_logger->reporter.buffer, "CRITICAL: Could not register curl options, message will be discarded\n");
+		report(&discord_logger->reporter, false);
+		has_error = true;
+	}
+	else
+	{
+		for (int i = 0; i < 10; ++i)
+		{
+			if (curl_easy_perform(discord_logger->handle) == CURLE_OK)
+			{
+				has_error = false;
+				break ;
+			}
+			has_error = true;
+			usleep(500);
+		}
+		if (has_error)
 		{
 			++failed_attempts;
-			get_stamp(data);
-			strcpy(&data[22], "CRITICAL: Could not register curl options, message will be discarded\n");
-			write_log(&server->logger, data);
-			if (!server->daemon)
-			{
-				if (write(2, data, strlen(data)) == -1) {}
-			}
+			strcpy(discord_logger->reporter.buffer, "CRITICAL: Could not log to discord, message will be discarded\n");
+			report(&discord_logger->reporter, false);
 		}
 		else
-		{
-			for (int i = 0; i < 10; ++i)
-			{
-				if (curl_easy_perform(handle) == CURLE_OK)
-				{
-					server->log_discord = true;
-					break ;
-				}
-				server->log_discord = false;
-				usleep(500);
-			}
-			if (!server->log_discord)
-			{
-				++failed_attempts;
-				get_stamp(data);
-				strcpy(&data[22], "CRITICAL: Could not log to discord, message will be discarded\n");
-				write_log(&server->logger, data);
-				if (!server->daemon)
-				{
-					if (write(2, data, strlen(data)) == -1) {}
-				}
-			}
-			else
-				failed_attempts = 0;
-		}
-		if (failed_attempts > 10)
-		{
-			get_stamp(data);
-			strcpy(&data[22], "CRITICAL: Logging to discord failed too many times, disabling feature\n");
-			write_log(&server->logger, data);
-			if (!server->daemon)
-			{
-				if (write(2, data, strlen(data)) == -1) {}
-			}
-			curl_cleanup(slist, handle);
-			server->log_discord = false;
-		}
-		else
-			server->log_discord = true;
+			failed_attempts = 0;
+	}
+	if (failed_attempts > 10)
+	{
+		strcpy(discord_logger->reporter.buffer, "CRITICAL: Logging to discord failed too many times, disabling feature\n");
+		report(&discord_logger->reporter, false);
+		discord_logger->logging = false;
 	}
 }
 
-void	*main_logger(void *void_server)
+void	*discord_logger_thread(void *void_discord_logger)
 {
-	struct s_server		*server;
-	int					nb_events;
-	int					epoll_fd;
-	ssize_t				ret;
-	char				buffer[PIPE_BUF + 1];
-	struct epoll_event	event;
-	CURL				*handle = NULL;
-	struct curl_slist	*slist = NULL;
-	char				channel[PIPE_BUF];
+	struct s_discord_logger	*discord_logger;
+	int						nb_events;
+	int						epoll_fd;
+	ssize_t					ret;
+	char					buffer[PIPE_BUF + 1];
+	struct epoll_event		event;
 
-	server = (struct s_server*)void_server;
-	bzero(channel, PIPE_BUF);
-	if (server->log_discord)
-	{
-		snprintf(channel, PIPE_BUF, "https://discord.com/api/channels/%s/messages", server->discord_channel);
-		handle = init_curl(&slist, server->discord_token);
-		if (!handle)
-		{
-			get_stamp(buffer);
-			strcpy(&buffer[22], "CRITICAL: Could not instantiate curl, discord logging will be disabled\n");
-			write_log(&server->logger, buffer);
-			if (!server->daemon)
-			{
-				if (write(2, buffer, strlen(buffer)) == -1) {}
-			}
-			server->log_discord = false;
-		}
-	}
+	discord_logger = (struct s_discord_logger*)void_discord_logger;
 	bzero(&event, sizeof(event));
 	epoll_fd = epoll_create(1);
 	if (epoll_fd == -1)
 	{
-		get_stamp(buffer);
-		strcpy(&buffer[22], "CRITICAL: Could not instantiate epoll, exiting process\n");
-		write_log(&server->logger, buffer);
-		if (!server->daemon)
-		{
-			if (write(2, buffer, strlen(buffer)) == -1) {}
-		}
-		if (server->log_discord)
-			log_discord(server, handle, channel, slist, buffer);
-		if (server->log_discord)
-			curl_cleanup(slist, handle);
+		discord_logger->logging = false;
+		strcpy(discord_logger->reporter.buffer, "CRITICAL: Could not instantiate epoll, exiting discord logging thread\n");
+		report(&discord_logger->reporter, true);
 		pthread_exit(NULL);
 	}
-	event.data.fd = server->log_pipe[0];
+	event.data.fd = discord_logger->com[0];
 	event.events = EPOLLIN;
-	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, server->log_pipe[0], &event))
+	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, discord_logger->com[0], &event))
 	{
-		get_stamp(buffer);
-		strcpy(&buffer[22], "CRITICAL: Could not add pipe to epoll events, exiting process\n");
-		write_log(&server->logger, buffer);
-		if (!server->daemon)
-		{
-			if (write(2, buffer, strlen(buffer)) == -1) {}
-		}
-		if (server->log_discord)
-			log_discord(server, handle, channel, slist, buffer);
-		if (server->log_discord)
-			curl_cleanup(slist, handle);
+		discord_logger->logging = false;
+		strcpy(discord_logger->reporter.buffer, "CRITICAL: Could not add pipe to epoll events in Discord logging thread\n");
+		report(&discord_logger->reporter, true);
 		close(epoll_fd);
 		pthread_exit(NULL);
 	}
-	get_stamp(buffer);
-	strcpy(&buffer[22], "DEBUG: Ready for logging\n");
-	if (should_log(server->loglevel, &buffer[22]))
-	{
-		write_log(&server->logger, buffer);
-		if (!server->daemon)
-		{
-			if (write(2, buffer, strlen(buffer)) == -1) {}
-		}
-		if (server->log_discord)
-			log_discord(server, handle, channel, slist, buffer);
-	}
+	strcpy(discord_logger->reporter.buffer, "DEBUG: Discord thread ready for logging\n");
+	report(&discord_logger->reporter, false);
 	while (true)
 	{
 		if ((nb_events = epoll_wait(epoll_fd, &event, 1, 100000)) == -1)
 		{
 			if (errno == EINTR)
 				continue ;
-			get_stamp(buffer);
-			strcpy(&buffer[22], "CRITICAL: Error while waiting for epoll event, exiting process\n");
-			write_log(&server->logger, buffer);
+			discord_logger->logging = false;
+			strcpy(discord_logger->reporter.buffer, "CRITICAL: Error while waiting for epoll event in Discord logging thread\n");
+			report(&discord_logger->reporter, true);
+			event.events = EPOLLIN;
+			epoll_ctl(epoll_fd, EPOLL_CTL_DEL, discord_logger->com[0], &event);
+			close(epoll_fd);
+			pthread_exit(NULL);
+		}
+		if (nb_events)
+		{
+			ret = read(discord_logger->com[0], buffer, PIPE_BUF);
+			if (ret > 0)
+			{
+				buffer[ret] = '\0';
+				if (!strncmp("ENDLOG\n", buffer, 7))
+				{
+					event.data.fd = discord_logger->com[0];
+					event.events = EPOLLIN;
+					epoll_ctl(epoll_fd, EPOLL_CTL_DEL, discord_logger->com[0], &event);
+					close(epoll_fd);
+					pthread_exit(NULL);
+				}
+				else if (discord_logger->logging && should_log(discord_logger->loglevel, &buffer[22]))
+					log_discord(discord_logger, buffer);
+			}
+		}
+	}
+	return (NULL);
+}
+
+void	*main_logger(void *void_server)
+{
+	struct s_report			reporter;
+	struct s_discord_logger	discord_logger;
+	struct s_server			*server;
+	pthread_t				discord_thread;
+	int						nb_events;
+	int						epoll_fd;
+	ssize_t					ret;
+	struct epoll_event		event;
+
+	server = (struct s_server*)void_server;
+	bzero(&discord_logger, sizeof(discord_logger));
+	bzero(&reporter, sizeof(reporter));
+	discord_logger.logging = false;
+	discord_logger.running = false;
+	if (server->log_discord)
+	{
+		snprintf(discord_logger.channel, PIPE_BUF, "https://discord.com/api/channels/%s/messages", server->discord_channel);
+		discord_logger.handle = init_curl(&discord_logger.slist, server->discord_token);
+		if (!discord_logger.handle)
+		{
+			get_stamp(reporter.buffer);
+			strcpy(&reporter.buffer[22], "CRITICAL: Could not instantiate curl, discord logging will be disabled\n");
+			write_log(&server->logger, reporter.buffer);
 			if (!server->daemon)
 			{
-				if (write(2, buffer, strlen(buffer)) == -1) {}
+				if (write(2, reporter.buffer, strlen(reporter.buffer)) == -1) {}
 			}
-			if (server->log_discord)
-				log_discord(server, handle, channel, slist, buffer);
-			if (server->log_discord)
-				curl_cleanup(slist, handle);
+			discord_logger.logging = false;
+		}
+		else
+		{
+			discord_logger.loglevel = server->loglevel_discord;
+			discord_logger.logging = true;
+			discord_logger.reporter.report_fd = server->log_pipe[1];
+		}
+	}
+	if (discord_logger.logging)
+	{
+		if (pipe2(discord_logger.com, O_DIRECT | O_NONBLOCK) == -1)
+		{
+			get_stamp(reporter.buffer);
+			strcpy(&reporter.buffer[22], "CRITICAL: Could not open pipe to communicate with discord logging thread\n");
+			if (!server->daemon && write(2, reporter.buffer, strlen(reporter.buffer)) <= 0)
+			{
+			}
+			write_log(&server->logger, reporter.buffer);
+			discord_logger.logging = false;
+			curl_cleanup(discord_logger.slist, discord_logger.handle);
+		}
+		else if (pthread_create(&discord_thread, NULL, discord_logger_thread, &discord_logger))
+		{
+			get_stamp(reporter.buffer);
+			strcpy(&reporter.buffer[22], "CRITICAL: Could not initiate discord logging thread\n");
+			if (!server->daemon && write(2, reporter.buffer, strlen(reporter.buffer)) <= 0)
+			{
+			}
+			write_log(&server->logger, reporter.buffer);
+			discord_logger.logging = false;
+			curl_cleanup(discord_logger.slist, discord_logger.handle);
+			close(discord_logger.com[0]);
+			close(discord_logger.com[1]);
+		}
+		else
+		{
+			reporter.report_fd = discord_logger.com[1];
+			discord_logger.running = true;
+		}
+	}
+	bzero(&event, sizeof(event));
+	epoll_fd = epoll_create(1);
+	if (epoll_fd == -1)
+	{
+		get_stamp(reporter.buffer);
+		strcpy(&reporter.buffer[22], "CRITICAL: Could not instantiate epoll, exiting process\n");
+		write_log(&server->logger, reporter.buffer);
+		if (!server->daemon)
+		{
+			if (write(2, reporter.buffer, strlen(reporter.buffer)) == -1) {}
+		}
+		if (discord_logger.logging)
+			report(&reporter, false);
+		if (discord_logger.running)
+		{
+			strcpy(reporter.buffer, "ENDLOG\n");
+			if (report(&reporter, false))
+				pthread_join(discord_thread, NULL);
+			curl_cleanup(discord_logger.slist, discord_logger.handle);
+			close(discord_logger.com[0]);
+			close(discord_logger.com[1]);
+		}
+		pthread_exit(NULL);
+	}
+	event.data.fd = server->log_pipe[0];
+	event.events = EPOLLIN;
+	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, server->log_pipe[0], &event))
+	{
+		get_stamp(reporter.buffer);
+		strcpy(&reporter.buffer[22], "CRITICAL: Could not add pipe to epoll events, exiting process\n");
+		write_log(&server->logger, reporter.buffer);
+		if (!server->daemon)
+		{
+			if (write(2, reporter.buffer, strlen(reporter.buffer)) == -1) {}
+		}
+		if (discord_logger.logging)
+			report(&reporter, false);
+		if (discord_logger.running)
+		{
+			strcpy(reporter.buffer, "ENDLOG\n");
+			if (report(&reporter, false))
+				pthread_join(discord_thread, NULL);
+			curl_cleanup(discord_logger.slist, discord_logger.handle);
+			close(discord_logger.com[0]);
+			close(discord_logger.com[1]);
+		}
+		close(epoll_fd);
+		pthread_exit(NULL);
+	}
+	get_stamp(reporter.buffer);
+	strcpy(&reporter.buffer[22], "DEBUG: Ready for logging\n");
+	if (should_log(server->loglevel, &reporter.buffer[22]))
+	{
+		write_log(&server->logger, reporter.buffer);
+		if (!server->daemon)
+		{
+			if (write(2, reporter.buffer, strlen(reporter.buffer)) == -1) {}
+		}
+	}
+	if (discord_logger.logging)
+		report(&reporter, false);
+	while (true)
+	{
+		if ((nb_events = epoll_wait(epoll_fd, &event, 1, 100000)) == -1)
+		{
+			if (errno == EINTR)
+				continue ;
+			get_stamp(reporter.buffer);
+			strcpy(&reporter.buffer[22], "CRITICAL: Error while waiting for epoll event, exiting process\n");
+			write_log(&server->logger, reporter.buffer);
+			if (!server->daemon)
+			{
+				if (write(2, reporter.buffer, strlen(reporter.buffer)) == -1) {}
+			}
+			if (discord_logger.logging)
+				report(&reporter, false);
+			if (discord_logger.running)
+			{
+				strcpy(reporter.buffer, "ENDLOG\n");
+				if (report(&reporter, false))
+					pthread_join(discord_thread, NULL);
+				curl_cleanup(discord_logger.slist, discord_logger.handle);
+				close(discord_logger.com[0]);
+				close(discord_logger.com[1]);
+			}
 			event.data.fd = server->log_pipe[0];
 			event.events = EPOLLIN;
 			epoll_ctl(epoll_fd, EPOLL_CTL_DEL, server->log_pipe[0], &event);
@@ -420,45 +529,50 @@ void	*main_logger(void *void_server)
 		}
 		if (nb_events)
 		{
-			get_stamp(buffer);
-			ret = read(server->log_pipe[0], &buffer[22], PIPE_BUF - 22);
+			get_stamp(reporter.buffer);
+			ret = read(server->log_pipe[0], &reporter.buffer[22], PIPE_BUF - 22);
 			if (ret > 0)
 			{
-				buffer[ret + 22] = '\0';
-				if (!strncmp("ENDLOG\n", &buffer[22], 7))
+				reporter.buffer[ret + 22] = '\0';
+				if (!strncmp("ENDLOG\n", &reporter.buffer[22], 7))
 				{
+					if (discord_logger.running)
+					{
+						strcpy(reporter.buffer, "ENDLOG\n");
+						if (report(&reporter, false))
+							pthread_join(discord_thread, NULL);
+						curl_cleanup(discord_logger.slist, discord_logger.handle);
+						close(discord_logger.com[0]);
+						close(discord_logger.com[1]);
+					}
 					event.data.fd = server->log_pipe[0];
 					event.events = EPOLLIN;
 					epoll_ctl(epoll_fd, EPOLL_CTL_DEL, server->log_pipe[0], &event);
 					close(epoll_fd);
-					get_stamp(buffer);
-					strcpy(&buffer[22], "DEBUG: Terminating logging thread\n");
-					if (should_log(server->loglevel, &buffer[22]))
+					get_stamp(reporter.buffer);
+					strcpy(&reporter.buffer[22], "DEBUG: Terminating logging thread\n");
+					if (should_log(server->loglevel, &reporter.buffer[22]))
 					{
-						write_log(&server->logger, buffer);
+						write_log(&server->logger, reporter.buffer);
 						if (!server->daemon)
 						{
-							if (write(2, buffer, strlen(buffer)) == -1) {}
+							if (write(2, reporter.buffer, strlen(reporter.buffer)) == -1) {}
 						}
 					}
-					if (server->log_discord)
-						log_discord(server, handle, channel, slist, buffer);
-					if (server->log_discord)
-						curl_cleanup(slist, handle);
 					pthread_exit(NULL);
 				}
 				else
 				{
-					if (should_log(server->loglevel, &buffer[22]))
+					if (should_log(server->loglevel, &reporter.buffer[22]))
 					{
-						write_log(&server->logger, buffer);
+						write_log(&server->logger, reporter.buffer);
 						if (!server->daemon)
 						{
-							if (write(2, buffer, (size_t)ret + 22) == -1) {}
+							if (write(2, reporter.buffer, (size_t)ret + 22) == -1) {}
 						}
 					}
-					if (server->log_discord)
-						log_discord(server, handle, channel, slist, buffer);
+					if (discord_logger.logging)
+						report(&reporter, false);
 				}
 			}
 		}
