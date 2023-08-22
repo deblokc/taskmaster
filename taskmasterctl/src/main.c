@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 15:17:03 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/21 19:36:30 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/22 19:53:24 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -133,6 +133,48 @@ void *thread_log(void *arg) {
 	return NULL;
 }
 
+void tail(int efd, struct epoll_event sock) {
+	int ret;
+	struct epoll_event event;
+	char *line;
+	char buf[PIPE_BUF + 1];
+	bzero(buf, PIPE_BUF + 1);
+	pthread_t thread;
+
+	sock.events = EPOLLOUT;
+	epoll_ctl(efd, EPOLL_CTL_MOD, sock.data.fd, &sock);
+	pthread_create(&thread, NULL, &thread_log, &sock);
+	g_sig = 0;
+	while (!g_sig) {
+		line = ft_readline("");
+		if (line) {
+			free(line);
+		} else {
+			g_sig = 1;
+		}
+	}
+	pthread_join(thread, NULL);
+
+	ret = epoll_wait(efd, &event, 1, 60 * 1000);
+	if (ret > 0) {
+		if (event.events & EPOLLOUT) {
+			send(event.data.fd, "exit", strlen("exit"), 0);
+		}
+	} else if (ret == 0) {
+		printf("SOCKET TIMED OUT\n");
+	} else {
+		perror("epoll_wait(EPOLLOUT)");
+	}
+	int i = 0;
+	while (i < 42) { 
+		recv(sock.data.fd, buf, PIPE_BUF, MSG_DONTWAIT);
+		bzero(buf, PIPE_BUF + 1);
+		usleep(10);
+		i++;
+	}
+	fflush(stdout);
+}
+
 void foreground(int efd, struct epoll_event sock) {
 	int ret;
 	struct epoll_event event;
@@ -230,8 +272,13 @@ void remote_exec(char *cmd, int efd, struct epoll_event sock) {
 				printf("%s", buf + 2);
 				foreground(efd, sock);
 				g_sig = 0;
-			} else {
+			} else if (!strncmp(buf, "tail", 4)) {
+				printf("%s", buf + 4);
+				tail(efd, sock);
+				g_sig = 0;
+			}else {
 				printf("%s", buf); // DUMBLY PRINT RESPONSE
+				fflush(stdout);
 			}
 		}
 	} else if (ret == 0) {

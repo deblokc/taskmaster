@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/22 17:39:48 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/22 20:08:03 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -350,7 +350,7 @@ int handle_command(struct s_process *process, char *buf, int epollfd) {
 			return (0);
 		}
 		client->fg = true;
-		epoll_ctl(efd, EPOLL_CTL_DEL, fd, &client->poll);
+		snprintf(client->buf, PIPE_BUF, "fg");
 		// sending "old" log
 		size_t stdout_logsize = 0;
 		size_t stderr_logsize = 0;
@@ -373,7 +373,7 @@ int handle_command(struct s_process *process, char *buf, int epollfd) {
 			}
 		}
 		if (stdout_logsize + stderr_logsize > 0) {
-			client->log = (char *)calloc(sizeof(char), stdout_logsize + stderr_logsize);
+			client->log = (char *)calloc(sizeof(char), stdout_logsize + stderr_logsize + 1);
 			if (process->stdoutlog) {
 				lseek(process->stdout_logger.logfd, -(int)stdout_logsize, SEEK_END);
 				if (read(process->stdout_logger.logfd, client->log, stdout_logsize)) {}
@@ -387,13 +387,12 @@ int handle_command(struct s_process *process, char *buf, int epollfd) {
 		} else {
 			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s is sending back nothing cause no old log\n", process->name);
 			report(&reporter, false);
-			snprintf(client->buf, PIPE_BUF, "\n");
 		}
 		client->poll.events = EPOLLOUT | EPOLLIN;
 		epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &client->poll);
 		// add fd to epoll and send it log
 	} else if (!strncmp(buf, "tail", 4)) {
-/*		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s has received order to tail\n", process->name);
+		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s has received order to tail\n", process->name);
 		report(&reporter, false);
 
 		// PARSING OF COMMAND
@@ -420,6 +419,9 @@ int handle_command(struct s_process *process, char *buf, int epollfd) {
 
 		if (!strcmp(arg[0], "f")) { // need to setup constant communication
 			client->fg = true;
+			client->poll.events = EPOLLOUT | EPOLLIN;
+			epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &client->poll);
+			snprintf(client->buf, PIPE_BUF, "tail");
 		} else {
 			size_t size = (size_t)atoi(arg[0]); // how many bytes to send
 
@@ -460,7 +462,7 @@ int handle_command(struct s_process *process, char *buf, int epollfd) {
 								out_logsize = (size - strlen(client->log));
 							}
 							lseek(tmpfd, -(int)out_logsize, SEEK_END);
-							if (read(tmpfd, client->log, out_logsize)) {}
+							if (read(tmpfd, client->log + strlen(client->log), out_logsize)) {}
 						}
 						i++;
 					}
@@ -483,7 +485,7 @@ int handle_command(struct s_process *process, char *buf, int epollfd) {
 							out_logsize = size;
 						}
 						lseek(process->stderr_logger.logfd, -(int)out_logsize, SEEK_END);
-						if (read(process->stderr_logger.logfd, client->log, out_logsize)) {}
+						if (read(process->stderr_logger.logfd, client->log + strlen(client->log), out_logsize)) {}
 					}
  // then read from backups files 
 					int i = 1;
@@ -522,10 +524,10 @@ int handle_command(struct s_process *process, char *buf, int epollfd) {
 					trunc_size = strlen(client->log);
 				}
 				memcpy(trunc, client->log, trunc_size);
-				snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s tail response : >%s< log\n", process->name, trunc);
+				snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s tail response : >%s<  >%ld< bytes long\n", process->name, trunc, strlen(client->log));
 				report(&reporter, false);
 			}
-		} */
+		}
 	}
 	return (0);
 }
@@ -546,7 +548,8 @@ void handle_logging_client(struct s_process *process, struct epoll_event event, 
 		if (strlen(client->buf)) {
 			send(event.data.fd, client->buf, strlen(client->buf), 0);
 			bzero(client->buf, PIPE_BUF + 1);
-		} else {
+		}
+		if (client->log) {
 			send(event.data.fd, client->log, strlen(client->log), 0);
 			free(client->log);
 			client->log = NULL;
@@ -555,7 +558,7 @@ void handle_logging_client(struct s_process *process, struct epoll_event event, 
 		if (epoll_ctl(epollfd, EPOLL_CTL_MOD, client->poll.data.fd, &client->poll)) {
 			snprintf(reporter.buffer, PIPE_BUF, "ERROR: Could not modify client event in epoll_ctl STARTING for client %d\n", client->poll.data.fd);
 		}
-/*		if (client->fg) {
+		if (client->fg) {
 		} else {
 			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: client %d is not fg, removing him\n", client->poll.data.fd);
 			report(&reporter, false);
@@ -581,7 +584,7 @@ void handle_logging_client(struct s_process *process, struct epoll_event event, 
 				free(client);
 			}
 			return ;
-		}*/
+		}
 	} else if (event.events & EPOLLIN) {
 		char buf[PIPE_BUF + 1];
 		bzero(buf, PIPE_BUF + 1);
@@ -633,9 +636,11 @@ void send_clients(struct s_process *process, int epollfd, char *buf) {
 
 	memcpy(trunc, buf, PIPE_BUF - 20 + 1);
 	while (tmp) {
-		snprintf(tmp->buf + strlen(tmp->buf), PIPE_BUF + 1 - strlen(tmp->buf), "%s", trunc);
-		tmp->poll.events = EPOLLIN | EPOLLOUT;
-		epoll_ctl(epollfd, EPOLL_CTL_MOD, tmp->poll.data.fd, &(tmp->poll));
+		if (tmp->fg) {
+			snprintf(tmp->buf + strlen(tmp->buf), PIPE_BUF + 1 - strlen(tmp->buf), "%s", trunc);
+			tmp->poll.events = EPOLLIN | EPOLLOUT;
+			epoll_ctl(epollfd, EPOLL_CTL_MOD, tmp->poll.data.fd, &(tmp->poll));
+		}
 		tmp = tmp->next;
 	}
 }

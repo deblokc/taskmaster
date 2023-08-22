@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/22 17:29:07 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/22 20:03:16 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -423,7 +423,7 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 											bzero(buf, PIPE_BUF + 1);
 											snprintf(buf, PIPE_BUF + 1, "fg %d", client->poll.data.fd);
 											if (write(current->processes[i].com[1], buf, strlen(buf))) {}
-											snprintf(client->buf, PIPE_BUF + 1, "fg");
+											epoll_ctl(efd, EPOLL_CTL_DEL, client->poll.data.fd, &client->poll);
 											break ;
 										}
 									}

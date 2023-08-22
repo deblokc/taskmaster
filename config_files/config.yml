@@ -21,6 +21,13 @@ programs:
         autorestart: onerror
         stopsignal: TERM
         priority: 1
+    printeur_fou:
+        command: cat /dev/random
+        startsecs: 0
+        numprocs: 1
+        priority: 7
+        stdout_logfile_maxbytes: 1024
+        stdout_logfile_backups: 3
 
 server:
     daemon: false
