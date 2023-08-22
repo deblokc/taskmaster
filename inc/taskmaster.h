@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/21 19:36:37 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/22 17:24:08 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -164,6 +164,7 @@ struct s_server {
 	struct s_logger		logger;
 	bool				log_discord;
 	enum log_level		loglevel_discord;
+	char*				discord_channel;
 	char*				discord_token;
 	char*				pidfile;
 	char*				user;

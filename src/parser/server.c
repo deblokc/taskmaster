@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 19:48:45 by bdetune           #+#    #+#             */
-/*   Updated: 2023/08/21 19:44:56 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/22 16:40:05 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,6 +24,10 @@ static struct s_server	*free_server(struct s_server *self)
 		free(self->logger.logfile);
 	if (self->logger.logfd >= 0)
 		close(self->logger.logfd);
+	if (self->discord_token)
+		free(self->discord_token);
+	if (self->discord_channel)
+		free(self->discord_channel);
 	if (self->pidfile)
 		free(self->pidfile);
 	if (self->user)
@@ -100,9 +104,11 @@ static void add_value(struct s_server *server, yaml_document_t *document, char* 
 	else if (!strcmp("log_discord", key))
 		add_bool(NULL, "log_discord", &server->log_discord, value, reporter);
 	else if (!strcmp("loglevel_discord", key))
-		add_loglevel(&server->loglevel_discord, "loglevel_discord" value, reporter);
+		add_loglevel(&server->loglevel_discord, "loglevel_discord", value, reporter);
 	else if (!strcmp("discord_token", key))
 		add_char(NULL, "discord_token", &server->discord_token, value, reporter);
+	else if (!strcmp("discord_channel", key))
+		add_char(NULL, "discord_channel", &server->discord_channel, value, reporter);
 	else if (!strcmp("pidfile", key))
 		add_char(NULL, "pidfile", &server->pidfile, value, reporter);
 	else if (!strcmp("user", key))
@@ -114,7 +120,7 @@ static void add_value(struct s_server *server, yaml_document_t *document, char* 
 	else if (!strcmp("daemon", key))
 		add_bool(NULL, "daemon", &server->daemon, value, reporter);
 	else if (!strcmp("loglevel", key))
-		add_loglevel(&server->loglevel, "loglevel" value, reporter);
+		add_loglevel(&server->loglevel, "loglevel", value, reporter);
 	else if (!strcmp("env", key))
 		parse_env(NULL, value, document, &server->env, reporter);
 	else

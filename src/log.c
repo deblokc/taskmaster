@@ -199,20 +199,155 @@ bool	transfer_logs(int tmp_fd, struct s_server *server, struct s_report *reporte
 	return (true);
 }
 
+static void	curl_cleanup(struct curl_slist *slist, CURL *handle)
+{
+	curl_slist_free_all(slist);
+	curl_easy_cleanup(handle);
+}
+
+static size_t write_callback(char *ptr, size_t size, size_t nmemb, void *userdata)
+{
+	(void)ptr;
+	(void)size;
+	(void)userdata;
+	return (nmemb);
+}
+
+static bool	register_curl_opt(CURL *handle, char *channel, struct curl_slist *slist, char *data)
+{
+	return (curl_easy_setopt(handle, CURLOPT_URL, channel) == CURLE_OK
+		&& curl_easy_setopt(handle, CURLOPT_POST, 1) == CURLE_OK
+		&& curl_easy_setopt(handle, CURLOPT_FAILONERROR, 1L) == CURLE_OK
+		&& curl_easy_setopt(handle, CURLOPT_TIMEOUT, 3L) == CURLE_OK
+		&& curl_easy_setopt(handle, CURLOPT_POSTFIELDS, data) == CURLE_OK
+		&& curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, write_callback) == CURLE_OK
+		&& curl_easy_setopt(handle, CURLOPT_HTTPHEADER, slist) == CURLE_OK);
+}
+
+static CURL	*init_curl(struct curl_slist **slist, char *token)
+{
+	char				buf[PIPE_BUF];
+	CURL				*handle = NULL;
+	struct curl_slist	*tmp = NULL;
+
+	bzero(buf, PIPE_BUF);
+
+	// Get handle for CURL
+	handle = curl_easy_init();
+	if (!handle)
+		return (NULL);
+
+	// Prepare HTTP headers
+	snprintf(buf, PIPE_BUF, "Authorization: Bot %s", token);
+	*slist = curl_slist_append(*slist, "Content-Type: application/json");
+	if (!*slist)
+	{
+		curl_easy_cleanup(handle);
+		return (NULL);
+	}
+	tmp = curl_slist_append(*slist, buf);
+	if (!tmp)
+	{
+		curl_cleanup(*slist, handle);
+		return (NULL);
+	}
+	*slist = tmp;
+	return (handle);
+}
+
+void	log_discord(struct s_server *server, CURL *handle, char* channel, struct curl_slist *slist, char *data)
+{
+	char		payload[PIPE_BUF + 15];		
+	static int	failed_attempts = 0;
+
+	if (should_log(server->loglevel_discord, &data[22]))
+	{
+		data[strlen(data) - 1] = '\0';
+		snprintf(payload, PIPE_BUF + 15, "{\"content\": \"%s\"}", data);
+		if (!register_curl_opt(handle, channel, slist, payload))
+		{
+			++failed_attempts;
+			get_stamp(data);
+			strcpy(&data[22], "CRITICAL: Could not register curl options, message will be discarded\n");
+			write_log(&server->logger, data);
+			if (!server->daemon)
+			{
+				if (write(2, data, strlen(data)) == -1) {}
+			}
+		}
+		else
+		{
+			for (int i = 0; i < 10; ++i)
+			{
+				if (curl_easy_perform(handle) == CURLE_OK)
+				{
+					server->log_discord = true;
+					break ;
+				}
+				server->log_discord = false;
+				usleep(500);
+			}
+			if (!server->log_discord)
+			{
+				++failed_attempts;
+				get_stamp(data);
+				strcpy(&data[22], "CRITICAL: Could not log to discord, message will be discarded\n");
+				write_log(&server->logger, data);
+				if (!server->daemon)
+				{
+					if (write(2, data, strlen(data)) == -1) {}
+				}
+			}
+			else
+				failed_attempts = 0;
+		}
+		if (failed_attempts > 10)
+		{
+			get_stamp(data);
+			strcpy(&data[22], "CRITICAL: Logging to discord failed too many times, disabling feature\n");
+			write_log(&server->logger, data);
+			if (!server->daemon)
+			{
+				if (write(2, data, strlen(data)) == -1) {}
+			}
+			curl_cleanup(slist, handle);
+			server->log_discord = false;
+		}
+		else
+			server->log_discord = true;
+	}
+}
+
 void	*main_logger(void *void_server)
 {
-	bool				log_discord;
 	struct s_server		*server;
 	int					nb_events;
 	int					epoll_fd;
 	ssize_t				ret;
 	char				buffer[PIPE_BUF + 1];
 	struct epoll_event	event;
-	CURL				*handle;
-	CURLcode			*res;
+	CURL				*handle = NULL;
 	struct curl_slist	*slist = NULL;
+	char				channel[PIPE_BUF];
 
 	server = (struct s_server*)void_server;
+	bzero(channel, PIPE_BUF);
+	if (server->log_discord)
+	{
+		snprintf(channel, PIPE_BUF, "https://discord.com/api/channels/%s/messages", server->discord_channel);
+		handle = init_curl(&slist, server->discord_token);
+		if (!handle)
+		{
+			get_stamp(buffer);
+			strcpy(&buffer[22], "CRITICAL: Could not instantiate curl, discord logging will be disabled\n");
+			write_log(&server->logger, buffer);
+			if (!server->daemon)
+			{
+				if (write(2, buffer, strlen(buffer)) == -1) {}
+			}
+			server->log_discord = false;
+		}
+	}
 	bzero(&event, sizeof(event));
 	epoll_fd = epoll_create(1);
 	if (epoll_fd == -1)
@@ -224,6 +359,10 @@ void	*main_logger(void *void_server)
 		{
 			if (write(2, buffer, strlen(buffer)) == -1) {}
 		}
+		if (server->log_discord)
+			log_discord(server, handle, channel, slist, buffer);
+		if (server->log_discord)
+			curl_cleanup(slist, handle);
 		pthread_exit(NULL);
 	}
 	event.data.fd = server->log_pipe[0];
@@ -237,6 +376,10 @@ void	*main_logger(void *void_server)
 		{
 			if (write(2, buffer, strlen(buffer)) == -1) {}
 		}
+		if (server->log_discord)
+			log_discord(server, handle, channel, slist, buffer);
+		if (server->log_discord)
+			curl_cleanup(slist, handle);
 		close(epoll_fd);
 		pthread_exit(NULL);
 	}
@@ -249,37 +392,8 @@ void	*main_logger(void *void_server)
 		{
 			if (write(2, buffer, strlen(buffer)) == -1) {}
 		}
-	}
-	log_discord = server->log_discord;
-	if (log_discord && !server->discord_token)
-	{
-		get_stamp(buffer);
-		strcpy(&buffer[22], "CRITICAL: Cannot log to discord, no token supplied\n");
-		write_log(&server->logger, buffer);
-		if (!server->daemon)
-		{
-			if (write(2, buffer, strlen(buffer)) == -1) {}
-		}
-		log_discord = false;
-	}
-	else if (log_discord)
-	{
-		handle = curl_easy_init();
-		if (!handle)
-		{
-			get_stamp(buffer);
-			strcpy(&buffer[22], "CRITICAL: Could not init curl, logging to discord will be disabled\n");
-			write_log(&server->logger, buffer);
-			if (!server->daemon)
-			{
-				if (write(2, buffer, strlen(buffer)) == -1) {}
-			}
-			log_discord = false;
-		}
-		else
-		{
-
-		}
+		if (server->log_discord)
+			log_discord(server, handle, channel, slist, buffer);
 	}
 	while (true)
 	{
@@ -294,6 +408,10 @@ void	*main_logger(void *void_server)
 			{
 				if (write(2, buffer, strlen(buffer)) == -1) {}
 			}
+			if (server->log_discord)
+				log_discord(server, handle, channel, slist, buffer);
+			if (server->log_discord)
+				curl_cleanup(slist, handle);
 			event.data.fd = server->log_pipe[0];
 			event.events = EPOLLIN;
 			epoll_ctl(epoll_fd, EPOLL_CTL_DEL, server->log_pipe[0], &event);
@@ -323,6 +441,10 @@ void	*main_logger(void *void_server)
 							if (write(2, buffer, strlen(buffer)) == -1) {}
 						}
 					}
+					if (server->log_discord)
+						log_discord(server, handle, channel, slist, buffer);
+					if (server->log_discord)
+						curl_cleanup(slist, handle);
 					pthread_exit(NULL);
 				}
 				else
@@ -335,6 +457,8 @@ void	*main_logger(void *void_server)
 							if (write(2, buffer, (size_t)ret + 22) == -1) {}
 						}
 					}
+					if (server->log_discord)
+						log_discord(server, handle, channel, slist, buffer);
 				}
 			}
 		}

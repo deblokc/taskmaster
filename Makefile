@@ -6,7 +6,7 @@
 #    By: tnaton <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/06/16 11:17:59 by tnaton            #+#    #+#              #
-#    Updated: 2023/08/21 16:04:46 by bdetune          ###   ########.fr        #
+#    Updated: 2023/08/22 16:42:40 by bdetune          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -66,14 +66,14 @@ CC = gcc
 OBJS := $(patsubst %.c,$(OBJDIR)/%.o,$(SRCS))
 
 $(NAME) : $(OBJS) $(INC)
-	$(CC) $(CFLAGS) $(OBJS) -L libs -lyaml -lpthread -o $@
+	$(CC) $(CFLAGS) $(OBJS) -L libs -lyaml -lpthread -lcurl -o $@
 
 $(OBJS): $(INC)
 
 $(OBJS) : | $(OBJDIR)
 
 $(OBJDIR)/%.o: %.c
-	$(CC) $(CFLAGS) -I inc -o $@ -c $<
+	$(CC) $(CFLAGS) -I inc -I libs/curl-8.2.1/include/curl -o $@ -c $<
 
 $(OBJDIR) :
 	mkdir -p $(OBJDIR)/parser $(OBJDIR)/gnl
