@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/22 17:24:19 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/22 17:39:48 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -550,6 +550,10 @@ void handle_logging_client(struct s_process *process, struct epoll_event event, 
 			send(event.data.fd, client->log, strlen(client->log), 0);
 			free(client->log);
 			client->log = NULL;
+		}
+		client->poll.events = EPOLLIN;
+		if (epoll_ctl(epollfd, EPOLL_CTL_MOD, client->poll.data.fd, &client->poll)) {
+			snprintf(reporter.buffer, PIPE_BUF, "ERROR: Could not modify client event in epoll_ctl STARTING for client %d\n", client->poll.data.fd);
 		}
 /*		if (client->fg) {
 		} else {
