@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/22 13:54:49 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/22 17:29:07 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -465,14 +465,14 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 										if (cmd->arg[2]) { // if specified output
 											if (!strcmp(cmd->arg[2], "stdout")) {
 												// send to cmd->arg[1] infinite bytes of stdout
-												snprintf(buf, PIPE_BUF + 1, "tail f 1");
+												snprintf(buf, PIPE_BUF + 1, "tail f 1 %d", client->poll.data.fd);
 											} else if (!strcmp(cmd->arg[2], "stderr")) {
 												// send to cmd->arg[1] infinite bytes of stderr
-												snprintf(buf, PIPE_BUF + 1, "tail f 2");
+												snprintf(buf, PIPE_BUF + 1, "tail f 2 %d", client->poll.data.fd);
 											}
 										} else { // default output is stdout
 											//send to cmd->arg[1] infinite bytes of stdout
-											snprintf(buf, PIPE_BUF + 1, "tail f 1");
+											snprintf(buf, PIPE_BUF + 1, "tail f 1 %d", client->poll.data.fd);
 										}
 									} else {
 										// no program to send to, not doing it
@@ -480,20 +480,20 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 								} else {
 									int val = atoi(cmd->arg[0] + 1);
 									// if val is positiv/non-null
-									if (val > 0) {
+									if (val > 0 && val < INT_MAX) {
 										if (cmd->arg[1]) {
 											name = cmd->arg[1];
 											if (cmd->arg[2]) { // if specified output
 												if (!strcmp(cmd->arg[2], "stdout")) {
 													// send to cmd->arg[1] n bytes of stdout
-													snprintf(buf, PIPE_BUF + 1, "tail %s 1", cmd->arg[0]);
+													snprintf(buf, PIPE_BUF + 1, "tail %s 1 %d", cmd->arg[0] + 1, client->poll.data.fd);
 												} else if (!strcmp(cmd->arg[2], "stderr")) {
 													// send to cmd->arg[1] n bytes of stderr
-													snprintf(buf, PIPE_BUF + 1, "tail %s 2", cmd->arg[0]);
+													snprintf(buf, PIPE_BUF + 1, "tail %s 2 %d", cmd->arg[0] + 1, client->poll.data.fd);
 												}
 											} else { // default output is stdout
 												//send to cmd->arg[1] n bytes of stdout
-												snprintf(buf, PIPE_BUF + 1, "tail %s 1", cmd->arg[0]);
+												snprintf(buf, PIPE_BUF + 1, "tail %s 1 %d", cmd->arg[0] + 1, client->poll.data.fd);
 											}
 										} else {
 											// no program to send to, not doing it
@@ -505,14 +505,14 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 								if (cmd->arg[1]) {
 									if (!strcmp(cmd->arg[1], "stdout")) {
 										// send to cmd->arg[0] 1600 bytes of stdout
-										snprintf(buf, PIPE_BUF + 1, "tail 1600 1");
+										snprintf(buf, PIPE_BUF + 1, "tail 1600 1 %d", client->poll.data.fd);
 									} else if (!strcmp(cmd->arg[1], "stderr")) {
 										// send to cmd->arg[0] 1600 bytes of stderr
-										snprintf(buf, PIPE_BUF + 1, "tail 1600 2");
+										snprintf(buf, PIPE_BUF + 1, "tail 1600 2 %d", client->poll.data.fd);
 									}
 								} else { // default output is stdout
 									// send to cmd->arg[0] 1600 bytes of stdout
-									snprintf(buf, PIPE_BUF + 1, "tail 1600 1");
+									snprintf(buf, PIPE_BUF + 1, "tail 1600 1 %d", client->poll.data.fd);
 								}
 							}
 							if (!name)
@@ -529,6 +529,8 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 									for (int i = 0; i < current->numprocs; i++) {
 										if (!strcmp(current->processes[i].name, name)) {
 											if (write(current->processes[i].com[1], buf, strlen(buf))) {}
+
+											epoll_ctl(efd, EPOLL_CTL_DEL, client->poll.data.fd, &client->poll);
 											break ;
 										}
 									}
@@ -618,12 +620,12 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 			} else if (events[i].events & EPOLLOUT) {
 				// send response located in client->buf
 				if (strlen(client->buf)) {
-					snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Sending to client with socket fd %d", client->poll.data.fd);
+					snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Sending to client with socket fd %d\n", client->poll.data.fd);
 					report(reporter, false);
 					send(events[i].data.fd, client->buf, strlen(client->buf), 0);
 					bzero(client->buf, PIPE_BUF + 1);
 				} else {
-					snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Sending to client with socket fd %d NON ZERO RESPONSE", client->poll.data.fd);
+					snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Sending to client with socket fd %d NON ZERO RESPONSE\n", client->poll.data.fd);
 					report(reporter, false);
 					send(events[i].data.fd, ".\n", 2, 0);
 				}

@@ -6,7 +6,7 @@ programs:
         exitcodes:
             - 0
             - 1
-        autostart: false
+        autostart: true
         autorestart: onerror
         stopsignal: TERM
         priority: 5

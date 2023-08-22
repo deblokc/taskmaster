@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/21 19:55:07 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/22 17:24:19 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -245,6 +245,7 @@ struct s_logging_client *new_logging_client(struct s_logging_client **list, int 
 		close(client_fd);
 		return (NULL);
 	}
+	new_client->fg = false;
 	new_client->poll.data.fd = client_fd;
 	bzero(new_client->buf, PIPE_BUF + 1);
 	if (*list) {
@@ -348,6 +349,7 @@ int handle_command(struct s_process *process, char *buf, int epollfd) {
 			report(&reporter, false);
 			return (0);
 		}
+		client->fg = true;
 		epoll_ctl(efd, EPOLL_CTL_DEL, fd, &client->poll);
 		// sending "old" log
 		size_t stdout_logsize = 0;
@@ -380,15 +382,150 @@ int handle_command(struct s_process *process, char *buf, int epollfd) {
 				lseek(process->stderr_logger.logfd, -(int)stderr_logsize, SEEK_END);
 				if (read(process->stderr_logger.logfd, client->log + strlen(client->log), stderr_logsize)) {}
 			}
+			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s is sending back %ld bytes from old log\n", process->name, stdout_logsize + stderr_logsize);
+			report(&reporter, false);
 		} else {
+			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s is sending back nothing cause no old log\n", process->name);
+			report(&reporter, false);
 			snprintf(client->buf, PIPE_BUF, "\n");
 		}
 		client->poll.events = EPOLLOUT | EPOLLIN;
 		epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &client->poll);
 		// add fd to epoll and send it log
 	} else if (!strncmp(buf, "tail", 4)) {
-		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s has received order to tail\n", process->name);
+/*		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s has received order to tail\n", process->name);
 		report(&reporter, false);
+
+		// PARSING OF COMMAND
+
+		char *arg[3];
+		char *ret = strtok(buf + 4, " ");
+		arg[0] = ret; // size
+		ret = strtok(NULL, " ");
+		arg[1] = ret; // output
+		ret = strtok(NULL, " ");
+		arg[2] = ret; // client fd
+		int fd = atoi(arg[2]);
+
+		// CREATION OF CLIENT
+
+		struct s_logging_client *client = new_logging_client(&(process->list), fd, &reporter);
+		if (!client) {
+			snprintf(reporter.buffer, PIPE_BUF - 22, "CRITICAL: %s's new client could not be created, ignoring this client\n", process->name);
+			report(&reporter, false);
+			return (0);
+		}
+
+		// RESOLUTION OF WHAT TO SEND
+
+		if (!strcmp(arg[0], "f")) { // need to setup constant communication
+			client->fg = true;
+		} else {
+			size_t size = (size_t)atoi(arg[0]); // how many bytes to send
+
+			client->fg = false;
+			client->log = (char *)calloc(sizeof(char), size + 1);
+			if (!client->log) {
+				snprintf(reporter.buffer, PIPE_BUF - 22, "CRITICAL: %s's new client could not allocate buffer, will not send any log\n", process->name);
+				report(&reporter, false);
+				return (0);
+			}
+			if (!strcmp(arg[1], "1")) { // stdout
+				snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s will send stdout log\n", process->name);
+				report(&reporter, false);
+				struct stat tmp;
+				size_t out_logsize = 0;
+				if (process->stdoutlog) { // first read from current logfile
+					if (!fstat(process->stdout_logger.logfd, &tmp)) {
+						out_logsize = (size_t)tmp.st_size;
+						if (out_logsize > size) {
+							out_logsize = size;
+						}
+						lseek(process->stdout_logger.logfd, -(int)out_logsize, SEEK_END);
+						if (read(process->stdout_logger.logfd, client->log, out_logsize)) {}
+					}
+ // then read from backups files 
+					int i = 1;
+					while (strlen(client->log) < size && i <= process->stdout_logger.logfile_backups) {
+						char path[PATH_SIZE];
+						snprintf(path, PATH_SIZE, "%s%d", process->stdout_logger.logfile, i);
+						if (access(path, F_OK | R_OK)) {
+							// error handing and break
+							break ;
+						}
+						int tmpfd = open(path, O_RDONLY);
+						if (!fstat(tmpfd, &tmp)) {
+							out_logsize = (size_t)tmp.st_size;
+							if (out_logsize > (size - strlen(client->log))) {
+								out_logsize = (size - strlen(client->log));
+							}
+							lseek(tmpfd, -(int)out_logsize, SEEK_END);
+							if (read(tmpfd, client->log, out_logsize)) {}
+						}
+						i++;
+					}
+					if (strlen(client->log) == 0) {
+						snprintf(client->log, size + 1, "Empty stdout logging\n");
+					}
+				} else {
+					snprintf(client->log, size + 1, "stdout logging is not enabled\n");
+				}
+			} else { // stderr
+				snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s will send stderr log\n", process->name);
+				report(&reporter, false);
+
+				struct stat tmp;
+				size_t out_logsize = 0;
+				if (process->stderrlog) { // first read from current logfile
+					if (!fstat(process->stderr_logger.logfd, &tmp)) {
+						out_logsize = (size_t)tmp.st_size;
+						if (out_logsize > size) {
+							out_logsize = size;
+						}
+						lseek(process->stderr_logger.logfd, -(int)out_logsize, SEEK_END);
+						if (read(process->stderr_logger.logfd, client->log, out_logsize)) {}
+					}
+ // then read from backups files 
+					int i = 1;
+					while (strlen(client->log) < size && i <= process->stderr_logger.logfile_backups) {
+						char path[PATH_SIZE];
+						snprintf(path, PATH_SIZE, "%s%d", process->stderr_logger.logfile, i);
+						if (access(path, F_OK | R_OK)) {
+							// error handing and break
+							break ;
+						}
+						int tmpfd = open(path, O_RDONLY);
+						if (!fstat(tmpfd, &tmp)) {
+							out_logsize = (size_t)tmp.st_size;
+							if (out_logsize > (size - strlen(client->log))) {
+								out_logsize = (size - strlen(client->log));
+							}
+							lseek(tmpfd, -(int)out_logsize, SEEK_END);
+							if (read(tmpfd, client->log, out_logsize)) {}
+						}
+						i++;
+					}
+					if (strlen(client->log) == 0) {
+						snprintf(client->log, size + 1, "Empty stderr logging\n");
+					}
+				} else {
+					snprintf(client->log, size + 1, "stderr logging is not enabled\n");
+				}
+			}
+			client->poll.events = EPOLLOUT;
+			epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &client->poll);
+			if (strlen(client->log)) {
+				size_t trunc_size = PIPE_BUF - 100;
+				char trunc[PIPE_BUF - 100];
+				bzero(trunc, PIPE_BUF - 100);
+				if (strlen(client->log) < PIPE_BUF - 100) {
+					trunc_size = strlen(client->log);
+				}
+				memcpy(trunc, client->log, trunc_size);
+				snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s tail response : >%s< log\n", process->name, trunc);
+				report(&reporter, false);
+			}
+		} */
 	}
 	return (0);
 }
@@ -414,11 +551,33 @@ void handle_logging_client(struct s_process *process, struct epoll_event event, 
 			free(client->log);
 			client->log = NULL;
 		}
-		client->poll.events = EPOLLIN;
-		if (epoll_ctl(epollfd, EPOLL_CTL_MOD, client->poll.data.fd, &client->poll)) {
-			snprintf(reporter.buffer, PIPE_BUF, "ERROR: Could not modify client event in epoll_ctl STARTING for client %d\n", client->poll.data.fd);
+/*		if (client->fg) {
+		} else {
+			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: client %d is not fg, removing him\n", client->poll.data.fd);
 			report(&reporter, false);
-		}
+
+			epoll_ctl(epollfd, EPOLL_CTL_DEL, client->poll.data.fd, &client->poll);
+
+			client->poll.events = EPOLLIN;
+			if (epoll_ctl(efd, EPOLL_CTL_ADD, client->poll.data.fd, &client->poll)) {
+				snprintf(reporter.buffer, PIPE_BUF, "ERROR: Could not modify client event in epoll_ctl STARTING for client %d : %s\n", client->poll.data.fd, strerror(errno));
+				report(&reporter, false);
+			}
+			if (client == process->list) {
+				process->list = client->next;
+				bzero(client->buf, PIPE_BUF + 1);
+				free(client);
+			} else {
+				struct s_logging_client *head = process->list;
+				while (head->next != client) {
+					head = head->next;
+				}
+				head->next = client->next;
+				bzero(client->buf, PIPE_BUF + 1);
+				free(client);
+			}
+			return ;
+		}*/
 	} else if (event.events & EPOLLIN) {
 		char buf[PIPE_BUF + 1];
 		bzero(buf, PIPE_BUF + 1);

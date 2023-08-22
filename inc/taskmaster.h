@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/21 19:23:28 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/22 16:11:48 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,6 +22,7 @@
 # include <stdatomic.h>
 # include <signal.h>
 # define BUFFER_SIZE PIPE_BUF
+# define PATH_SIZE 256
 # include "yaml.h"
 # include "get_next_line.h"
 
