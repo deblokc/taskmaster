@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/22 20:09:47 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/22 20:33:12 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,6 +22,7 @@
 # include <stdatomic.h>
 # include <signal.h>
 # define BUFFER_SIZE PIPE_BUF
+# define PATH_SIZE 256
 # include "yaml.h"
 # include "curl.h"
 # include "get_next_line.h"
@@ -91,6 +92,14 @@ struct s_client {
 	struct s_client		*next;
 };
 
+struct s_logging_client {
+	struct epoll_event		poll;
+	char					buf[PIPE_BUF + 1];
+	char					*log;
+	bool					fg;
+	struct s_logging_client	*next;
+};
+
 struct s_socket {
 	int		sockfd;
 	bool	enable;
@@ -147,25 +156,26 @@ struct s_program {
 };
 
 struct s_process {
-	char				*name;
-	int					pid;
-	bool				bool_start;
-	bool				bool_exit;
-	struct timeval		start;
-	struct timeval		stop;
-	_Atomic int			status;
-	struct s_program	*program;
-	int					count_restart;
-	int					stdin[2];
-	int					stdout[2];
-	int					stderr[2];
-	int					log;
-	int					com[2];
-	bool				stdoutlog;
-	struct s_logger		stdout_logger;
-	bool				stderrlog;
-	struct s_logger		stderr_logger;
-	pthread_t			handle;
+	char					*name;
+	int						pid;
+	bool					bool_start;
+	bool					bool_exit;
+	struct timeval			start;
+	struct timeval			stop;
+	_Atomic int				status;
+	struct s_program		*program;
+	int						count_restart;
+	int						stdin[2];
+	int						stdout[2];
+	int						stderr[2];
+	int						log;
+	int						com[2];
+	bool					stdoutlog;
+	struct s_logger			stdout_logger;
+	bool					stderrlog;
+	struct s_logger			stderr_logger;
+	struct s_logging_client	*list;
+	pthread_t				handle;
 };
 
 struct s_server {

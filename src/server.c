@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/21 18:30:55 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/22 20:03:16 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -410,6 +410,27 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 						}
 					} else if (!strcmp(cmd->cmd, "avail")) {   //main thread return available process
 					} else if (!strcmp(cmd->cmd, "fg")) {      //administrator send logging and stdin
+						snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: controller has sent fg command\n");
+						report(reporter, false);
+						if (cmd->arg) {
+							for (struct s_program *current = server->begin(server); current; current = current->itnext(current)) {
+								if (!strncmp(current->name, cmd->arg[0], strlen(current->name))) {
+									if (!current->processes)
+										continue ;
+									for (int i = 0; i < current->numprocs; i++) {
+										if (!strcmp(current->processes[i].name, cmd->arg[0])) {
+											char buf[PIPE_BUF + 1];
+											bzero(buf, PIPE_BUF + 1);
+											snprintf(buf, PIPE_BUF + 1, "fg %d", client->poll.data.fd);
+											if (write(current->processes[i].com[1], buf, strlen(buf))) {}
+											epoll_ctl(efd, EPOLL_CTL_DEL, client->poll.data.fd, &client->poll);
+											break ;
+										}
+									}
+									break ;
+								}
+							}
+						}
 					} else if (!strcmp(cmd->cmd, "reload")) {
 						if (cmd->arg) {
 							free(cmd->arg);
@@ -430,11 +451,92 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 							send_command_multiproc(cmd, server);
 						}
 					} else if (!strcmp(cmd->cmd, "tail")) {    //administrator send logging
-					} else if (!strcmp(cmd->cmd, "clear")) {   //administrator clear logging
-						snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: controller has sent clear command\n");
+						snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: controller has sent tail command\n");
 						report(reporter, false);
 						if (cmd->arg) {
-							send_command_multiproc(cmd, server);
+							char buf[PIPE_BUF + 1];
+							bzero(buf, PIPE_BUF + 1);
+							char *name = NULL;
+							if (cmd->arg[0][0] == '-') { // if specified size
+								if (!strcmp(cmd->arg[0], "-f")) {
+									// infinite tail
+									if (cmd->arg[1]) {
+										name = cmd->arg[1];
+										if (cmd->arg[2]) { // if specified output
+											if (!strcmp(cmd->arg[2], "stdout")) {
+												// send to cmd->arg[1] infinite bytes of stdout
+												snprintf(buf, PIPE_BUF + 1, "tail f 1 %d", client->poll.data.fd);
+											} else if (!strcmp(cmd->arg[2], "stderr")) {
+												// send to cmd->arg[1] infinite bytes of stderr
+												snprintf(buf, PIPE_BUF + 1, "tail f 2 %d", client->poll.data.fd);
+											}
+										} else { // default output is stdout
+											//send to cmd->arg[1] infinite bytes of stdout
+											snprintf(buf, PIPE_BUF + 1, "tail f 1 %d", client->poll.data.fd);
+										}
+									} else {
+										// no program to send to, not doing it
+									}
+								} else {
+									int val = atoi(cmd->arg[0] + 1);
+									// if val is positiv/non-null
+									if (val > 0 && val < INT_MAX) {
+										if (cmd->arg[1]) {
+											name = cmd->arg[1];
+											if (cmd->arg[2]) { // if specified output
+												if (!strcmp(cmd->arg[2], "stdout")) {
+													// send to cmd->arg[1] n bytes of stdout
+													snprintf(buf, PIPE_BUF + 1, "tail %s 1 %d", cmd->arg[0] + 1, client->poll.data.fd);
+												} else if (!strcmp(cmd->arg[2], "stderr")) {
+													// send to cmd->arg[1] n bytes of stderr
+													snprintf(buf, PIPE_BUF + 1, "tail %s 2 %d", cmd->arg[0] + 1, client->poll.data.fd);
+												}
+											} else { // default output is stdout
+												//send to cmd->arg[1] n bytes of stdout
+												snprintf(buf, PIPE_BUF + 1, "tail %s 1 %d", cmd->arg[0] + 1, client->poll.data.fd);
+											}
+										} else {
+											// no program to send to, not doing it
+										}
+									}
+								}
+							} else { // if no size default 1600 bytes
+								name = cmd->arg[0];
+								if (cmd->arg[1]) {
+									if (!strcmp(cmd->arg[1], "stdout")) {
+										// send to cmd->arg[0] 1600 bytes of stdout
+										snprintf(buf, PIPE_BUF + 1, "tail 1600 1 %d", client->poll.data.fd);
+									} else if (!strcmp(cmd->arg[1], "stderr")) {
+										// send to cmd->arg[0] 1600 bytes of stderr
+										snprintf(buf, PIPE_BUF + 1, "tail 1600 2 %d", client->poll.data.fd);
+									}
+								} else { // default output is stdout
+									// send to cmd->arg[0] 1600 bytes of stdout
+									snprintf(buf, PIPE_BUF + 1, "tail 1600 1 %d", client->poll.data.fd);
+								}
+							}
+							if (!name)
+								return ;
+							char trunc[PIPE_BUF / 2];
+							bzero(trunc, PIPE_BUF / 2);
+							memcpy(trunc, buf, PIPE_BUF / 2);
+							snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: sending tail command >%s< to %s\n", trunc, name);
+							report(reporter, false);
+							for (struct s_program *current = server->begin(server); current; current = current->itnext(current)) {
+								if (!strncmp(current->name, name, strlen(current->name))) {
+									if (!current->processes)
+										continue ;
+									for (int i = 0; i < current->numprocs; i++) {
+										if (!strcmp(current->processes[i].name, name)) {
+											if (write(current->processes[i].com[1], buf, strlen(buf))) {}
+
+											epoll_ctl(efd, EPOLL_CTL_DEL, client->poll.data.fd, &client->poll);
+											break ;
+										}
+									}
+									break ;
+								}
+							}
 						}
 					} else if (!strcmp(cmd->cmd, "pid")) {     //main thread send pid of process
 						snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: controller has sent pid command\n");
@@ -442,6 +544,8 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 						if (cmd->arg) {
 							if (!strcmp(cmd->arg[0], "all")) {
 								for (struct s_program *current = server->begin(server); current; current = current->itnext(current)) {
+									if (!current->processes)
+										continue ;
 									for (int i = 0; i < current->numprocs; i++) {
 										snprintf(client->buf + strlen(client->buf), PIPE_BUF + 1, "%s : %d\n", current->processes[i].name, current->processes[i].pid);
 									}
@@ -450,6 +554,8 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 								for (int i = 0; cmd->arg[i]; i++) {
 									for (struct s_program *current = server->begin(server); current; current = current->itnext(current)) {
 										if (!strncmp(current->name, cmd->arg[i], strlen(current->name))) {
+											if (!current->processes)
+												continue ;
 											for (int j = 0; j < current->numprocs; j++) {
 												if (!strcmp(cmd->arg[i], current->processes[j].name)) {
 													snprintf(client->buf + strlen(client->buf), PIPE_BUF + 1, "%s : %d\n", current->processes[j].name, current->processes[j].pid);
@@ -514,12 +620,12 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 			} else if (events[i].events & EPOLLOUT) {
 				// send response located in client->buf
 				if (strlen(client->buf)) {
-					snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Sending to client with socket fd %d", client->poll.data.fd);
+					snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Sending to client with socket fd %d\n", client->poll.data.fd);
 					report(reporter, false);
 					send(events[i].data.fd, client->buf, strlen(client->buf), 0);
 					bzero(client->buf, PIPE_BUF + 1);
 				} else {
-					snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Sending to client with socket fd %d NON ZERO RESPONSE", client->poll.data.fd);
+					snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Sending to client with socket fd %d NON ZERO RESPONSE\n", client->poll.data.fd);
 					report(reporter, false);
 					send(events[i].data.fd, ".\n", 2, 0);
 				}

@@ -6,12 +6,13 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 15:17:03 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/09 18:45:18 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/22 20:14:29 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <errno.h>
 #include <limits.h>
+#include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -41,14 +42,14 @@ void help(char *full_arg) {
 	if (!strlen(arg)) {
 		printf("default commands (type help <command>):\n");
 		printf("=======================================\n");
-		printf("exit maintail quit signal stop avail fg\n");
-		printf("reload restart start tail clear help pid\n");
+		printf("exit maintail quit signal stop fg\n");
+		printf("reload restart start tail help pid\n");
 		printf("shutdown status update\n");
 	} else {
 		if (!strcmp(arg, "exit")) {
 			printf("exit\tExit the taskmaster shell.\n");
 		} else if (!strcmp(arg, "maintail")) {
-			printf("maintail -f\t\t\tContinuous tail of taskmaster main log file (Ctrl-C to exit)\n");
+			printf("maintail -f\t\t\tContinuous tail of taskmaster main log file (Ctrl-D to exit)\n");
 			printf("maintail -100\t\t\tlast 100 *bytes* of taskmaster main log file\n");
 			printf("maintail\t\t\tlast 1600 *bytes* of taskmaster main log file\n");
 		} else if (!strcmp(arg, "quit")) {
@@ -61,11 +62,9 @@ void help(char *full_arg) {
 			printf("stop <name>\t\tStop a process\n");
 			printf("stop <name> <name>\tStop multiple processes or groups\n");
 			printf("stop all\t\tStop all processes\n");
-		} else if (!strcmp(arg, "avail")) {
-			printf("avail\t\t\tDisplay all configured processes\n");
 		} else if (!strcmp(arg, "fg")) {
 			printf("fg <process>\tConnect to a process in foreground mode\n");
-			printf("\t\tCtrl-C to exit\n");
+			printf("\t\tCtrl-D to exit\n");
 		} else if (!strcmp(arg, "reload")) {
 			printf("reload\t\tRestart the remote taskmasterd.\n");
 		} else if (!strcmp(arg, "restart")) {
@@ -81,13 +80,9 @@ void help(char *full_arg) {
 			printf("tail [-f] <name>\t[stdout|stderr] (default stdout)\n");
 			printf("Ex:\n");
 			printf("tail -f <name>\t\tContinuous tail of named process stdout\n");
-			printf("\t\t\tCtrl-C to exit\n");
+			printf("\t\t\tCtrl-D to exit\n");
 			printf("tail -100 <name>\tlast 100 *bytes* of process stdout\n");
 			printf("tail <name> stderr\tlast 1600 *bytes* of process stderr\n");
-		} else if (!strcmp(arg, "clear")) {
-			printf("clear <name>\t\t\tClear a process' log files\n");
-			printf("clear <name> <name>\t\tClear multiple process' log files\n");
-			printf("clear all\t\t\tClear all process' log files\n");
 		} else if (!strcmp(arg, "help")) {
 			printf("help\t\t\tPrint a list of available commands\n");
 			printf("help <command>\t\tPrint help for <command>\n");
@@ -108,6 +103,131 @@ void help(char *full_arg) {
 			printf("*** No help on %s\n", arg);
 		}
 	}
+}
+
+void *thread_log(void *arg) {
+	struct epoll_event *sock = (struct epoll_event *)arg;
+	int efd = epoll_create(1);
+	sock->events = EPOLLIN;
+	epoll_ctl(efd, EPOLL_CTL_ADD, sock->data.fd, sock);
+
+	struct epoll_event event;
+
+	char buf[PIPE_BUF + 1];
+	bzero(buf, PIPE_BUF + 1);
+	while (!g_sig) {
+		if (epoll_wait(efd, &event, 1, 0) > 0) {
+			if (event.data.fd == sock->data.fd) {
+				bzero(buf, PIPE_BUF + 1);
+				if (recv(event.data.fd, buf, PIPE_BUF, 0) > 0) {
+					printf("%s", buf);
+				}
+			}
+		}
+	}
+	fflush(stdout);
+	epoll_ctl(efd, EPOLL_CTL_DEL, sock->data.fd, sock);
+	close(efd);
+	return NULL;
+}
+
+void tail(int efd, struct epoll_event sock) {
+	int ret;
+	struct epoll_event event;
+	char *line;
+	char buf[PIPE_BUF + 1];
+	bzero(buf, PIPE_BUF + 1);
+	pthread_t thread;
+
+	sock.events = EPOLLOUT;
+	epoll_ctl(efd, EPOLL_CTL_MOD, sock.data.fd, &sock);
+	pthread_create(&thread, NULL, &thread_log, &sock);
+	g_sig = 0;
+	while (!g_sig) {
+		line = ft_readline("");
+		if (line) {
+			free(line);
+		} else {
+			g_sig = 1;
+		}
+	}
+	pthread_join(thread, NULL);
+
+	ret = epoll_wait(efd, &event, 1, 60 * 1000);
+	if (ret > 0) {
+		if (event.events & EPOLLOUT) {
+			send(event.data.fd, "exit", strlen("exit"), 0);
+		}
+	} else if (ret == 0) {
+		printf("SOCKET TIMED OUT\n");
+	} else {
+		perror("epoll_wait(EPOLLOUT)");
+	}
+	int i = 0;
+	while (i < 42) { 
+		recv(sock.data.fd, buf, PIPE_BUF, MSG_DONTWAIT);
+		bzero(buf, PIPE_BUF + 1);
+		usleep(10);
+		i++;
+	}
+	fflush(stdout);
+}
+
+void foreground(int efd, struct epoll_event sock) {
+	int ret;
+	struct epoll_event event;
+	char *line;
+	char buf[PIPE_BUF + 1];
+	bzero(buf, PIPE_BUF + 1);
+	pthread_t thread;
+
+	sock.events = EPOLLOUT;
+	epoll_ctl(efd, EPOLL_CTL_MOD, sock.data.fd, &sock);
+	pthread_create(&thread, NULL, &thread_log, &sock);
+	while (!g_sig) {
+		line = ft_readline("");
+		if (line) {
+			ret = epoll_wait(efd, &event, 1, 100);
+			if (ret > 0) {
+				if (event.events & EPOLLOUT) {
+					bzero(buf, PIPE_BUF + 1);
+					snprintf(buf, PIPE_BUF + 1, "data:%s\n", line);
+					send(event.data.fd, buf, strlen(buf), 0);
+				}
+			} else if (ret == 0) {
+				printf("socket timed out\n");
+				g_sig = 1;
+				return ;
+			} else {
+				perror("epoll_wait");
+				g_sig = 1;
+				return ;
+			}
+			free(line);
+		} else {
+			g_sig = 1;
+		}
+	}
+	pthread_join(thread, NULL);
+
+	ret = epoll_wait(efd, &event, 1, 60 * 1000);
+	if (ret > 0) {
+		if (event.events & EPOLLOUT) {
+			send(event.data.fd, "exit", strlen("exit"), 0);
+		}
+	} else if (ret == 0) {
+		printf("SOCKET TIMED OUT\n");
+	} else {
+		perror("epoll_wait(EPOLLOUT)");
+	}
+	int i = 0;
+	while (i < 42) { 
+		recv(sock.data.fd, buf, PIPE_BUF, MSG_DONTWAIT);
+		bzero(buf, PIPE_BUF + 1);
+		usleep(10);
+		i++;
+	}
+	fflush(stdout);
 }
 
 void remote_exec(char *cmd, int efd, struct epoll_event sock) {
@@ -146,8 +266,18 @@ void remote_exec(char *cmd, int efd, struct epoll_event sock) {
 			char buf[PIPE_BUF + 1];
 			bzero(buf, PIPE_BUF + 1);
 			recv(tmp.data.fd, buf, PIPE_BUF, 0);
-			// WIlL NEED A CONDITION FOR CONNECTION WITH AN ADMINISTRATOR (tail/fg)
-			printf("%s", buf); // DUMBLY PRINT RESPONSE
+			if (!strncmp(buf, "fg", 2)) {
+				printf("%s", buf + 2);
+				foreground(efd, sock);
+				g_sig = 0;
+			} else if (!strncmp(buf, "tail", 4)) {
+				printf("%s", buf + 4);
+				tail(efd, sock);
+				g_sig = 0;
+			}else {
+				printf("%s", buf); // DUMBLY PRINT RESPONSE
+				fflush(stdout);
+			}
 		}
 	} else if (ret == 0) {
 		printf("SOCKET TIMED OUT\n");
