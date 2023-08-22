@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/22 16:11:48 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/22 20:33:12 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,6 +24,7 @@
 # define BUFFER_SIZE PIPE_BUF
 # define PATH_SIZE 256
 # include "yaml.h"
+# include "curl.h"
 # include "get_next_line.h"
 
 
@@ -72,6 +73,17 @@ struct s_logger {
 	int		logfile_backups;
 	int		logfd;
 	int		umask;
+};
+
+struct s_discord_logger {
+	_Atomic bool		logging;
+	bool				running;
+	CURL				*handle;
+	struct curl_slist	*slist;
+	char				channel[PIPE_BUF + 1];
+	int					com[2];
+	enum log_level		loglevel;
+	struct s_report		reporter;
 };
 
 struct s_client {
@@ -172,6 +184,10 @@ struct s_server {
 	int					log_pipe[2];
 	enum log_level		loglevel;
 	struct s_logger		logger;
+	bool				log_discord;
+	enum log_level		loglevel_discord;
+	char*				discord_channel;
+	char*				discord_token;
 	char*				pidfile;
 	char*				user;
 	char*				workingdir;

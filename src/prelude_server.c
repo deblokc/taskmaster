@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/25 18:58:58 by bdetune           #+#    #+#             */
-/*   Updated: 2023/08/21 17:09:18 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/22 15:05:48 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,6 +18,7 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <fcntl.h>
+#include <stdlib.h>
 
 void	create_pid_file(struct s_server *server, struct s_report *reporter)
 {
@@ -58,6 +59,8 @@ void update_umask(struct s_server *server)
 
 void	prelude(struct s_server *server, struct s_report *reporter)
 {
+	char*			discord_channel = NULL;
+	char*			discord_token = NULL;
 	struct passwd	*ret = NULL;
 	struct s_env	*current = NULL;
 
@@ -126,4 +129,45 @@ void	prelude(struct s_server *server, struct s_report *reporter)
 		return ;
 	}
 	update_umask(server);
+	if (server->log_discord)
+	{
+		if (!server->discord_channel)
+		{
+			discord_channel = getenv("DISCORD_CHANNEL");
+			if (!discord_channel)
+			{
+				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Discord logging is enabled, however no channel was specified, feature will be disabled\n");
+				report(reporter, false);
+				server->log_discord = false;
+				return ;
+			}
+			server->discord_channel = strdup(discord_channel);
+			if (!server->discord_channel)
+			{
+				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not allocate string for variable discord_channel\n");
+				report(reporter, true);
+				server->log_discord = false;
+				return ;
+			}
+		}
+		if (!server->discord_token)
+		{
+			discord_token = getenv("DISCORD_TOKEN");
+			if (!discord_token)
+			{
+				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Discord logging is enabled, however no token was specified, feature will be disabled\n");
+				report(reporter, false);
+				server->log_discord = false;
+				return ;
+			}
+			server->discord_token = strdup(discord_token);
+			if (!server->discord_token)
+			{
+				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not allocate string for variable discord_token\n");
+				report(reporter, true);
+				server->log_discord = false;
+				return ;
+			}
+		}
+	}
 }
