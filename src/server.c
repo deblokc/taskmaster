@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/21 20:01:17 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/22 13:54:49 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -455,6 +455,7 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 						report(reporter, false);
 						if (cmd->arg) {
 							char buf[PIPE_BUF + 1];
+							bzero(buf, PIPE_BUF + 1);
 							char *name = NULL;
 							if (cmd->arg[0][0] == '-') { // if specified size
 								if (!strcmp(cmd->arg[0], "-f")) {
@@ -462,10 +463,10 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 									if (cmd->arg[1]) {
 										name = cmd->arg[1];
 										if (cmd->arg[2]) { // if specified output
-											if (!strcmp(cmd->arg[1], "stdout")) {
+											if (!strcmp(cmd->arg[2], "stdout")) {
 												// send to cmd->arg[1] infinite bytes of stdout
 												snprintf(buf, PIPE_BUF + 1, "tail f 1");
-											} else if (!strcmp(cmd->arg[1], "stderr")) {
+											} else if (!strcmp(cmd->arg[2], "stderr")) {
 												// send to cmd->arg[1] infinite bytes of stderr
 												snprintf(buf, PIPE_BUF + 1, "tail f 2");
 											}
@@ -479,14 +480,14 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 								} else {
 									int val = atoi(cmd->arg[0] + 1);
 									// if val is positiv/non-null
-									if (val) {
+									if (val > 0) {
 										if (cmd->arg[1]) {
 											name = cmd->arg[1];
 											if (cmd->arg[2]) { // if specified output
-												if (!strcmp(cmd->arg[1], "stdout")) {
+												if (!strcmp(cmd->arg[2], "stdout")) {
 													// send to cmd->arg[1] n bytes of stdout
 													snprintf(buf, PIPE_BUF + 1, "tail %s 1", cmd->arg[0]);
-												} else if (!strcmp(cmd->arg[1], "stderr")) {
+												} else if (!strcmp(cmd->arg[2], "stderr")) {
 													// send to cmd->arg[1] n bytes of stderr
 													snprintf(buf, PIPE_BUF + 1, "tail %s 2", cmd->arg[0]);
 												}
@@ -516,14 +517,17 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 							}
 							if (!name)
 								return ;
-							snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: sending tail command\n");
+							char trunc[PIPE_BUF / 2];
+							bzero(trunc, PIPE_BUF / 2);
+							memcpy(trunc, buf, PIPE_BUF / 2);
+							snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: sending tail command >%s< to %s\n", trunc, name);
 							report(reporter, false);
 							for (struct s_program *current = server->begin(server); current; current = current->itnext(current)) {
 								if (!strncmp(current->name, name, strlen(current->name))) {
 									if (!current->processes)
 										continue ;
 									for (int i = 0; i < current->numprocs; i++) {
-										if (!strcmp(current->processes[i].name, cmd->arg[0])) {
+										if (!strcmp(current->processes[i].name, name)) {
 											if (write(current->processes[i].com[1], buf, strlen(buf))) {}
 											break ;
 										}
@@ -538,6 +542,8 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 						if (cmd->arg) {
 							if (!strcmp(cmd->arg[0], "all")) {
 								for (struct s_program *current = server->begin(server); current; current = current->itnext(current)) {
+									if (!current->processes)
+										continue ;
 									for (int i = 0; i < current->numprocs; i++) {
 										snprintf(client->buf + strlen(client->buf), PIPE_BUF + 1, "%s : %d\n", current->processes[i].name, current->processes[i].pid);
 									}
@@ -546,6 +552,8 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 								for (int i = 0; cmd->arg[i]; i++) {
 									for (struct s_program *current = server->begin(server); current; current = current->itnext(current)) {
 										if (!strncmp(current->name, cmd->arg[i], strlen(current->name))) {
+											if (!current->processes)
+												continue ;
 											for (int j = 0; j < current->numprocs; j++) {
 												if (!strcmp(cmd->arg[i], current->processes[j].name)) {
 													snprintf(client->buf + strlen(client->buf), PIPE_BUF + 1, "%s : %d\n", current->processes[j].name, current->processes[j].pid);
