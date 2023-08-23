@@ -376,10 +376,13 @@ void	*main_logger(void *void_server)
 	int						epoll_fd;
 	ssize_t					ret;
 	struct epoll_event		event;
+	unsigned long long		client[10];
+	int						num_client = 0;
 
 	server = (struct s_server*)void_server;
 	bzero(&discord_logger, sizeof(discord_logger));
 	bzero(&reporter, sizeof(reporter));
+	bzero(client, sizeof(client));
 	discord_logger.logging = false;
 	discord_logger.running = false;
 	if (server->log_discord)
@@ -561,8 +564,33 @@ void	*main_logger(void *void_server)
 					}
 					pthread_exit(NULL);
 				}
+				else if (!strncmp("maintail", &reporter.buffer[22], 8))
+				{
+					if (num_client < 10) {
+						client[num_client] = (unsigned long long)atoll(&reporter.buffer[22] + 9);
+						num_client++;
+					}
+				}
+				else if (!strncmp("exittail", &reporter.buffer[22], 8))
+				{
+					unsigned long long address = (unsigned long long)atoll(&reporter.buffer[22] + 9);
+					for (int i = 0; i < num_client; i++) {
+						if (client[i] == address) {
+							if (i == num_client) {
+								client[i] = 0;
+							} else {
+								memmove(&client[i], &client[i + 1], (size_t)(num_client - i));
+							}
+						}
+					}
+					num_client--;
+				}
 				else
 				{
+					for (int i = 0; i < num_client; i++) {
+						char *buf = (char *)client[i];
+						snprintf(buf + strlen(buf), (PIPE_BUF + 1 - strlen(buf)), "%s", reporter.buffer);
+					}
 					if (should_log(server->loglevel, &reporter.buffer[22]))
 					{
 						write_log(&server->logger, reporter.buffer);

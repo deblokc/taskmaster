@@ -6,11 +6,11 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/22 20:03:16 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/23 19:51:31 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
-
 #include "taskmaster.h"
+#include <fcntl.h>
 #include <limits.h>
 #include <unistd.h>
 #include <signal.h>
@@ -175,7 +175,7 @@ struct s_client *new_client(struct s_client **list, int client_fd, struct s_repo
 	return (new_client);
 }
 
-void	delete_clients(struct s_client **clients_lst)
+void	delete_clients(struct s_client **clients_lst, struct s_report *reporter)
 {
 	struct s_client	*client;
 	struct s_client *next;
@@ -186,6 +186,12 @@ void	delete_clients(struct s_client **clients_lst)
 		next = client->next;
 		if (client->poll.data.fd > 0)
 			close(client->poll.data.fd);
+		if (client->log)
+			free(client->log);
+		if (client->tail) {
+			snprintf(reporter->buffer, PIPE_BUF - 22, "exittail %llu\n", (unsigned long long)client->buf);
+			report(reporter, false);
+		}
 		free(client);
 		client = (next);
 	}
@@ -300,7 +306,7 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 				snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Received data from client with socket fd %d\n", client->poll.data.fd);
 				report(reporter, false);
 				bzero(buf, PIPE_BUF + 1);
-				if (recv(client->poll.data.fd, buf, PIPE_BUF, MSG_DONTWAIT) <= 0) {
+				if ((recv(client->poll.data.fd, buf, PIPE_BUF, MSG_DONTWAIT) <= 0)) {
 					snprintf(reporter->buffer, PIPE_BUF, "INFO: Client disconnected\n");
 					report(reporter, false);
 					epoll_ctl(efd, EPOLL_CTL_DEL, client->poll.data.fd, &client->poll);
@@ -316,6 +322,18 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 						head->next = client->next;
 						close(client->poll.data.fd);
 						free(client);
+					}
+					continue ;
+				}
+				if (client->tail) {
+					client->tail = false;
+					snprintf(reporter->buffer, PIPE_BUF, "exittail %llu\n", (unsigned long long)client->buf);
+					report(reporter, false);
+					client->poll.events = EPOLLIN;
+					if (epoll_ctl(efd, EPOLL_CTL_MOD, client->poll.data.fd, &client->poll) == -1)
+					{
+						snprintf(reporter->buffer, PIPE_BUF, "ERROR: Could not modify client events in epoll list for client with socket fd %d\n", client->poll.data.fd);
+						report(reporter, false);
 					}
 					continue ;
 				}
@@ -344,6 +362,78 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 					}
 					report(reporter, false);
 					if (!strcmp(cmd->cmd, "maintail")) {      //send via logging thread
+						snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: controller has sent maintail command\n");
+						report(reporter, false);
+						size_t size = 0;
+						if (cmd->arg) {
+							if (!strcmp(cmd->arg[0], "-f")) {
+								snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: starting infinitemaintailling\n");
+								report(reporter, false);
+								snprintf(reporter->buffer, PIPE_BUF - 22, "maintail %llu\n", (unsigned long long)client->buf);
+								report(reporter, false);
+								client->tail = true;
+								client->poll.events = EPOLLIN | EPOLLOUT;
+								if (epoll_ctl(efd, EPOLL_CTL_MOD, client->poll.data.fd, &client->poll) == -1)
+								{
+									snprintf(reporter->buffer, PIPE_BUF, "ERROR: Could not modify client events in epoll list for client with socket fd %d\n", client->poll.data.fd);
+									report(reporter, false);
+								}
+								snprintf(client->buf, PIPE_BUF + 1, "tail");
+								// register client
+							} else {
+								size = (size_t)atoi(cmd->arg[0] + 1);
+								if (size >= INT_MAX) {
+									snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: maintail size is 0 or below\n");
+									report(reporter, false);
+									snprintf(client->buf, PIPE_BUF + 1, "invalid maintail size\n");
+								}
+							}
+						} else {
+							size = 1600;
+						}
+						if (size > 0 && size < INT_MAX) {
+							struct stat tmp;
+							size_t out_logsize = 0;
+							client->log = (char *)calloc(sizeof(char), size + 1);
+							if (!client->log) {
+								snprintf(reporter->buffer, PIPE_BUF - 22, "ERROR: client could not allocate buffer, will not send any log\n");
+								report(reporter, false);
+								return ;
+							}
+							if (!fstat(server->logger.logfd, &tmp)) {
+								out_logsize = (size_t)tmp.st_size;
+								if (out_logsize > size) {
+									out_logsize = size;
+								}
+								lseek(server->logger.logfd, -(int)out_logsize, SEEK_END);
+								if (read(server->logger.logfd, client->log, out_logsize)) {}
+							}
+		 // then read from backups files 
+							int i = 1;
+							while (strlen(client->log) < size && i <= server->logger.logfile_backups) {
+								char path[PATH_SIZE];
+								snprintf(path, PATH_SIZE, "%s%d", server->logger.logfile, i);
+								if (access(path, F_OK | R_OK)) {
+									// error handing and break
+									break ;
+								}
+								int tmpfd = open(path, O_RDONLY);
+								if (!fstat(tmpfd, &tmp)) {
+									out_logsize = (size_t)tmp.st_size;
+									if (out_logsize > (size - strlen(client->log))) {
+										out_logsize = (size - strlen(client->log));
+									}
+									lseek(tmpfd, -(int)out_logsize, SEEK_END);
+									if (read(tmpfd, client->log + strlen(client->log), out_logsize)) {}
+								}
+								i++;
+							}
+							if (strlen(client->log) == 0) {
+								snprintf(client->log, size + 1, "\n");
+							}
+	
+						}
+
 					} else if (!strcmp(cmd->cmd, "signal")) {  //administrator send signal
 						snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: controller has sent signal command\n");
 						report(reporter, false);
@@ -624,16 +714,24 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 					report(reporter, false);
 					send(events[i].data.fd, client->buf, strlen(client->buf), 0);
 					bzero(client->buf, PIPE_BUF + 1);
-				} else {
+				} else if (client->log) {
+					snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Sending log to client with socket fd %d\n", client->poll.data.fd);
+					report(reporter, false);
+					send(events[i].data.fd, client->log, strlen(client->log), 0);
+					free(client->log);
+					client->log = NULL;
+				} else if (!client->tail) {
 					snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Sending to client with socket fd %d NON ZERO RESPONSE\n", client->poll.data.fd);
 					report(reporter, false);
 					send(events[i].data.fd, ".\n", 2, 0);
 				}
-				client->poll.events = EPOLLIN;
-				if (epoll_ctl(efd, EPOLL_CTL_MOD, client->poll.data.fd, &client->poll))
-				{
-					snprintf(reporter->buffer, PIPE_BUF, "ERROR: Could not modify client events in epoll list for client with socket fd %d\n", client->poll.data.fd);
-					report(reporter, false);
+				if (!client->tail) {
+					client->poll.events = EPOLLIN;
+					if (epoll_ctl(efd, EPOLL_CTL_MOD, client->poll.data.fd, &client->poll))
+					{
+						snprintf(reporter->buffer, PIPE_BUF, "ERROR: Could not modify client events in epoll list for client with socket fd %d\n", client->poll.data.fd);
+						report(reporter, false);
+					}
 				}
 			}
 			else
