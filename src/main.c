@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/21 18:20:55 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/23 20:03:05 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -134,48 +134,103 @@ int	main_routine(struct s_server *server, struct s_report *reporter)
 	return (0);
 }
 
-int main(int ac, char **av)
+static int	tmp_log(char tmp_log_file[1024])
 {
-	void *thread_ret;
-	int ret = 0;
-	int reporter_pipe[4];
-	pthread_t initial_logger;
+	int				fd;
+	ssize_t			ret;
+	char			base[] = "0123456789-abcdefghijklmnopqrstuvwxyz_ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+	unsigned char	tmp;
+	
+
+	bzero(tmp_log_file, sizeof(char) * 1024);
+	fd = open("/dev/urandom", O_RDONLY);
+	if (fd == -1)
+		return (-1);
+	strcpy(tmp_log_file, "/tmp/.taskmaster_tmp_");
+	ret = read(fd, &tmp_log_file[21], 200);
+	close(fd);
+	if (ret < 0)
+		return (-1);
+	for (ssize_t i = 0; i < ret; ++i)
+	{
+		tmp = (unsigned char)tmp_log_file[21 + i];
+		tmp_log_file[21 + i] = base[tmp % 64];
+	}
+	strncat(tmp_log_file, ".log", 1023);
+	return (open(tmp_log_file, O_CREAT | O_TRUNC | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP));
+}
+
+bool	tmp_logging(int reporter_pipe[4], char tmp_log_file[1024], struct s_report *reporter, bool is_first)
+{
+	if (pipe2(reporter_pipe, O_DIRECT | O_NONBLOCK) == -1)
+	{
+		if (is_first)
+		{
+			get_stamp(reporter->buffer);
+			snprintf(&reporter->buffer[22], PIPE_BUF - 22, "CRITICAL: Could not create pipe, exiting process\n");
+			early_error(reporter->buffer, reporter_pipe, NULL, NULL);
+		}
+		else
+		{
+			strcpy(reporter->buffer, "CRITICAL: Could not create pipe, exiting process\n");
+			report(reporter, true);
+		}
+		return (false);
+	}
+	reporter_pipe[2] = tmp_log(tmp_log_file);
+	if (reporter_pipe[2] < 0)
+	{
+		if (is_first)
+		{
+			get_stamp(reporter->buffer);
+			snprintf(&reporter->buffer[22], PIPE_BUF - 22, "CRITICAL: could not create temporary log file, exiting process\n");
+			early_error(reporter->buffer, reporter_pipe, NULL, NULL);
+		}
+		else
+		{
+			strcpy(reporter->buffer, "CRITICAL: could not create temporary log file, exiting process\n");
+			report(reporter, true);
+		}
+		return (false);
+	}
+	return (true);
+}
+
+int	main(int ac, char **av)
+{
+	char			tmp_log_file[1024];
+	void			*thread_ret;
+	int				ret = 0;
+	int				reporter_pipe[4];
+	pthread_t		initial_logger;
 	struct s_report reporter;
 	struct s_server *server = NULL;
 
 	bzero(reporter_pipe, sizeof(int) * 4);
 	bzero(reporter.buffer, PIPE_BUF + 1);
+	bzero(tmp_log_file, sizeof(char) * 1024);
 	reporter.critical = false;
+	reporter.report_fd = 2;
 	if (ac != 2)
 	{
 		snprintf(reporter.buffer, PIPE_BUF, "Usage: %s CONFIGURATION-FILE\n", av[0]);
-		return (early_error(reporter.buffer, reporter_pipe, NULL, NULL));
-	}
-	if (pipe2(reporter_pipe, O_DIRECT | O_NONBLOCK) == -1)
-	{
-		get_stamp(reporter.buffer);
-		snprintf(&reporter.buffer[22], PIPE_BUF - 22, "CRITICAL: Could not create pipe, exiting process\n");
-		return (early_error(reporter.buffer, reporter_pipe, NULL, NULL));
-	}
-	reporter.report_fd = reporter_pipe[1];
-	reporter_pipe[2] = open("/tmp/.taskmasterd_tmp.log", O_CREAT | O_TRUNC | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP);
-	if (reporter_pipe[2] < 0)
-	{
-		get_stamp(reporter.buffer);
-		snprintf(&reporter.buffer[22], PIPE_BUF - 22, "CRITICAL: could not create temporary log file, exiting process\n");
-		return (early_error(reporter.buffer, reporter_pipe, NULL, NULL));
+		return (1);
 	}
 	if (!block_signals(&reporter))
 	{
 		get_stamp(reporter.buffer);
 		snprintf(&reporter.buffer[22], PIPE_BUF - 22, "CRITICAL: Could not block signals, exiting process\n");
-		return (early_error(reporter.buffer, reporter_pipe, "/tmp/.taskmasterd_tmp.log", NULL));
+		return (1);
 	}
+
+	if (!tmp_logging(reporter_pipe, tmp_log_file, &reporter, true))
+		return (1);
+	reporter.report_fd = reporter_pipe[1];
 	if (pthread_create(&initial_logger, NULL, initial_log, reporter_pipe))
 	{
 		get_stamp(reporter.buffer);
 		snprintf(&reporter.buffer[22], PIPE_BUF - 22, "CRITICAL: could not create initial log thread, exiting process\n");
-		return (early_error(reporter.buffer, reporter_pipe, "/tmp/.taskmasterd_tmp.log", NULL));
+		return (early_error(reporter.buffer, reporter_pipe, tmp_log_file, NULL));
 	}
 	server = parse_config(av[0], av[1], &reporter);
 	if (!server || reporter.critical)
@@ -184,7 +239,7 @@ int main(int ac, char **av)
 			report_critical(reporter_pipe[2]);
 		get_stamp(reporter.buffer);
 		snprintf(&reporter.buffer[22], PIPE_BUF - 22, "CRITICAL: could not start taskmasterd, exiting process\n");
-		return (early_error(reporter.buffer, reporter_pipe, "/tmp/.taskmasterd_tmp.log", server));
+		return (early_error(reporter.buffer, reporter_pipe, tmp_log_file, server));
 	}
 	if (server->socket.enable)
 	{
@@ -195,7 +250,7 @@ int main(int ac, char **av)
 				report_critical(reporter_pipe[2]);
 			get_stamp(reporter.buffer);
 			snprintf(&reporter.buffer[22], PIPE_BUF - 22, "CRITICAL: could not start taskmasterd, exiting process\n");
-			return (early_error(reporter.buffer, reporter_pipe, "/tmp/.taskmasterd_tmp.log", server));
+			return (early_error(reporter.buffer, reporter_pipe, tmp_log_file, server));
 		}
 	}
 	prelude(server, &reporter);
@@ -205,16 +260,16 @@ int main(int ac, char **av)
 			report_critical(reporter_pipe[2]);
 		get_stamp(reporter.buffer);
 		snprintf(&reporter.buffer[22], PIPE_BUF - 22, "CRITICAL: could not start taskmasterd, exiting process\n");
-		return (early_error(reporter.buffer, reporter_pipe, "/tmp/.taskmasterd_tmp.log", server));
+		return (early_error(reporter.buffer, reporter_pipe, tmp_log_file, server));
 	}
 	if (!end_initial_log(&reporter, &thread_ret, initial_logger))
-		return (early_error(reporter.buffer, reporter_pipe, "/tmp/.taskmasterd_tmp.log", server));
+		return (early_error(reporter.buffer, reporter_pipe, tmp_log_file, server));
 	close(reporter_pipe[0]);
 	close(reporter_pipe[1]);
 	reporter_pipe[0] = 0;
 	reporter_pipe[1] = 0;
-	if (!transfer_logs(reporter_pipe[2], server, &reporter))
-		return (early_error(reporter.buffer, reporter_pipe, "/tmp/.taskmasterd_tmp.log", server));
+	if (!transfer_logs(reporter_pipe[2], tmp_log_file, server, &reporter))
+		return (early_error(reporter.buffer, reporter_pipe, tmp_log_file, server));
 	reporter_pipe[2] = 0;
 	if (!start_logging_thread(server, false))
 	{

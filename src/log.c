@@ -125,7 +125,7 @@ bool	write_process_log(struct s_logger *logger, char* log_string)
 	return (true);
 }
 
-bool	transfer_logs(int tmp_fd, struct s_server *server, struct s_report *reporter)
+bool	transfer_logs(int tmp_fd, char tmp_log_file[1024], struct s_server *server, struct s_report *reporter)
 {
 	bool	ret = true;
 	char*	line = NULL;
@@ -195,7 +195,7 @@ bool	transfer_logs(int tmp_fd, struct s_server *server, struct s_report *reporte
 		if (write(2, reporter->buffer, strlen(reporter->buffer))) {}
 	}
 	close(tmp_fd);
-	remove("/tmp/.taskmasterd_tmp.log");
+	remove(tmp_log_file);
 	return (true);
 }
 

@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/22 20:33:12 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/23 18:20:45 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -228,7 +228,7 @@ void				*administrator(void *arg);
 void				launch(struct s_priority *lst, int log_fd);
 void				wait_priorities(struct s_priority *lst);
 void				prelude(struct s_server *server, struct s_report *reporter);
-bool				transfer_logs(int tmp_fd, struct s_server *server, struct s_report *reporter);
+bool				transfer_logs(int tmp_fd, char tmp_log_file[1024], struct s_server *server, struct s_report *reporter);
 bool				write_log(struct s_logger *logger, char* log_string);
 bool				write_process_log(struct s_logger *logger, char* log_string);
 char				*get_stamp(char* stamp_str);
