@@ -358,7 +358,7 @@ void	*discord_logger_thread(void *void_discord_logger)
 					close(epoll_fd);
 					pthread_exit(NULL);
 				}
-				else if (discord_logger->logging && should_log(discord_logger->loglevel, &buffer[22]))
+				else if (discord_logger->logging)
 					log_discord(discord_logger, buffer);
 			}
 		}
@@ -495,7 +495,7 @@ void	*main_logger(void *void_server)
 			if (write(2, reporter.buffer, strlen(reporter.buffer)) == -1) {}
 		}
 	}
-	if (discord_logger.logging)
+	if (discord_logger.logging && should_log(discord_logger.loglevel, &reporter.buffer[22]))
 		report(&reporter, false);
 	while (true)
 	{
@@ -538,9 +538,78 @@ void	*main_logger(void *void_server)
 				{
 					if (discord_logger.running)
 					{
+						get_stamp(reporter.buffer);
+						strcpy(&reporter.buffer[22], "DEBUG: Asking Discord logging thread to terminate\n");
+						if (should_log(server->loglevel, &reporter.buffer[22]))
+						{
+							write_log(&server->logger, reporter.buffer);
+							if (!server->daemon)
+							{
+								if (write(2, reporter.buffer, strlen(reporter.buffer)) == -1) {}
+							}
+						}
 						strcpy(reporter.buffer, "ENDLOG\n");
 						if (report(&reporter, false))
-							pthread_join(discord_thread, NULL);
+						{
+							get_stamp(reporter.buffer);
+							strcpy(&reporter.buffer[22], "DEBUG: Joining Discord logging thread to terminate\n");
+							if (should_log(server->loglevel, &reporter.buffer[22]))
+							{
+								write_log(&server->logger, reporter.buffer);
+								if (!server->daemon)
+								{
+									if (write(2, reporter.buffer, strlen(reporter.buffer)) == -1) {}
+								}
+							}
+							if (pthread_join(discord_thread, NULL))
+							{
+								get_stamp(reporter.buffer);
+								strcpy(&reporter.buffer[22], "CRITICAL: Could not join Discord logging thread to terminate\n");
+								if (should_log(server->loglevel, &reporter.buffer[22]))
+								{
+									write_log(&server->logger, reporter.buffer);
+									if (!server->daemon)
+									{
+										if (write(2, reporter.buffer, strlen(reporter.buffer)) == -1) {}
+									}
+								}
+							}
+							else
+							{
+								get_stamp(reporter.buffer);
+								ret = read(server->log_pipe[0], &reporter.buffer[22], PIPE_BUF - 22);
+								while (ret > 0)
+								{
+									reporter.buffer[ret + 22] = '\0';
+									if (should_log(server->loglevel, &reporter.buffer[22]))
+									{
+										write_log(&server->logger, reporter.buffer);
+										if (!server->daemon)
+										{
+											if (write(2, reporter.buffer, strlen(reporter.buffer)) == -1) {}
+										}
+									}
+									get_stamp(reporter.buffer);
+									ret = read(server->log_pipe[0], &reporter.buffer[22], PIPE_BUF - 22);
+								}
+								get_stamp(reporter.buffer);
+								strcpy(&reporter.buffer[22], "DEBUG: Successfully joined Discord logging thread\n");
+								if (should_log(server->loglevel, &reporter.buffer[22]))
+								{
+									write_log(&server->logger, reporter.buffer);
+									if (!server->daemon)
+									{
+										if (write(2, reporter.buffer, strlen(reporter.buffer)) == -1) {}
+									}
+								}
+							}
+						}
+						else
+						{
+							get_stamp(reporter.buffer);
+							strcpy(&reporter.buffer[22], "CRITICAL: Could not join discord thread\n");
+							write_log(&server->logger, reporter.buffer);
+						}
 						curl_cleanup(discord_logger.slist, discord_logger.handle);
 						close(discord_logger.com[0]);
 						close(discord_logger.com[1]);
@@ -571,7 +640,7 @@ void	*main_logger(void *void_server)
 							if (write(2, reporter.buffer, (size_t)ret + 22) == -1) {}
 						}
 					}
-					if (discord_logger.logging)
+					if (discord_logger.logging && should_log(discord_logger.loglevel, &reporter.buffer[22]))
 						report(&reporter, false);
 				}
 			}

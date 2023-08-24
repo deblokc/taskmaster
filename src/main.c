@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/24 15:27:10 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/24 16:24:43 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -192,7 +192,7 @@ static bool	reload_configuration(struct s_server **server, struct s_report *repo
 	new_server = parse_config((*server)->bin_path, (*server)->config_file, &tmp_reporter);
 	if (!new_server || tmp_reporter.critical)
 	{
-		if (end_initial_log(reporter, &thread_ret, initial_logger) && *(int *)thread_ret != 1)
+		if (end_initial_log(&tmp_reporter, &thread_ret, initial_logger) && *(int *)thread_ret != 1)
 			report_critical(reporter_pipe[2], reporter->report_fd);
 		reload_early_error(reporter_pipe, tmp_log_file, new_server);
 		return (reload_error(*server, reporter));
@@ -204,7 +204,7 @@ static bool	reload_configuration(struct s_server **server, struct s_report *repo
 		create_socket(new_server, &tmp_reporter);
 		if (tmp_reporter.critical)
 		{
-			if (end_initial_log(reporter, &thread_ret, initial_logger) && *(int *)thread_ret != 1)
+			if (end_initial_log(&tmp_reporter, &thread_ret, initial_logger) && *(int *)thread_ret != 1)
 				report_critical(reporter_pipe[2], reporter->report_fd);
 			reload_early_error(reporter_pipe, tmp_log_file, new_server);
 			return (reload_error(*server, reporter));
@@ -215,14 +215,14 @@ static bool	reload_configuration(struct s_server **server, struct s_report *repo
 	prelude(new_server, &tmp_reporter);
 	if (tmp_reporter.critical)
 	{
-		if (end_initial_log(reporter, &thread_ret, initial_logger) && *(int *)thread_ret != 1)
+		if (end_initial_log(&tmp_reporter, &thread_ret, initial_logger) && *(int *)thread_ret != 1)
 			report_critical(reporter_pipe[2], reporter->report_fd);
 		reload_early_error(reporter_pipe, tmp_log_file, new_server);
 		return (reload_error(*server, reporter));
 	}
 	snprintf(reporter->buffer, PIPE_BUF - 22, "############ Prelude successful ############\n");
 	report(reporter, false);
-	if (!end_initial_log(reporter, &thread_ret, initial_logger))
+	if (!end_initial_log(&tmp_reporter, &thread_ret, initial_logger))
 	{
 		snprintf(reporter->buffer, PIPE_BUF - 22, "CRITICAL: could not exit initial logging thread, exiting process\n");
 		report(reporter, true);

@@ -24,13 +24,13 @@ programs:
     printeur_fou:
         command: cat /dev/random
         startsecs: 0
-        numprocs: 1
+        numprocs: 2
         priority: 7
         stdout_logfile_maxbytes: 1024
         stdout_logfile_backups: 3
 
 server:
-    daemon: false
+    daemon: true
     logfile: taskmaster.log
     loglevel: DEBUG
     log_discord: true
