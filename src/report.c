@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/11 19:41:17 by bdetune           #+#    #+#             */
-/*   Updated: 2023/08/08 13:49:20 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/24 14:15:08 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -47,7 +47,7 @@ bool	report(struct s_report* reporter, bool critical)
 	return (success);
 }
 
-void	report_critical(int fd)
+void	report_critical(int fd, int report_fd)
 {
 	char*	line = NULL;
 
@@ -59,7 +59,14 @@ void	report_critical(int fd)
 		{
 			if (!strncmp(&line[22], "CRITICAL", 8))
 			{
-				if (write(2, line, strlen(line))) {}
+				if (report_fd == 2)
+				{
+					if (write(report_fd, line, strlen(line))) {}
+				}
+				else
+				{
+					if (write(report_fd, &line[22], strlen(&line[22]))) {}
+				}
 			}
 		}
 		free(line);
