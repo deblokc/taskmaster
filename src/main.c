@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/21 18:20:55 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/23 19:50:54 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -123,7 +123,7 @@ int	main_routine(struct s_server *server, struct s_report *reporter)
 			{
 				strcpy(reporter->buffer, "INFO: taskmasterd received signal to shutdown\n");
 				report(reporter, false);
-				delete_clients(&clients);
+				delete_clients(&clients, reporter);
 				exit_admins(server->priorities);
 				wait_priorities(server->priorities);
 				cleanup(server, true, reporter);
