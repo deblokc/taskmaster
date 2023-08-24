@@ -1,3 +1,15 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   log.c                                              :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2023/08/24 14:00:05 by tnaton            #+#    #+#             */
+/*   Updated: 2023/08/24 15:12:25 by tnaton           ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include "taskmaster.h"
 #include "curl.h"
 #include <unistd.h>
@@ -376,13 +388,11 @@ void	*main_logger(void *void_server)
 	int						epoll_fd;
 	ssize_t					ret;
 	struct epoll_event		event;
-	unsigned long long		client[10];
-	int						num_client = 0;
+	struct s_logging_client	*list = NULL;
 
 	server = (struct s_server*)void_server;
 	bzero(&discord_logger, sizeof(discord_logger));
 	bzero(&reporter, sizeof(reporter));
-	bzero(client, sizeof(client));
 	discord_logger.logging = false;
 	discord_logger.running = false;
 	if (server->log_discord)
@@ -532,75 +542,180 @@ void	*main_logger(void *void_server)
 		}
 		if (nb_events)
 		{
-			get_stamp(reporter.buffer);
-			ret = read(server->log_pipe[0], &reporter.buffer[22], PIPE_BUF - 22);
-			if (ret > 0)
-			{
-				reporter.buffer[ret + 22] = '\0';
-				if (!strncmp("ENDLOG\n", &reporter.buffer[22], 7))
+			if (event.data.fd == server->log_pipe[0]) {
+				get_stamp(reporter.buffer);
+				ret = read(server->log_pipe[0], &reporter.buffer[22], PIPE_BUF - 22);
+				if (ret > 0)
 				{
-					if (discord_logger.running)
+					reporter.buffer[ret + 22] = '\0';
+					if (!strncmp("ENDLOG\n", &reporter.buffer[22], 7))
 					{
-						strcpy(reporter.buffer, "ENDLOG\n");
-						if (report(&reporter, false))
-							pthread_join(discord_thread, NULL);
-						curl_cleanup(discord_logger.slist, discord_logger.handle);
-						close(discord_logger.com[0]);
-						close(discord_logger.com[1]);
-					}
-					event.data.fd = server->log_pipe[0];
-					event.events = EPOLLIN;
-					epoll_ctl(epoll_fd, EPOLL_CTL_DEL, server->log_pipe[0], &event);
-					close(epoll_fd);
-					get_stamp(reporter.buffer);
-					strcpy(&reporter.buffer[22], "DEBUG: Terminating logging thread\n");
-					if (should_log(server->loglevel, &reporter.buffer[22]))
-					{
-						write_log(&server->logger, reporter.buffer);
-						if (!server->daemon)
-						{
-							if (write(2, reporter.buffer, strlen(reporter.buffer)) == -1) {}
+						struct s_logging_client	*head = list;
+						struct s_logging_client	*tmp = NULL;
+						while (head) {
+							if (head == list) {
+								list = NULL;
+							}
+							tmp = head->next;
+							if (head->log) {
+								free(head->log);
+							}
+							free(head);
+							head = tmp;
 						}
+						if (discord_logger.running)
+						{
+							strcpy(reporter.buffer, "ENDLOG\n");
+							if (report(&reporter, false))
+								pthread_join(discord_thread, NULL);
+							curl_cleanup(discord_logger.slist, discord_logger.handle);
+							close(discord_logger.com[0]);
+							close(discord_logger.com[1]);
+						}
+						event.data.fd = server->log_pipe[0];
+						event.events = EPOLLIN;
+						epoll_ctl(epoll_fd, EPOLL_CTL_DEL, server->log_pipe[0], &event);
+						close(epoll_fd);
+						get_stamp(reporter.buffer);
+						strcpy(&reporter.buffer[22], "DEBUG: Terminating logging thread\n");
+						if (should_log(server->loglevel, &reporter.buffer[22]))
+						{
+							write_log(&server->logger, reporter.buffer);
+							if (!server->daemon)
+							{
+								if (write(2, reporter.buffer, strlen(reporter.buffer)) == -1) {}
+							}
+						}
+						pthread_exit(NULL);
 					}
-					pthread_exit(NULL);
-				}
-				else if (!strncmp("maintail", &reporter.buffer[22], 8))
-				{
-					if (num_client < 10) {
-						client[num_client] = (unsigned long long)atoll(&reporter.buffer[22] + 9);
-						num_client++;
-					}
-				}
-				else if (!strncmp("exittail", &reporter.buffer[22], 8))
-				{
-					unsigned long long address = (unsigned long long)atoll(&reporter.buffer[22] + 9);
-					for (int i = 0; i < num_client; i++) {
-						if (client[i] == address) {
-							if (i == num_client) {
-								client[i] = 0;
+					else if (!strncmp("maintail", &reporter.buffer[22], 8))
+					{
+						struct s_logging_client *client = new_logging_client(&list, atoi(&reporter.buffer[22] + 9), &reporter);
+						if (client) {
+							client->fg = true;
+							snprintf(client->buf, PIPE_BUF, "tail");
+						}
+						client->poll.events = EPOLLIN | EPOLLOUT;
+						if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, client->poll.data.fd, &client->poll) == -1) {
+							get_stamp(reporter.buffer);
+							strcpy(&reporter.buffer[22], "ERROR: Error while adding client for epoll event, removing client\n");
+							write_log(&server->logger, reporter.buffer);
+							if (client == list) {
+								list = client->next;
+								bzero(client->buf, PIPE_BUF + 1);
+								free(client);
 							} else {
-								memmove(&client[i], &client[i + 1], (size_t)(num_client - i));
+								struct s_logging_client *head = list;
+								while (head->next != client) {
+									head = head->next;
+								}
+								head->next = client->next;
+								bzero(client->buf, PIPE_BUF + 1);
+								free(client);
 							}
 						}
 					}
-					num_client--;
-				}
-				else
-				{
-					for (int i = 0; i < num_client; i++) {
-						char *buf = (char *)client[i];
-						snprintf(buf + strlen(buf), (PIPE_BUF + 1 - strlen(buf)), "%s", reporter.buffer);
-					}
-					if (should_log(server->loglevel, &reporter.buffer[22]))
+					else
 					{
-						write_log(&server->logger, reporter.buffer);
-						if (!server->daemon)
+						if (should_log(server->loglevel, &reporter.buffer[22]))
 						{
-							if (write(2, reporter.buffer, (size_t)ret + 22) == -1) {}
+							struct s_logging_client *tmp = list;
+							char trunc[PIPE_BUF - 20 + 1];
+
+							memcpy(trunc, reporter.buffer, PIPE_BUF - 20 + 1);
+							while (tmp) {
+								if (tmp->fg) {
+									snprintf(tmp->buf + strlen(tmp->buf), PIPE_BUF + 1 - strlen(tmp->buf), "%s", trunc);
+									tmp->poll.events = EPOLLIN | EPOLLOUT;
+									epoll_ctl(epoll_fd, EPOLL_CTL_MOD, tmp->poll.data.fd, &(tmp->poll));
+								}
+								tmp = tmp->next;
+							}
+
+							write_log(&server->logger, reporter.buffer);
+							if (!server->daemon)
+							{
+								if (write(2, reporter.buffer, (size_t)ret + 22) == -1) {}
+							}
 						}
+						if (discord_logger.logging)
+							report(&reporter, false);
 					}
-					if (discord_logger.logging)
+				}
+			} else if (event.events & EPOLLOUT) {
+				struct s_logging_client	*client = list;
+				while (client && client->poll.data.fd != event.data.fd) {
+					client = client->next;
+				}
+				if (!client) {
+					continue ;
+				}
+				if (strlen(client->buf)) {
+					send(event.data.fd, client->buf, strlen(client->buf), 0);
+					bzero(client->buf, PIPE_BUF + 1);
+				}
+				if (client->log) {
+					send(event.data.fd, client->log, strlen(client->log), 0);
+					free(client->log);
+					client->log = NULL;
+				}
+				if (client->fg) {
+					client->poll.events = EPOLLIN;
+					if (epoll_ctl(epoll_fd, EPOLL_CTL_MOD, client->poll.data.fd, &client->poll)) {
+					}
+				} else {
+					snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: client %d is not -f, removing him\n", client->poll.data.fd);
+					report(&reporter, false);
+
+					epoll_ctl(epoll_fd, EPOLL_CTL_DEL, client->poll.data.fd, &client->poll);
+
+					client->poll.events = EPOLLIN;
+					if (epoll_ctl(efd, EPOLL_CTL_ADD, client->poll.data.fd, &client->poll)) {
+						snprintf(reporter.buffer, PIPE_BUF, "ERROR: Could not modify client event in epoll_ctl back to server for client %d : %s\n", client->poll.data.fd, strerror(errno));
 						report(&reporter, false);
+					}
+					if (client == list) {
+						list = client->next;
+						bzero(client->buf, PIPE_BUF + 1);
+						free(client);
+					} else {
+						struct s_logging_client *head = list;
+						while (head->next != client) {
+							head = head->next;
+						}
+						head->next = client->next;
+						bzero(client->buf, PIPE_BUF + 1);
+						free(client);
+					}
+				}
+			} else if (event.events & EPOLLIN) {
+				struct s_logging_client	*client = list;
+				while (client && client->poll.data.fd != event.data.fd) {
+					client = client->next;
+				}
+				if (!client) {
+					continue ;
+				}
+				if (read(event.data.fd, client->buf, PIPE_BUF)) {}
+				epoll_ctl(epoll_fd, EPOLL_CTL_DEL, client->poll.data.fd, &client->poll);
+
+				client->poll.events = EPOLLIN;
+				if (epoll_ctl(efd, EPOLL_CTL_ADD, client->poll.data.fd, &client->poll) < 0) {
+					snprintf(reporter.buffer, PIPE_BUF, "DEBUG: Could not add client %d back to main thread's epoll\n", client->poll.data.fd);
+					report(&reporter, false);
+				}
+				if (client == list) {
+					list = client->next;
+					bzero(client->buf, PIPE_BUF + 1);
+					free(client);
+				} else {
+					struct s_logging_client *head = list;
+					while (head->next != client) {
+						head = head->next;
+					}
+					head->next = client->next;
+					bzero(client->buf, PIPE_BUF + 1);
+					free(client);
 				}
 			}
 		}

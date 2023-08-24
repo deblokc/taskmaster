@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/23 19:51:31 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/24 14:30:50 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 #include "taskmaster.h"
@@ -177,6 +177,7 @@ struct s_client *new_client(struct s_client **list, int client_fd, struct s_repo
 
 void	delete_clients(struct s_client **clients_lst, struct s_report *reporter)
 {
+	(void)reporter;
 	struct s_client	*client;
 	struct s_client *next;
 
@@ -188,10 +189,6 @@ void	delete_clients(struct s_client **clients_lst, struct s_report *reporter)
 			close(client->poll.data.fd);
 		if (client->log)
 			free(client->log);
-		if (client->tail) {
-			snprintf(reporter->buffer, PIPE_BUF - 22, "exittail %llu\n", (unsigned long long)client->buf);
-			report(reporter, false);
-		}
 		free(client);
 		client = (next);
 	}
@@ -325,18 +322,6 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 					}
 					continue ;
 				}
-				if (client->tail) {
-					client->tail = false;
-					snprintf(reporter->buffer, PIPE_BUF, "exittail %llu\n", (unsigned long long)client->buf);
-					report(reporter, false);
-					client->poll.events = EPOLLIN;
-					if (epoll_ctl(efd, EPOLL_CTL_MOD, client->poll.data.fd, &client->poll) == -1)
-					{
-						snprintf(reporter->buffer, PIPE_BUF, "ERROR: Could not modify client events in epoll list for client with socket fd %d\n", client->poll.data.fd);
-						report(reporter, false);
-					}
-					continue ;
-				}
 				snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Data received from client with socket fd %d\n", client->poll.data.fd);
 				report(reporter, false);
 				client->poll.events = EPOLLOUT;
@@ -369,16 +354,13 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 							if (!strcmp(cmd->arg[0], "-f")) {
 								snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: starting infinitemaintailling\n");
 								report(reporter, false);
-								snprintf(reporter->buffer, PIPE_BUF - 22, "maintail %llu\n", (unsigned long long)client->buf);
+								snprintf(reporter->buffer, PIPE_BUF - 22, "maintail %d\n", client->poll.data.fd);
 								report(reporter, false);
-								client->tail = true;
-								client->poll.events = EPOLLIN | EPOLLOUT;
-								if (epoll_ctl(efd, EPOLL_CTL_MOD, client->poll.data.fd, &client->poll) == -1)
+								if (epoll_ctl(efd, EPOLL_CTL_DEL, client->poll.data.fd, &client->poll) == -1)
 								{
-									snprintf(reporter->buffer, PIPE_BUF, "ERROR: Could not modify client events in epoll list for client with socket fd %d\n", client->poll.data.fd);
+									snprintf(reporter->buffer, PIPE_BUF, "ERROR: Could not remove client events in epoll list for client with socket fd %d\n", client->poll.data.fd);
 									report(reporter, false);
 								}
-								snprintf(client->buf, PIPE_BUF + 1, "tail");
 								// register client
 							} else {
 								size = (size_t)atoi(cmd->arg[0] + 1);
@@ -720,18 +702,16 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 					send(events[i].data.fd, client->log, strlen(client->log), 0);
 					free(client->log);
 					client->log = NULL;
-				} else if (!client->tail) {
+				} else {
 					snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Sending to client with socket fd %d NON ZERO RESPONSE\n", client->poll.data.fd);
 					report(reporter, false);
 					send(events[i].data.fd, ".\n", 2, 0);
 				}
-				if (!client->tail) {
-					client->poll.events = EPOLLIN;
-					if (epoll_ctl(efd, EPOLL_CTL_MOD, client->poll.data.fd, &client->poll))
-					{
-						snprintf(reporter->buffer, PIPE_BUF, "ERROR: Could not modify client events in epoll list for client with socket fd %d\n", client->poll.data.fd);
-						report(reporter, false);
-					}
+				client->poll.events = EPOLLIN;
+				if (epoll_ctl(efd, EPOLL_CTL_MOD, client->poll.data.fd, &client->poll))
+				{
+					snprintf(reporter->buffer, PIPE_BUF, "ERROR: Could not modify client events in epoll list for client with socket fd %d\n", client->poll.data.fd);
+					report(reporter, false);
 				}
 			}
 			else
