@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/08/24 14:00:05 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/24 15:12:25 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/24 16:50:33 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -614,6 +614,61 @@ void	*main_logger(void *void_server)
 								free(client);
 							}
 						}
+					}
+					else if (!strncmp("getlog", &reporter.buffer[22], 6)) {
+						char *arg[2];
+						char *ret = strtok(&reporter.buffer[22] + 6, " ");
+						arg[0] = ret; // size
+						ret = strtok(NULL, " ");
+						arg[1] = ret; // client fd
+						int fd = atoi(arg[1]);
+
+						struct s_logging_client *client = new_logging_client(&list, fd, &reporter);
+						if (!client) {
+							get_stamp(reporter.buffer);
+							strcpy(&reporter.buffer[22], "ERROR: Error while adding client for epoll event, removing client\n");
+							write_log(&server->logger, reporter.buffer);
+							continue ;
+						}
+						size_t size = (size_t)atoi(arg[0]); // how many bytes to send
+
+						client->fg = false;
+						client->log = (char *)calloc(sizeof(char), size + 1);
+						struct stat tmp;
+						size_t out_logsize = 0;
+						if (!fstat(server->logger.logfd, &tmp)) {
+							out_logsize = (size_t)tmp.st_size;
+							if (out_logsize > size) {
+								out_logsize = size;
+							}
+							lseek(server->logger.logfd, -(int)out_logsize, SEEK_END);
+							if (read(server->logger.logfd, client->log, out_logsize)) {}
+						}
+	 // then read from backups files 
+						int i = 1;
+						while (strlen(client->log) < size && i <= server->logger.logfile_backups) {
+							char path[PATH_SIZE];
+							snprintf(path, PATH_SIZE, "%s%d", server->logger.logfile, i);
+							if (access(path, F_OK | R_OK)) {
+								// error handing and break
+								break ;
+							}
+							int tmpfd = open(path, O_RDONLY);
+							if (!fstat(tmpfd, &tmp)) {
+								out_logsize = (size_t)tmp.st_size;
+								if (out_logsize > (size - strlen(client->log))) {
+									out_logsize = (size - strlen(client->log));
+								}
+								lseek(tmpfd, -(int)out_logsize, SEEK_END);
+								if (read(tmpfd, client->log + strlen(client->log), out_logsize)) {}
+							}
+							i++;
+						}
+						if (strlen(client->log) == 0) {
+							snprintf(client->log, size + 1, "Empty stdout logging\n");
+						}
+						client->poll.events = EPOLLOUT;
+						epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd, &client->poll);
 					}
 					else
 					{

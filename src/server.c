@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/24 14:30:50 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/24 16:49:42 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 #include "taskmaster.h"
@@ -374,48 +374,16 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 							size = 1600;
 						}
 						if (size > 0 && size < INT_MAX) {
-							struct stat tmp;
-							size_t out_logsize = 0;
-							client->log = (char *)calloc(sizeof(char), size + 1);
-							if (!client->log) {
-								snprintf(reporter->buffer, PIPE_BUF - 22, "ERROR: client could not allocate buffer, will not send any log\n");
+							snprintf(reporter->buffer, PIPE_BUF, "DEBUG: sending client %d request for maintail of %d size\n", client->poll.data.fd, (int)size);
+							report(reporter, false);
+							snprintf(reporter->buffer, PIPE_BUF - 22, "getlog %d %d\n", (int)size, client->poll.data.fd);
+							report(reporter, false);
+							if (epoll_ctl(efd, EPOLL_CTL_DEL, client->poll.data.fd, &client->poll) == -1)
+							{
+								snprintf(reporter->buffer, PIPE_BUF, "ERROR: Could not remove client events in epoll list for client with socket fd %d\n", client->poll.data.fd);
 								report(reporter, false);
-								return ;
 							}
-							if (!fstat(server->logger.logfd, &tmp)) {
-								out_logsize = (size_t)tmp.st_size;
-								if (out_logsize > size) {
-									out_logsize = size;
-								}
-								lseek(server->logger.logfd, -(int)out_logsize, SEEK_END);
-								if (read(server->logger.logfd, client->log, out_logsize)) {}
-							}
-		 // then read from backups files 
-							int i = 1;
-							while (strlen(client->log) < size && i <= server->logger.logfile_backups) {
-								char path[PATH_SIZE];
-								snprintf(path, PATH_SIZE, "%s%d", server->logger.logfile, i);
-								if (access(path, F_OK | R_OK)) {
-									// error handing and break
-									break ;
-								}
-								int tmpfd = open(path, O_RDONLY);
-								if (!fstat(tmpfd, &tmp)) {
-									out_logsize = (size_t)tmp.st_size;
-									if (out_logsize > (size - strlen(client->log))) {
-										out_logsize = (size - strlen(client->log));
-									}
-									lseek(tmpfd, -(int)out_logsize, SEEK_END);
-									if (read(tmpfd, client->log + strlen(client->log), out_logsize)) {}
-								}
-								i++;
-							}
-							if (strlen(client->log) == 0) {
-								snprintf(client->log, size + 1, "\n");
-							}
-	
 						}
-
 					} else if (!strcmp(cmd->cmd, "signal")) {  //administrator send signal
 						snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: controller has sent signal command\n");
 						report(reporter, false);
