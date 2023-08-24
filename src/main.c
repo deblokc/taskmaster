@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/24 16:24:43 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/24 19:11:49 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -179,7 +179,6 @@ static bool	reload_configuration(struct s_server **server, struct s_report *repo
 	if (!block_signals_thread(reporter) || !tmp_logging(reporter_pipe, tmp_log_file, reporter, false))
 		return (reload_error(*server, reporter));
 	tmp_reporter.report_fd = reporter_pipe[1];
-	printf("############ RELOADING ############\n");
 	if (pthread_create(&initial_logger, NULL, initial_log, reporter_pipe))
 	{
 		snprintf(reporter->buffer, PIPE_BUF - 22, "CRITICAL: could not create initial log thread, exiting process\n");
@@ -187,8 +186,6 @@ static bool	reload_configuration(struct s_server **server, struct s_report *repo
 		reload_early_error(reporter_pipe, tmp_log_file, NULL);
 		return (reload_error(*server, reporter));
 	}
-	snprintf(reporter->buffer, PIPE_BUF - 22, "############ Initial thread created ############\n");
-	report(reporter, false);
 	new_server = parse_config((*server)->bin_path, (*server)->config_file, &tmp_reporter);
 	if (!new_server || tmp_reporter.critical)
 	{
@@ -197,8 +194,6 @@ static bool	reload_configuration(struct s_server **server, struct s_report *repo
 		reload_early_error(reporter_pipe, tmp_log_file, new_server);
 		return (reload_error(*server, reporter));
 	}
-	snprintf(reporter->buffer, PIPE_BUF - 22, "############ Valid new server ############\n");
-	report(reporter, false);
 	if (new_server->socket.enable)
 	{
 		create_socket(new_server, &tmp_reporter);
@@ -209,8 +204,6 @@ static bool	reload_configuration(struct s_server **server, struct s_report *repo
 			reload_early_error(reporter_pipe, tmp_log_file, new_server);
 			return (reload_error(*server, reporter));
 		}
-		snprintf(reporter->buffer, PIPE_BUF - 22, "############ Socket created ############\n");
-		report(reporter, false);
 	}
 	prelude(new_server, &tmp_reporter);
 	if (tmp_reporter.critical)
@@ -220,8 +213,6 @@ static bool	reload_configuration(struct s_server **server, struct s_report *repo
 		reload_early_error(reporter_pipe, tmp_log_file, new_server);
 		return (reload_error(*server, reporter));
 	}
-	snprintf(reporter->buffer, PIPE_BUF - 22, "############ Prelude successful ############\n");
-	report(reporter, false);
 	if (!end_initial_log(&tmp_reporter, &thread_ret, initial_logger))
 	{
 		snprintf(reporter->buffer, PIPE_BUF - 22, "CRITICAL: could not exit initial logging thread, exiting process\n");
@@ -233,8 +224,6 @@ static bool	reload_configuration(struct s_server **server, struct s_report *repo
 	close(reporter_pipe[1]);
 	reporter_pipe[0] = 0;
 	reporter_pipe[1] = 0;
-	snprintf(reporter->buffer, PIPE_BUF - 22, "############ End initial log successful ############\n");
-	report(reporter, false);
 	if ((*server)->daemon && !new_server->daemon)
 	{
 		snprintf(reporter->buffer, PIPE_BUF - 22, "CRITICAL: Cannot undaemonize process\n");
@@ -351,7 +340,7 @@ int	main_routine(struct s_server *server, struct s_report *reporter)
 			{
 				strcpy(reporter->buffer, "INFO: taskmasterd received signal to reload configuration\n");
 				report(reporter, false);
-				delete_clients(&clients);
+				delete_clients(&clients, reporter);
 				exit_admins(server->priorities);
 				wait_priorities(server->priorities);
 				if (!reload_configuration(&server, reporter))
@@ -394,7 +383,7 @@ int	main_routine(struct s_server *server, struct s_report *reporter)
 			{
 				strcpy(reporter->buffer, "INFO: taskmasterd received signal to shutdown\n");
 				report(reporter, false);
-				delete_clients(&clients);
+				delete_clients(&clients, reporter);
 				exit_admins(server->priorities);
 				wait_priorities(server->priorities);
 				cleanup(server, true, reporter);

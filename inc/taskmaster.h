@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/24 15:00:14 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/24 18:45:35 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,7 +26,6 @@
 # include "yaml.h"
 # include "curl.h"
 # include "get_next_line.h"
-
 
 /*
  * ENUM
@@ -89,6 +88,8 @@ struct s_discord_logger {
 struct s_client {
 	struct epoll_event	poll;
 	char				buf[PIPE_BUF + 1];
+	char				*log;
+	bool				tail;
 	struct s_client		*next;
 };
 
@@ -253,10 +254,11 @@ void				exit_admins(struct s_priority *priorities);
 void				create_socket(struct s_server *server, struct s_report *reporter);
 void				handle(int sig);
 void				check_server(struct s_server *server, struct epoll_event *events, int nb_events, struct s_client **clients_lst, struct s_report *reporter);
-void				delete_clients(struct s_client **clients_lst);
+void				delete_clients(struct s_client **clients_lst, struct s_report *reporter);
 void				update_configuration(struct s_server *server, struct s_program *program_tree, struct s_report *reporter);
 struct s_program*	get_current_programs(struct s_server *server, struct s_report *reporter);
 void				update_umask(struct s_server *server);
+struct s_logging_client	*new_logging_client(struct s_logging_client **list, int client_fd, struct s_report *reporter);
 
 extern volatile sig_atomic_t g_sig;
 extern volatile _Atomic int efd;

@@ -31,10 +31,12 @@ programs:
 
 server:
     daemon: true
-    logfile: taskmaster.log
+    logfile: /tmp/taskmaster.log
     loglevel: DEBUG
     log_discord: true
     loglevel_discord: INFO
+    logfile_maxbytes: 1024
+    logfile_backups: 3
 
 socket:
     enable: true
