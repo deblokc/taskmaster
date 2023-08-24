@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/22 20:03:16 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/24 18:38:27 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -348,7 +348,7 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 						snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: controller has sent signal command\n");
 						report(reporter, false);
 						if (cmd->arg) {
-							char msg[4] = "sig ";
+							char msg[5] = "sig ";
 							if (!strcmp(cmd->arg[0], "SIGHUP")) {
 								snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: signal to be send is SIGHUP\n");
 								report(reporter, false);
