@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/24 14:02:03 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/24 18:45:35 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -223,13 +223,13 @@ bool				add_octal(char const *program_name, char const *field_name, int *target,
 bool				add_bool(char const *program_name, char const *field_name, bool *target, yaml_node_t *value, struct s_report *reporter);
 struct s_env*		free_s_env(struct s_env *start);
 bool				parse_env(char const *program_name, yaml_node_t *map, yaml_document_t *document, struct s_env **dest, struct s_report *reporter);
-void				report_critical(int fd);
+void				report_critical(int fd, int report_fd);
 struct s_priority*	create_priorities(struct s_server* server, struct s_report *reporter);
 void				*administrator(void *arg);
 void				launch(struct s_priority *lst, int log_fd);
 void				wait_priorities(struct s_priority *lst);
 void				prelude(struct s_server *server, struct s_report *reporter);
-bool				transfer_logs(int tmp_fd, struct s_server *server, struct s_report *reporter);
+bool				transfer_logs(int tmp_fd, char tmp_log_file[1024], struct s_server *server, struct s_report *reporter);
 bool				write_log(struct s_logger *logger, char* log_string);
 bool				write_process_log(struct s_logger *logger, char* log_string);
 char				*get_stamp(char* stamp_str);
