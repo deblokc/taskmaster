@@ -10,6 +10,8 @@ programs:
         autorestart: onerror
         stopsignal: TERM
         priority: 5
+        stdout_logfile_maxbytes: 10
+        stdout_logfile_backups: 30
     solo:
         command: /bin/bash -c "sleep 10"
         numprocs: 1
@@ -30,7 +32,7 @@ programs:
         stdout_logfile_backups: 3
 
 server:
-    daemon: true
+    daemon: false
     logfile: /tmp/taskmaster.log
     loglevel: DEBUG
     log_discord: true

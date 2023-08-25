@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/25 12:55:20 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/25 13:18:39 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -437,18 +437,22 @@ int handle_command(struct s_process *process, char *buf, int epollfd) {
 				report(&reporter, false);
 				struct stat tmp;
 				size_t out_logsize = 0;
+				size_t current_size = 0;
 				if (process->stdoutlog) { // first read from current logfile
 					if (!fstat(process->stdout_logger.logfd, &tmp)) {
 						out_logsize = (size_t)tmp.st_size;
 						if (out_logsize > size) {
 							out_logsize = size;
 						}
+						snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s main stdout log is %ld long for a request of %ld size, shift will be %ld\n", process->name, out_logsize, size - current_size, (size - current_size - out_logsize));
+						report(&reporter, false);
 						lseek(process->stdout_logger.logfd, -(int)out_logsize, SEEK_END);
-						if (read(process->stdout_logger.logfd, client->log, out_logsize)) {}
+						if (read(process->stdout_logger.logfd, client->log + (size - out_logsize), out_logsize)) {}
+						current_size += out_logsize;
 					}
  // then read from backups files 
 					int i = 1;
-					while (strlen(client->log) < size && i <= process->stdout_logger.logfile_backups) {
+					while (current_size < size && i <= process->stdout_logger.logfile_backups) {
 						char path[PATH_SIZE];
 						snprintf(path, PATH_SIZE, "%s%d", process->stdout_logger.logfile, i);
 						if (access(path, F_OK | R_OK)) {
@@ -458,11 +462,14 @@ int handle_command(struct s_process *process, char *buf, int epollfd) {
 						int tmpfd = open(path, O_RDONLY);
 						if (!fstat(tmpfd, &tmp)) {
 							out_logsize = (size_t)tmp.st_size;
-							if (out_logsize > (size - strlen(client->log))) {
-								out_logsize = (size - strlen(client->log));
+							if (out_logsize > (size - current_size)) {
+								out_logsize = (size - current_size);
 							}
+							snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s backup %s stdout log is %ld long for a request of %ld size, shift will be %ld\n", process->name, path, out_logsize, size - current_size, (size - current_size - out_logsize));
+							report(&reporter, false);
 							lseek(tmpfd, -(int)out_logsize, SEEK_END);
-							if (read(tmpfd, client->log + strlen(client->log), out_logsize)) {}
+							if (read(tmpfd, client->log + (size - current_size - out_logsize), out_logsize)) {}
+							current_size += out_logsize;
 						}
 						i++;
 						close(tmpfd);
@@ -1178,3 +1185,4 @@ void *administrator(void *arg) {
 	}
 	kick_clients(&process->list);
 	return NULL;
+}
