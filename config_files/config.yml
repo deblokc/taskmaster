@@ -37,7 +37,7 @@ server:
     loglevel: DEBUG
     log_discord: true
     loglevel_discord: INFO
-    logfile_maxbytes: 1024
+    logfile_maxbytes: 4096
     logfile_backups: 3
 
 socket:

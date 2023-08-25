@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 17:17:31 by bdetune           #+#    #+#             */
-/*   Updated: 2023/08/07 19:36:23 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/25 12:50:23 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -187,6 +187,20 @@ bool	parse_env(char const *program_name, yaml_node_t *map, yaml_document_t *docu
 			{
 				if (value->type == YAML_SCALAR_NODE)
 				{
+					if (strchr((char*)key->data.scalar.value, '='))
+					{
+						snprintf(reporter->buffer, PIPE_BUF, "%s: Encountered illegal character '=' in environment for key %s in %s'%s'\n", program_name ? "ERROR" : "CRITICAL", key->data.scalar.value, program_name ? "program" : "", program_name ? program_name : "server");
+						report(reporter, program_name ? false : true );
+						ret = false;
+						break ;
+					}
+					if (key->data.scalar.value[0] == '\0')
+					{
+						snprintf(reporter->buffer, PIPE_BUF, "%s: Found empty environment key in %s'%s'\n", program_name ? "ERROR" : "CRITICAL", program_name ? "program" : "", program_name ? program_name : "server");
+						report(reporter, program_name ? false : true );
+						ret = false;
+						break ;
+					}
 					current = calloc(1, sizeof(*current));
 					if (!current)
 					{
@@ -196,7 +210,16 @@ bool	parse_env(char const *program_name, yaml_node_t *map, yaml_document_t *docu
 						*dest = free_s_env(*dest);
 						break ;
 					}
-					current->value = calloc(strlen((char *)key->data.scalar.value) + strlen((char *)value->data.scalar.value) + 2, sizeof(*(current->value)));
+					current->key = calloc(strlen((char *)key->data.scalar.value) + 1, sizeof(char));
+					if (!current->key)
+					{
+						snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not allocate environment node in %s'%s'\n", program_name?"program ":"", program_name?program_name:"server");
+						report(reporter, true);
+						ret = false;
+						*dest = free_s_env(*dest);
+						break ;
+					}
+					current->value = calloc(strlen((char *)value->data.scalar.value) + 1, sizeof(char));
 					if (!current->value)
 					{
 						snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not allocate environment node in %s'%s'\n", program_name?"program ":"", program_name?program_name:"server");
@@ -205,9 +228,8 @@ bool	parse_env(char const *program_name, yaml_node_t *map, yaml_document_t *docu
 						*dest = free_s_env(*dest);
 						break ;
 					}
-					strcpy(current->value, (char*)key->data.scalar.value);
-					strcat(current->value, "=");
-					strcat(current->value, (char*)value->data.scalar.value);
+					strcpy(current->key, (char*)key->data.scalar.value);
+					strcpy(current->value, (char*)value->data.scalar.value);
 					if (!position)
 						*dest = current;
 					else

@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/25 18:58:58 by bdetune           #+#    #+#             */
-/*   Updated: 2023/08/24 19:42:51 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/25 12:50:58 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -94,7 +94,7 @@ void	prelude(struct s_server *server, struct s_report *reporter)
 	current = server->env;
 	while (current)
 	{
-		if (putenv(current->value))
+		if (setenv(current->key, current->value, 1))
 		{
 			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not update env in 'server'\n");
 			report(reporter, true);

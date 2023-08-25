@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/24 18:45:35 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/25 12:18:56 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -62,6 +62,7 @@ struct s_report {
 };
 
 struct s_env {
+	char*			key;
 	char*			value;
 	struct s_env*	next;
 };

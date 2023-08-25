@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 16:48:25 by bdetune           #+#    #+#             */
-/*   Updated: 2023/08/24 19:39:31 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/25 12:38:15 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,6 +20,7 @@ struct s_env *free_s_env(struct s_env *start)
 	while (start)
 	{
 		next = start->next;
+		free(start->key);
 		free(start->value);
 		free(start);
 		start = next;

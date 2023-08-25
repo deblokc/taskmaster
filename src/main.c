@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/24 19:11:49 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/25 13:08:09 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -161,6 +161,18 @@ static bool reload_error(struct s_server *server, struct s_report *reporter)
 	return (false);
 }
 
+static void	flush_old_env(struct s_server *server)
+{
+	struct s_env	*start;
+
+	start = server->env;
+	while (start)
+	{
+		unsetenv(start->key);
+		start = start->next;
+	}
+}
+
 static bool	reload_configuration(struct s_server **server, struct s_report *reporter)
 {
 	char			tmp_log_file[1024];
@@ -205,6 +217,7 @@ static bool	reload_configuration(struct s_server **server, struct s_report *repo
 			return (reload_error(*server, reporter));
 		}
 	}
+	flush_old_env(*server);
 	prelude(new_server, &tmp_reporter);
 	if (tmp_reporter.critical)
 	{
@@ -227,7 +240,7 @@ static bool	reload_configuration(struct s_server **server, struct s_report *repo
 	if ((*server)->daemon && !new_server->daemon)
 	{
 		snprintf(reporter->buffer, PIPE_BUF - 22, "CRITICAL: Cannot undaemonize process\n");
-		report(reporter, true);
+		report(reporter, false);
 		new_server->daemon = true;
 	}
 	if (!transfer_logs(reporter_pipe[2], tmp_log_file, new_server, &tmp_reporter))
