@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 15:17:03 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/22 20:14:29 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/25 15:00:05 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -121,6 +121,7 @@ void *thread_log(void *arg) {
 				bzero(buf, PIPE_BUF + 1);
 				if (recv(event.data.fd, buf, PIPE_BUF, 0) > 0) {
 					printf("%s", buf);
+					fflush(stdout);
 				}
 			}
 		}
