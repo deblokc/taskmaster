@@ -30,7 +30,7 @@ void	create_pid_file(struct s_server *server, struct s_report *reporter)
 		fd = open(server->pidfile, O_CREAT | O_EXCL | O_TRUNC | O_RDWR, 0666 & ~server->umask);
 	if (fd  < 0)
 	{
-		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not create pid file, exiting process\n");
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not create pid file, exiting process\n");
 		report(reporter, true);
 		return ;
 	}
@@ -41,7 +41,7 @@ void	create_pid_file(struct s_server *server, struct s_report *reporter)
 			unlink(server->pidfile);
 		else
 			unlink("taskmasterd.pid");
-		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not write pid to file, exiting process\n");
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not write pid to file, exiting process\n");
 		report(reporter, true);
 	}
 	close(fd);
@@ -72,19 +72,19 @@ void	prelude(struct s_server *server, struct s_report *reporter)
 		{
 			if (errno == 0 || errno == ENOENT || errno == ESRCH || errno == EBADF || errno == EPERM)
 			{
-				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Unkown user %s\n", server->user);
+				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Unkown user %s\n", server->user);
 				report(reporter, true);
 			}
 			else
 			{
-				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not get information on user %s\n", server->user);
+				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not get information on user %s\n", server->user);
 				report(reporter, true);
 			}
 			return ;
 		}
 		if (setuid(ret->pw_uid) == -1)
 		{
-			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not change user to %s\n", server->user);
+			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not change user to %s\n", server->user);
 			report(reporter, true);
 			free(ret);
 			return ;
@@ -96,7 +96,7 @@ void	prelude(struct s_server *server, struct s_report *reporter)
 	{
 		if (setenv(current->key, current->value, 1))
 		{
-			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not update env in 'server'\n");
+			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not update env in 'server'\n");
 			report(reporter, true);
 			return ;
 		}
@@ -104,7 +104,7 @@ void	prelude(struct s_server *server, struct s_report *reporter)
 	}
 	if (server->workingdir && chdir(server->workingdir) == -1)
 	{
-		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not change working directory of 'server' to %s\n", server->workingdir);
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not change working directory of 'server' to %s\n", server->workingdir);
 		report(reporter, true);
 		return ;
 	}
@@ -117,14 +117,14 @@ void	prelude(struct s_server *server, struct s_report *reporter)
 		server->logger.logfile = strdup("taskmasterd.log");
 		if (!server->logger.logfile)
 		{
-			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not allocate space\n");
+			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not allocate space\n");
 			report(reporter, true);
 			return ;
 		}
 	}
 	if ((server->logger.logfd = open(server->logger.logfile, O_CREAT | O_APPEND | O_RDWR | O_NOCTTY, 0666 & ~server->umask)) == -1)
 	{
-		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not open logfile\n");
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not open logfile\n");
 		report(reporter, true);
 		return ;
 	}
@@ -136,7 +136,7 @@ void	prelude(struct s_server *server, struct s_report *reporter)
 			discord_channel = getenv("DISCORD_CHANNEL");
 			if (!discord_channel)
 			{
-				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Discord logging is enabled, however no channel was specified, feature will be disabled\n");
+				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Discord logging is enabled, however no channel was specified, feature will be disabled\n");
 				report(reporter, false);
 				server->log_discord = false;
 				return ;
@@ -144,7 +144,7 @@ void	prelude(struct s_server *server, struct s_report *reporter)
 			server->discord_channel = strdup(discord_channel);
 			if (!server->discord_channel)
 			{
-				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not allocate string for variable discord_channel\n");
+				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not allocate string for variable discord_channel\n");
 				report(reporter, true);
 				server->log_discord = false;
 				return ;
@@ -155,7 +155,7 @@ void	prelude(struct s_server *server, struct s_report *reporter)
 			discord_token = getenv("DISCORD_TOKEN");
 			if (!discord_token)
 			{
-				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Discord logging is enabled, however no token was specified, feature will be disabled\n");
+				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Discord logging is enabled, however no token was specified, feature will be disabled\n");
 				report(reporter, false);
 				server->log_discord = false;
 				return ;
@@ -163,7 +163,7 @@ void	prelude(struct s_server *server, struct s_report *reporter)
 			server->discord_token = strdup(discord_token);
 			if (!server->discord_token)
 			{
-				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not allocate string for variable discord_token\n");
+				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not allocate string for variable discord_token\n");
 				report(reporter, true);
 				server->log_discord = false;
 				return ;

@@ -26,7 +26,7 @@ bool	block_signals(struct s_report *reporter)
 
 	if (sigemptyset(&set))
 	{
-		strcpy(reporter->buffer, "CRITICAL: Could not empty signal set\n");
+		strcpy(reporter->buffer, "CRITICAL : Could not empty signal set\n");
 		report(reporter, true);
 		return (false);
 	}
@@ -35,13 +35,13 @@ bool	block_signals(struct s_report *reporter)
 		|| sigaddset(&set, SIGUSR1) || sigaddset(&set, SIGUSR2)
 		|| sigaddset(&set, SIGTSTP))
 	{
-		strcpy(reporter->buffer, "CRITICAL: Could not add signal to mask\n");
+		strcpy(reporter->buffer, "CRITICAL : Could not add signal to mask\n");
 		report(reporter, true);
 		return (false);
 	}
 	if (sigprocmask(SIG_BLOCK, &set, NULL))
 	{
-		strcpy(reporter->buffer, "CRITICAL: Could not block signals\n");
+		strcpy(reporter->buffer, "CRITICAL : Could not block signals\n");
 		report(reporter, true);
 		return (false);
 	}
@@ -54,7 +54,7 @@ bool	block_signals_thread(struct s_report *reporter)
 
 	if (sigemptyset(&set))
 	{
-		strcpy(reporter->buffer, "CRITICAL: Could not empty signal set\n");
+		strcpy(reporter->buffer, "CRITICAL : Could not empty signal set\n");
 		report(reporter, true);
 		return (false);
 	}
@@ -63,13 +63,13 @@ bool	block_signals_thread(struct s_report *reporter)
 		|| sigaddset(&set, SIGUSR1) || sigaddset(&set, SIGUSR2)
 		|| sigaddset(&set, SIGTSTP))
 	{
-		strcpy(reporter->buffer, "CRITICAL: Could not add signal to mask\n");
+		strcpy(reporter->buffer, "CRITICAL : Could not add signal to mask\n");
 		report(reporter, true);
 		return (false);
 	}
 	if (pthread_sigmask(SIG_BLOCK, &set, NULL))
 	{
-		strcpy(reporter->buffer, "CRITICAL: Could not block signals\n");
+		strcpy(reporter->buffer, "CRITICAL : Could not block signals\n");
 		report(reporter, true);
 		return (false);
 	}
@@ -82,7 +82,7 @@ bool	unblock_signals_thread(struct s_report *reporter)
 
 	if (sigemptyset(&set))
 	{
-		strcpy(reporter->buffer, "CRITICAL: Could not empty signal set\n");
+		strcpy(reporter->buffer, "CRITICAL : Could not empty signal set\n");
 		report(reporter, true);
 		return (false);
 	}
@@ -91,13 +91,13 @@ bool	unblock_signals_thread(struct s_report *reporter)
 		|| sigaddset(&set, SIGUSR1) || sigaddset(&set, SIGUSR2)
 		|| sigaddset(&set, SIGTSTP))
 	{
-		strcpy(reporter->buffer, "CRITICAL: Could not add signal to mask\n");
+		strcpy(reporter->buffer, "CRITICAL : Could not add signal to mask\n");
 		report(reporter, true);
 		return (false);
 	}
 	if (pthread_sigmask(SIG_UNBLOCK, &set, NULL))
 	{
-		strcpy(reporter->buffer, "CRITICAL: Could not block signals\n");
+		strcpy(reporter->buffer, "CRITICAL : Could not block signals\n");
 		report(reporter, true);
 		return (false);
 	}
@@ -112,7 +112,7 @@ bool	install_signal_handler(struct s_report *reporter)
 	bzero(&act, sizeof(act));
 	if (sigemptyset(&set))
 	{
-		strcpy(reporter->buffer, "CRITICAL: Could not empty signal set\n");
+		strcpy(reporter->buffer, "CRITICAL : Could not empty signal set\n");
 		report(reporter, true);
 		return (false);
 	}
@@ -121,7 +121,7 @@ bool	install_signal_handler(struct s_report *reporter)
 		|| sigaddset(&set, SIGUSR1) || sigaddset(&set, SIGUSR2)
 		|| sigaddset(&set, SIGTSTP))
 	{
-		strcpy(reporter->buffer, "CRITICAL: Could not add signal to mask\n");
+		strcpy(reporter->buffer, "CRITICAL : Could not add signal to mask\n");
 		report(reporter, true);
 		return (false);
 	}
@@ -132,7 +132,7 @@ bool	install_signal_handler(struct s_report *reporter)
 		|| sigaction(SIGUSR1, &act, NULL) || sigaction(SIGUSR2, &act, NULL)
 		|| sigaction(SIGTSTP, &act, NULL))
 	{
-		strcpy(reporter->buffer, "CRITICAL: Could not specify handler for signals\n");
+		strcpy(reporter->buffer, "CRITICAL : Could not specify handler for signals\n");
 		report(reporter, true);
 		return (false);
 	}

@@ -185,7 +185,7 @@ bool	transfer_logs(int tmp_fd, char tmp_log_file[1024], struct s_server *server,
 	if (lseek(tmp_fd, 0, SEEK_SET) == -1)
 	{
 		get_stamp(reporter->buffer);
-		strcpy(&reporter->buffer[22], "CRITICAL: Could not read temporary log, exiting process\n");
+		strcpy(&reporter->buffer[22], "CRITICAL : Could not read temporary log, exiting process\n");
 		return (false);
 	}
 	while ((line = get_next_line(tmp_fd)) != NULL)
@@ -243,7 +243,7 @@ bool	transfer_logs(int tmp_fd, char tmp_log_file[1024], struct s_server *server,
 	if (ret == false && server->daemon == false)
 	{
 		get_stamp(reporter->buffer);
-		strcpy(&reporter->buffer[22], "ERROR: Error while writing to logfile, initial logs might be incomplete\n");
+		strcpy(&reporter->buffer[22], "ERROR    : Error while writing to logfile, initial logs might be incomplete\n");
 		if (write(2, reporter->buffer, strlen(reporter->buffer))) {}
 	}
 	close(tmp_fd);
@@ -318,7 +318,7 @@ void	log_discord(struct s_discord_logger *discord_logger, char *data)
 	if (!register_curl_opt(discord_logger->handle, discord_logger->channel, discord_logger->slist, payload))
 	{
 		++failed_attempts;
-		strcpy(discord_logger->reporter.buffer, "CRITICAL: Could not register curl options, message will be discarded\n");
+		strcpy(discord_logger->reporter.buffer, "CRITICAL : Could not register curl options, message will be discarded\n");
 		report(&discord_logger->reporter, false);
 		has_error = true;
 	}
@@ -337,7 +337,7 @@ void	log_discord(struct s_discord_logger *discord_logger, char *data)
 		if (has_error)
 		{
 			++failed_attempts;
-			strcpy(discord_logger->reporter.buffer, "CRITICAL: Could not log to discord, message will be discarded\n");
+			strcpy(discord_logger->reporter.buffer, "CRITICAL : Could not log to discord, message will be discarded\n");
 			report(&discord_logger->reporter, false);
 		}
 		else
@@ -345,7 +345,7 @@ void	log_discord(struct s_discord_logger *discord_logger, char *data)
 	}
 	if (failed_attempts > 10)
 	{
-		strcpy(discord_logger->reporter.buffer, "CRITICAL: Logging to discord failed too many times, disabling feature\n");
+		strcpy(discord_logger->reporter.buffer, "CRITICAL : Logging to discord failed too many times, disabling feature\n");
 		report(&discord_logger->reporter, false);
 		discord_logger->logging = false;
 	}
@@ -370,7 +370,7 @@ void	*discord_logger_thread(void *void_discord_logger)
 	if (epoll_fd == -1)
 	{
 		discord_logger->logging = false;
-		strcpy(discord_logger->reporter.buffer, "CRITICAL: Could not instantiate epoll, exiting discord logging thread\n");
+		strcpy(discord_logger->reporter.buffer, "CRITICAL : Could not instantiate epoll, exiting discord logging thread\n");
 		report(&discord_logger->reporter, true);
 		return(NULL);
 	}
@@ -379,12 +379,12 @@ void	*discord_logger_thread(void *void_discord_logger)
 	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, discord_logger->com[0], &event))
 	{
 		discord_logger->logging = false;
-		strcpy(discord_logger->reporter.buffer, "CRITICAL: Could not add pipe to epoll events in Discord logging thread\n");
+		strcpy(discord_logger->reporter.buffer, "CRITICAL : Could not add pipe to epoll events in Discord logging thread\n");
 		report(&discord_logger->reporter, true);
 		close(epoll_fd);
 		return(NULL);
 	}
-	strcpy(discord_logger->reporter.buffer, "DEBUG: Discord thread ready for logging\n");
+	strcpy(discord_logger->reporter.buffer, "DEBUG    : Discord thread ready for logging\n");
 	report(&discord_logger->reporter, false);
 	while (true)
 	{
@@ -393,7 +393,7 @@ void	*discord_logger_thread(void *void_discord_logger)
 			if (errno == EINTR)
 				continue ;
 			discord_logger->logging = false;
-			strcpy(discord_logger->reporter.buffer, "CRITICAL: Error while waiting for epoll event in Discord logging thread\n");
+			strcpy(discord_logger->reporter.buffer, "CRITICAL : Error while waiting for epoll event in Discord logging thread\n");
 			report(&discord_logger->reporter, true);
 			event.events = EPOLLIN;
 			epoll_ctl(epoll_fd, EPOLL_CTL_DEL, discord_logger->com[0], &event);
@@ -454,7 +454,7 @@ void	*main_logger(void *void_server)
 		if (!discord_logger.handle)
 		{
 			get_stamp(reporter.buffer);
-			strcpy(&reporter.buffer[22], "CRITICAL: Could not instantiate curl, discord logging will be disabled\n");
+			strcpy(&reporter.buffer[22], "CRITICAL : Could not instantiate curl, discord logging will be disabled\n");
 			write_log(&server->logger, reporter.buffer);
 			if (!server->daemon)
 			{
@@ -474,7 +474,7 @@ void	*main_logger(void *void_server)
 		if (pipe2(discord_logger.com, O_CLOEXEC | O_NONBLOCK) == -1)
 		{
 			get_stamp(reporter.buffer);
-			strcpy(&reporter.buffer[22], "CRITICAL: Could not open pipe to communicate with discord logging thread\n");
+			strcpy(&reporter.buffer[22], "CRITICAL : Could not open pipe to communicate with discord logging thread\n");
 			if (!server->daemon && write(2, reporter.buffer, strlen(reporter.buffer)) <= 0)
 			{
 			}
@@ -485,7 +485,7 @@ void	*main_logger(void *void_server)
 		else if (pthread_create(&discord_thread, NULL, discord_logger_thread, &discord_logger))
 		{
 			get_stamp(reporter.buffer);
-			strcpy(&reporter.buffer[22], "CRITICAL: Could not initiate discord logging thread\n");
+			strcpy(&reporter.buffer[22], "CRITICAL : Could not initiate discord logging thread\n");
 			if (!server->daemon && write(2, reporter.buffer, strlen(reporter.buffer)) <= 0)
 			{
 			}
@@ -506,7 +506,7 @@ void	*main_logger(void *void_server)
 	if (epoll_fd == -1)
 	{
 		get_stamp(reporter.buffer);
-		strcpy(&reporter.buffer[22], "CRITICAL: Could not instantiate epoll, exiting process\n");
+		strcpy(&reporter.buffer[22], "CRITICAL : Could not instantiate epoll, exiting process\n");
 		write_log(&server->logger, reporter.buffer);
 		if (!server->daemon)
 		{
@@ -530,7 +530,7 @@ void	*main_logger(void *void_server)
 	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, server->log_pipe[0], &event))
 	{
 		get_stamp(reporter.buffer);
-		strcpy(&reporter.buffer[22], "CRITICAL: Could not add pipe to epoll events, exiting process\n");
+		strcpy(&reporter.buffer[22], "CRITICAL : Could not add pipe to epoll events, exiting process\n");
 		write_log(&server->logger, reporter.buffer);
 		if (!server->daemon)
 		{
@@ -551,7 +551,7 @@ void	*main_logger(void *void_server)
 		return(NULL);
 	}
 	get_stamp(reporter.buffer);
-	strcpy(&reporter.buffer[22], "DEBUG: Ready for logging\n");
+	strcpy(&reporter.buffer[22], "DEBUG    : Ready for logging\n");
 	if (should_log(server->loglevel, &reporter.buffer[22]))
 	{
 		write_log(&server->logger, reporter.buffer);
@@ -569,7 +569,7 @@ void	*main_logger(void *void_server)
 			if (errno == EINTR)
 				continue ;
 			get_stamp(reporter.buffer);
-			strcpy(&reporter.buffer[22], "CRITICAL: Error while waiting for epoll event, exiting process\n");
+			strcpy(&reporter.buffer[22], "CRITICAL : Error while waiting for epoll event, exiting process\n");
 			write_log(&server->logger, reporter.buffer);
 			if (!server->daemon)
 			{
@@ -621,7 +621,7 @@ void	*main_logger(void *void_server)
 						if (discord_logger.running)
 						{
 							get_stamp(reporter.buffer);
-							strcpy(&reporter.buffer[22], "DEBUG: Asking Discord logging thread to terminate\n");
+							strcpy(&reporter.buffer[22], "DEBUG    : Asking Discord logging thread to terminate\n");
 							if (should_log(server->loglevel, &reporter.buffer[22]))
 							{
 								write_log(&server->logger, reporter.buffer);
@@ -634,7 +634,7 @@ void	*main_logger(void *void_server)
 							if (report(&reporter, false))
 							{
 								get_stamp(reporter.buffer);
-								strcpy(&reporter.buffer[22], "DEBUG: Joining Discord logging thread to terminate\n");
+								strcpy(&reporter.buffer[22], "DEBUG    : Joining Discord logging thread to terminate\n");
 								if (should_log(server->loglevel, &reporter.buffer[22]))
 								{
 									write_log(&server->logger, reporter.buffer);
@@ -646,7 +646,7 @@ void	*main_logger(void *void_server)
 								if (pthread_join(discord_thread, NULL))
 								{
 									get_stamp(reporter.buffer);
-									strcpy(&reporter.buffer[22], "CRITICAL: Could not join Discord logging thread to terminate\n");
+									strcpy(&reporter.buffer[22], "CRITICAL : Could not join Discord logging thread to terminate\n");
 									if (should_log(server->loglevel, &reporter.buffer[22]))
 									{
 										write_log(&server->logger, reporter.buffer);
@@ -675,7 +675,7 @@ void	*main_logger(void *void_server)
 										ret = read(server->log_pipe[0], &reporter.buffer[22], PIPE_BUF - 22);
 									}
 									get_stamp(reporter.buffer);
-									strcpy(&reporter.buffer[22], "DEBUG: Successfully joined Discord logging thread\n");
+									strcpy(&reporter.buffer[22], "DEBUG    : Successfully joined Discord logging thread\n");
 									if (should_log(server->loglevel, &reporter.buffer[22]))
 									{
 										write_log(&server->logger, reporter.buffer);
@@ -689,7 +689,7 @@ void	*main_logger(void *void_server)
 							else
 							{
 								get_stamp(reporter.buffer);
-								strcpy(&reporter.buffer[22], "CRITICAL: Could not join discord thread\n");
+								strcpy(&reporter.buffer[22], "CRITICAL : Could not join discord thread\n");
 								write_log(&server->logger, reporter.buffer);
 							}
 							curl_cleanup(discord_logger.slist, discord_logger.handle);
@@ -701,7 +701,7 @@ void	*main_logger(void *void_server)
 						epoll_ctl(epoll_fd, EPOLL_CTL_DEL, server->log_pipe[0], &event);
 						close(epoll_fd);
 						get_stamp(reporter.buffer);
-						strcpy(&reporter.buffer[22], "DEBUG: Terminating logging thread\n");
+						strcpy(&reporter.buffer[22], "DEBUG    : Terminating logging thread\n");
 						if (should_log(server->loglevel, &reporter.buffer[22]))
 						{
 							write_log(&server->logger, reporter.buffer);
@@ -722,7 +722,7 @@ void	*main_logger(void *void_server)
 						client->poll.events = EPOLLIN | EPOLLOUT;
 						if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, client->poll.data.fd, &client->poll) == -1) {
 							get_stamp(reporter.buffer);
-							strcpy(&reporter.buffer[22], "ERROR: Error while adding client for epoll event, removing client\n");
+							strcpy(&reporter.buffer[22], "ERROR    : Error while adding client for epoll event, removing client\n");
 							write_log(&server->logger, reporter.buffer);
 							if (client == list) {
 								list = client->next;
@@ -750,7 +750,7 @@ void	*main_logger(void *void_server)
 						struct s_logging_client *client = new_logging_client(&list, fd, &reporter);
 						if (!client) {
 							get_stamp(reporter.buffer);
-							strcpy(&reporter.buffer[22], "ERROR: Error while adding client for epoll event, removing client\n");
+							strcpy(&reporter.buffer[22], "ERROR    : Error while adding client for epoll event, removing client\n");
 							write_log(&server->logger, reporter.buffer);
 							continue ;
 						}
@@ -842,19 +842,19 @@ void	*main_logger(void *void_server)
 				if (client->fg) {
 					client->poll.events = EPOLLIN;
 					if (epoll_ctl(epoll_fd, EPOLL_CTL_MOD, client->poll.data.fd, &client->poll)) {
-						snprintf(reporter.buffer, PIPE_BUF, "ERROR: Could not modify client event in epoll_ctl back to server for client %d : %s\n", client->poll.data.fd, strerror(errno));
+						snprintf(reporter.buffer, PIPE_BUF, "ERROR    : Could not modify client event in epoll_ctl back to server for client %d : %s\n", client->poll.data.fd, strerror(errno));
 						report(&reporter, false);
 
 					}
 				} else {
-					snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: client %d is not -f, removing him\n", client->poll.data.fd);
+					snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG    : client %d is not -f, removing him\n", client->poll.data.fd);
 					report(&reporter, false);
 
 					epoll_ctl(epoll_fd, EPOLL_CTL_DEL, client->poll.data.fd, &client->poll);
 
 					client->poll.events = EPOLLIN;
 					if (epoll_ctl(efd, EPOLL_CTL_ADD, client->poll.data.fd, &client->poll)) {
-						snprintf(reporter.buffer, PIPE_BUF, "ERROR: Could not modify client event in epoll_ctl back to server for client %d : %s\n", client->poll.data.fd, strerror(errno));
+						snprintf(reporter.buffer, PIPE_BUF, "ERROR    : Could not modify client event in epoll_ctl back to server for client %d : %s\n", client->poll.data.fd, strerror(errno));
 						report(&reporter, false);
 					}
 					if (client == list) {
@@ -884,7 +884,7 @@ void	*main_logger(void *void_server)
 
 				client->poll.events = EPOLLIN;
 				if (epoll_ctl(efd, EPOLL_CTL_ADD, client->poll.data.fd, &client->poll) < 0) {
-					snprintf(reporter.buffer, PIPE_BUF, "DEBUG: Could not add client %d back to main thread's epoll\n", client->poll.data.fd);
+					snprintf(reporter.buffer, PIPE_BUF, "DEBUG    : Could not add client %d back to main thread's epoll\n", client->poll.data.fd);
 					report(&reporter, false);
 				}
 				if (client == list) {
@@ -913,7 +913,7 @@ bool	start_logging_thread(struct s_server *server, bool daemonized)
 	if (pipe2(server->log_pipe, O_CLOEXEC | O_NONBLOCK) == -1)
 	{
 		get_stamp(reporter.buffer);
-		strcpy(&reporter.buffer[22], "CRITICAL: Could not open pipe for logging\n");
+		strcpy(&reporter.buffer[22], "CRITICAL : Could not open pipe for logging\n");
 		if (!daemonized && write(2, reporter.buffer, strlen(reporter.buffer)) <= 0)
 		{
 		}
@@ -923,7 +923,7 @@ bool	start_logging_thread(struct s_server *server, bool daemonized)
 	if (pthread_create(&server->logging_thread, NULL, main_logger, server))
 	{
 		get_stamp(reporter.buffer);
-		strcpy(&reporter.buffer[22], "CRITICAL: Could not initiate logging thread\n");
+		strcpy(&reporter.buffer[22], "CRITICAL : Could not initiate logging thread\n");
 		if (!daemonized && write(2, reporter.buffer, strlen(reporter.buffer)) <= 0)
 		{
 		}
@@ -939,13 +939,13 @@ bool end_initial_log(struct s_report *reporter, void **thread_ret, pthread_t ini
 	if (!report(reporter, false))
 	{
 		get_stamp(reporter->buffer);
-		strcpy(&reporter->buffer[22], "CRITICAL: Could not stop initial logger, exiting process\n");
+		strcpy(&reporter->buffer[22], "CRITICAL : Could not stop initial logger, exiting process\n");
 		return (false);
 	}
 	if (pthread_join(initial_logger, thread_ret))
 	{
 		get_stamp(reporter->buffer);
-		strcpy(&reporter->buffer[22], "CRITICAL: Could not join initial logger, exiting process\n");
+		strcpy(&reporter->buffer[22], "CRITICAL : Could not join initial logger, exiting process\n");
 		return (false);
 	}
 	return (true);
@@ -957,13 +957,13 @@ bool end_logging_thread(struct s_report *reporter, pthread_t logger)
 	if (!report(reporter, false))
 	{
 		get_stamp(reporter->buffer);
-		strcpy(&reporter->buffer[22], "CRITICAL: Could not stop logging thread, exiting process\n");
+		strcpy(&reporter->buffer[22], "CRITICAL : Could not stop logging thread, exiting process\n");
 		return (false);
 	}
 	if (pthread_join(logger, NULL))
 	{
 		get_stamp(reporter->buffer);
-		strcpy(&reporter->buffer[22], "CRITICAL: Could not join logging thread, exiting process\n");
+		strcpy(&reporter->buffer[22], "CRITICAL : Could not join logging thread, exiting process\n");
 		return (false);
 	}
 	return (true);

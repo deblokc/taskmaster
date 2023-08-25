@@ -83,12 +83,12 @@ bool	tmp_logging(int reporter_pipe[4], char tmp_log_file[1024], struct s_report 
 		if (is_first)
 		{
 			get_stamp(reporter->buffer);
-			snprintf(&reporter->buffer[22], PIPE_BUF - 22, "CRITICAL: Could not create pipe, exiting process\n");
+			snprintf(&reporter->buffer[22], PIPE_BUF - 22, "CRITICAL : Could not create pipe, exiting process\n");
 			early_error(reporter->buffer, reporter_pipe, NULL, NULL);
 		}
 		else
 		{
-			strcpy(reporter->buffer, "CRITICAL: Could not create pipe, exiting process\n");
+			strcpy(reporter->buffer, "CRITICAL : Could not create pipe, exiting process\n");
 			report(reporter, true);
 			reload_early_error(reporter_pipe, NULL, NULL);
 		}
@@ -100,12 +100,12 @@ bool	tmp_logging(int reporter_pipe[4], char tmp_log_file[1024], struct s_report 
 		if (is_first)
 		{
 			get_stamp(reporter->buffer);
-			snprintf(&reporter->buffer[22], PIPE_BUF - 22, "CRITICAL: could not create temporary log file, exiting process\n");
+			snprintf(&reporter->buffer[22], PIPE_BUF - 22, "CRITICAL : could not create temporary log file, exiting process\n");
 			early_error(reporter->buffer, reporter_pipe, NULL, NULL);
 		}
 		else
 		{
-			strcpy(reporter->buffer, "CRITICAL: could not create temporary log file, exiting process\n");
+			strcpy(reporter->buffer, "CRITICAL : could not create temporary log file, exiting process\n");
 			report(reporter, true);
 			reload_early_error(reporter_pipe, NULL, NULL);
 		}
@@ -151,7 +151,7 @@ static void	soft_cleanup(struct s_server *server)
 
 static bool reload_error(struct s_server *server, struct s_report *reporter)
 {
-	strcpy(reporter->buffer, "CRITICAL: Failed to reload configuration, exiting process\n");
+	strcpy(reporter->buffer, "CRITICAL : Failed to reload configuration, exiting process\n");
 	report(reporter, true);
 	if (!end_logging_thread(reporter, server->logging_thread) && !server->daemon)
 	{
@@ -193,7 +193,7 @@ static bool	reload_configuration(struct s_server **server, struct s_report *repo
 	tmp_reporter.report_fd = reporter_pipe[1];
 	if (pthread_create(&initial_logger, NULL, initial_log, reporter_pipe))
 	{
-		snprintf(reporter->buffer, PIPE_BUF - 22, "CRITICAL: could not create initial log thread, exiting process\n");
+		snprintf(reporter->buffer, PIPE_BUF - 22, "CRITICAL : could not create initial log thread, exiting process\n");
 		report(reporter, true);
 		reload_early_error(reporter_pipe, tmp_log_file, NULL);
 		return (reload_error(*server, reporter));
@@ -228,7 +228,7 @@ static bool	reload_configuration(struct s_server **server, struct s_report *repo
 	}
 	if (!end_initial_log(&tmp_reporter, &thread_ret, initial_logger))
 	{
-		snprintf(reporter->buffer, PIPE_BUF - 22, "CRITICAL: could not exit initial logging thread, exiting process\n");
+		snprintf(reporter->buffer, PIPE_BUF - 22, "CRITICAL : could not exit initial logging thread, exiting process\n");
 		report(reporter, true);
 		reload_early_error(reporter_pipe, tmp_log_file, new_server);
 		return (reload_error(*server, reporter));
@@ -239,7 +239,7 @@ static bool	reload_configuration(struct s_server **server, struct s_report *repo
 	reporter_pipe[1] = 0;
 	if ((*server)->daemon && !new_server->daemon)
 	{
-		snprintf(reporter->buffer, PIPE_BUF - 22, "CRITICAL: Cannot undaemonize process\n");
+		snprintf(reporter->buffer, PIPE_BUF - 22, "CRITICAL : Cannot undaemonize process\n");
 		report(reporter, false);
 		new_server->daemon = true;
 	}
@@ -249,7 +249,7 @@ static bool	reload_configuration(struct s_server **server, struct s_report *repo
 		return (reload_error(*server, reporter));
 	}
 	reporter_pipe[2] = 0;
-	strcpy(reporter->buffer, "INFO: Successfully reloaded configuration\n");
+	strcpy(reporter->buffer, "INFO     : Successfully reloaded configuration\n");
 	report(reporter, false);
 	if (!end_logging_thread(reporter, (*server)->logging_thread) && !(*server)->daemon)
 	{
@@ -268,7 +268,7 @@ static bool	reload_configuration(struct s_server **server, struct s_report *repo
 	(*server)->priorities = create_priorities(*server, reporter);
 	if (reporter->critical)
 	{
-		strcpy(reporter->buffer, "CRITICAL: Could not build priorities, exiting taskmasterd\n");
+		strcpy(reporter->buffer, "CRITICAL : Could not build priorities, exiting taskmasterd\n");
 		report(reporter, true);
 		if (!end_logging_thread(reporter, (*server)->logging_thread) && !(*server)->daemon)
 		{
@@ -297,16 +297,16 @@ static bool	reload_configuration(struct s_server **server, struct s_report *repo
 		cleanup(*server, false, reporter);
 		return (false);
 	}
-	strcpy(reporter->buffer, "INFO: Starting taskmasterd\n");
+	strcpy(reporter->buffer, "INFO     : Starting taskmasterd\n");
 	report(reporter, false);
 	if (!(*server)->priorities)
 	{
-		strcpy(reporter->buffer, "DEBUG: No priorities to start\n");
+		strcpy(reporter->buffer, "DEBUG    : No priorities to start\n");
 		report(reporter, false);
 	}
 	else
 	{
-		strcpy(reporter->buffer, "DEBUG: Launching priorities\n");
+		strcpy(reporter->buffer, "DEBUG    : Launching priorities\n");
 		report(reporter, false);
 		launch((*server)->priorities, (*server)->log_pipe[1]);
 	}
@@ -351,7 +351,7 @@ int	main_routine(struct s_server *server, struct s_report *reporter)
 		{
 			if (g_sig == SIGHUP)
 			{
-				strcpy(reporter->buffer, "INFO: taskmasterd received signal to reload configuration\n");
+				strcpy(reporter->buffer, "INFO     : taskmasterd received signal to reload configuration\n");
 				report(reporter, false);
 				delete_clients(&clients, reporter);
 				exit_admins(server->priorities);
@@ -370,12 +370,12 @@ int	main_routine(struct s_server *server, struct s_report *reporter)
 			}
 			else if (g_sig == -1)
 			{
-				strcpy(reporter->buffer, "INFO: taskmasterd received signal to update configuration\n");
+				strcpy(reporter->buffer, "INFO     : taskmasterd received signal to update configuration\n");
 				report(reporter, false);
 				program_tree = get_current_programs(server, reporter);
 				if (reporter->critical)
 				{
-					strcpy(reporter->buffer, "CRITICAL: Could not update configuration, taskmasterd will continue with current configuration\n");
+					strcpy(reporter->buffer, "CRITICAL : Could not update configuration, taskmasterd will continue with current configuration\n");
 					report(reporter, false);
 					if (program_tree)
 					{
@@ -394,7 +394,7 @@ int	main_routine(struct s_server *server, struct s_report *reporter)
 			}
 			else
 			{
-				strcpy(reporter->buffer, "INFO: taskmasterd received signal to shutdown\n");
+				strcpy(reporter->buffer, "INFO     : taskmasterd received signal to shutdown\n");
 				report(reporter, false);
 				delete_clients(&clients, reporter);
 				exit_admins(server->priorities);
@@ -431,7 +431,7 @@ int	main(int ac, char **av)
 	if (!block_signals(&reporter))
 	{
 		get_stamp(reporter.buffer);
-		snprintf(&reporter.buffer[22], PIPE_BUF - 22, "CRITICAL: Could not block signals, exiting process\n");
+		snprintf(&reporter.buffer[22], PIPE_BUF - 22, "CRITICAL : Could not block signals, exiting process\n");
 		return (1);
 	}
 	if (!tmp_logging(reporter_pipe, tmp_log_file, &reporter, true))
@@ -440,7 +440,7 @@ int	main(int ac, char **av)
 	if (pthread_create(&initial_logger, NULL, initial_log, reporter_pipe))
 	{
 		get_stamp(reporter.buffer);
-		snprintf(&reporter.buffer[22], PIPE_BUF - 22, "CRITICAL: could not create initial log thread, exiting process\n");
+		snprintf(&reporter.buffer[22], PIPE_BUF - 22, "CRITICAL : could not create initial log thread, exiting process\n");
 		return (early_error(reporter.buffer, reporter_pipe, tmp_log_file, NULL));
 	}
 	server = parse_config(av[0], av[1], &reporter);
@@ -449,7 +449,7 @@ int	main(int ac, char **av)
 		if (end_initial_log(&reporter, &thread_ret, initial_logger) && *(int *)thread_ret != 1)
 			report_critical(reporter_pipe[2], 2);
 		get_stamp(reporter.buffer);
-		snprintf(&reporter.buffer[22], PIPE_BUF - 22, "CRITICAL: could not start taskmasterd, exiting process\n");
+		snprintf(&reporter.buffer[22], PIPE_BUF - 22, "CRITICAL : could not start taskmasterd, exiting process\n");
 		return (early_error(reporter.buffer, reporter_pipe, tmp_log_file, server));
 	}
 	if (server->socket.enable)
@@ -460,7 +460,7 @@ int	main(int ac, char **av)
 			if (end_initial_log(&reporter, &thread_ret, initial_logger) && *(int *)thread_ret != 1)
 				report_critical(reporter_pipe[2], 2);
 			get_stamp(reporter.buffer);
-			snprintf(&reporter.buffer[22], PIPE_BUF - 22, "CRITICAL: could not start taskmasterd, exiting process\n");
+			snprintf(&reporter.buffer[22], PIPE_BUF - 22, "CRITICAL : could not start taskmasterd, exiting process\n");
 			return (early_error(reporter.buffer, reporter_pipe, tmp_log_file, server));
 		}
 	}
@@ -470,7 +470,7 @@ int	main(int ac, char **av)
 		if (end_initial_log(&reporter, &thread_ret, initial_logger) && *(int *)thread_ret != 1)
 			report_critical(reporter_pipe[2], 2);
 		get_stamp(reporter.buffer);
-		snprintf(&reporter.buffer[22], PIPE_BUF - 22, "CRITICAL: could not start taskmasterd, exiting process\n");
+		snprintf(&reporter.buffer[22], PIPE_BUF - 22, "CRITICAL : could not start taskmasterd, exiting process\n");
 		return (early_error(reporter.buffer, reporter_pipe, tmp_log_file, server));
 	}
 	if (!end_initial_log(&reporter, &thread_ret, initial_logger))
@@ -491,7 +491,7 @@ int	main(int ac, char **av)
 	server->priorities = create_priorities(server, &reporter);
 	if (reporter.critical)
 	{
-		strcpy(reporter.buffer, "CRITICAL: Could not build priorities, exiting taskmasterd\n");
+		strcpy(reporter.buffer, "CRITICAL : Could not build priorities, exiting taskmasterd\n");
 		report(&reporter, true);
 		if (!end_logging_thread(&reporter, server->logging_thread))
 		{
@@ -520,16 +520,16 @@ int	main(int ac, char **av)
 		cleanup(server, false, &reporter);
 		return (1);
 	}
-	strcpy(reporter.buffer, "INFO: Starting taskmasterd\n");
+	strcpy(reporter.buffer, "INFO     : Starting taskmasterd\n");
 	report(&reporter, false);
 	if (!server->priorities)
 	{
-		strcpy(reporter.buffer, "DEBUG: No priorities to start\n");
+		strcpy(reporter.buffer, "DEBUG    : No priorities to start\n");
 		report(&reporter, false);
 	}
 	else
 	{
-		strcpy(reporter.buffer, "DEBUG: Launching priorities\n");
+		strcpy(reporter.buffer, "DEBUG    : Launching priorities\n");
 		report(&reporter, false);
 		launch(server->priorities, server->log_pipe[1]);
 	}

@@ -19,11 +19,11 @@ bool add_char(char const *program_name, char const *field_name, char **target, y
 {
 	bool	ret = true;
 
-	snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Parsing %s in %s'%s'\n", field_name, program_name?"program ":"", program_name?program_name:"server");
+	snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Parsing %s in %s'%s'\n", field_name, program_name?"program ":"", program_name?program_name:"server");
 	report(reporter, false);
 	if (value->type != YAML_SCALAR_NODE)
 	{
-		snprintf(reporter->buffer, PIPE_BUF, "%s: Wrong format for field %s in %s'%s', expected a scalar value, encountered %s\n", program_name ? "ERROR" : "CRITICAL", field_name, program_name ? "program" : "", program_name ? program_name : "server", value->tag);
+		snprintf(reporter->buffer, PIPE_BUF, "%s : Wrong format for field %s in %s'%s', expected a scalar value, encountered %s\n", program_name ? "ERROR   " : "CRITICAL", field_name, program_name ? "program" : "", program_name ? program_name : "server", value->tag);
 		report(reporter, program_name ? false : true );
 		ret = false;
 	}
@@ -32,7 +32,7 @@ bool add_char(char const *program_name, char const *field_name, char **target, y
 		*target = strdup((char *)value->data.scalar.value);
 		if (!*target)
 		{
-			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not allocate %s in %s'%s'\n", field_name, program_name?"program ":"", program_name?program_name:"server");
+			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not allocate %s in %s'%s'\n", field_name, program_name?"program ":"", program_name?program_name:"server");
 			report(reporter, true);
 			ret = false;
 		}
@@ -45,11 +45,11 @@ bool	add_number(char const *program_name, char const *field_name, int *target, y
 	bool	ret = true;
 	long	nb;
 
-	snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Parsing %s in %s'%s'\n", field_name, program_name?"program ":"", program_name?program_name:"server");
+	snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Parsing %s in %s'%s'\n", field_name, program_name?"program ":"", program_name?program_name:"server");
 	report(reporter, false);
 	if (value->type != YAML_SCALAR_NODE)
 	{
-		snprintf(reporter->buffer, PIPE_BUF, "%s: Wrong format for field %s in %s'%s', expected a scalar value, encountered %s\n", program_name ? "ERROR" : "CRITICAL", field_name, program_name ? "program" : "", program_name ? program_name : "server", value->tag);
+		snprintf(reporter->buffer, PIPE_BUF, "%s : Wrong format for field %s in %s'%s', expected a scalar value, encountered %s\n", program_name ? "ERROR   " : "CRITICAL", field_name, program_name ? "program" : "", program_name ? program_name : "server", value->tag);
 		report(reporter, program_name ? false : true );
 		ret = false;
 	}
@@ -59,7 +59,7 @@ bool	add_number(char const *program_name, char const *field_name, int *target, y
 		{
 			if (!isdigit((value->data.scalar.value)[i]))
 			{
-				snprintf(reporter->buffer, PIPE_BUF, "%s: Wrong value for field %s in %s'%s', provided value is not a number\n", program_name ? "ERROR" : "CRITICAL", field_name, program_name ? "program" : "", program_name ? program_name : "server");
+				snprintf(reporter->buffer, PIPE_BUF, "%s : Wrong value for field %s in %s'%s', provided value is not a number\n", program_name ? "ERROR   " : "CRITICAL", field_name, program_name ? "program" : "", program_name ? program_name : "server");
 				report(reporter, program_name ? false : true );
 				ret = false;
 				break ;
@@ -70,7 +70,7 @@ bool	add_number(char const *program_name, char const *field_name, int *target, y
 			nb = strtol((char *)value->data.scalar.value, NULL, 10);
 			if (nb < min || nb > max)
 			{
-				snprintf(reporter->buffer, PIPE_BUF, "%s: Wrong value for field %s in %s%s, provided value must range between %ld and %ld\n", program_name ? "ERROR" : "CRITICAL", field_name, program_name ? "program" : "", program_name ? program_name : "server", min, max);
+				snprintf(reporter->buffer, PIPE_BUF, "%s : Wrong value for field %s in %s%s, provided value must range between %ld and %ld\n", program_name ? "ERROR   " : "CRITICAL", field_name, program_name ? "program" : "", program_name ? program_name : "server", min, max);
 				report(reporter, program_name ? false : true );
 				ret = false;
 			}
@@ -88,11 +88,11 @@ bool	add_octal(char const *program_name, char const *field_name, int *target, ya
 	bool	ret = true;
 	long	nb;
 
-	snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Parsing %s in %s'%s'\n", field_name, program_name?"program ":"", program_name?program_name:"server");
+	snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Parsing %s in %s'%s'\n", field_name, program_name?"program ":"", program_name?program_name:"server");
 	report(reporter, false);
 	if (value->type != YAML_SCALAR_NODE)
 	{
-		snprintf(reporter->buffer, PIPE_BUF, "%s: Wrong format for field %s in %s'%s', expected a scalar value, encountered %s\n", program_name ? "ERROR" : "CRITICAL", field_name, program_name ? "program" : "", program_name ? program_name : "server", value->tag);
+		snprintf(reporter->buffer, PIPE_BUF, "%s : Wrong format for field %s in %s'%s', expected a scalar value, encountered %s\n", program_name ? "ERROR   " : "CRITICAL", field_name, program_name ? "program" : "", program_name ? program_name : "server", value->tag);
 		report(reporter, program_name ? false : true );
 		ret = false;
 	}
@@ -102,7 +102,7 @@ bool	add_octal(char const *program_name, char const *field_name, int *target, ya
 		{
 			if ((value->data.scalar.value)[i] < '0' || (value->data.scalar.value)[i] > '7')
 			{
-				snprintf(reporter->buffer, PIPE_BUF, "%s: Wrong value for field %s in %s'%s', provided value is not a number in base 8\n", program_name ? "ERROR" : "CRITICAL", field_name, program_name ? "program" : "", program_name ? program_name : "server");
+				snprintf(reporter->buffer, PIPE_BUF, "%s : Wrong value for field %s in %s'%s', provided value is not a number in base 8\n", program_name ? "ERROR   " : "CRITICAL", field_name, program_name ? "program" : "", program_name ? program_name : "server");
 				report(reporter, program_name ? false : true );
 				ret = false;
 				break ;
@@ -113,7 +113,7 @@ bool	add_octal(char const *program_name, char const *field_name, int *target, ya
 			nb = strtol((char *)value->data.scalar.value, NULL, 8);
 			if (nb < min || nb > max)
 			{
-				snprintf(reporter->buffer, PIPE_BUF, "%s: Wrong value for field %s in %s%s, provided value must range between %ld and %ld\n", program_name ? "ERROR" : "CRITICAL", field_name, program_name ? "program" : "", program_name ? program_name : "server", min, max);
+				snprintf(reporter->buffer, PIPE_BUF, "%s : Wrong value for field %s in %s%s, provided value must range between %ld and %ld\n", program_name ? "ERROR   " : "CRITICAL", field_name, program_name ? "program" : "", program_name ? program_name : "server", min, max);
 				report(reporter, program_name ? false : true );
 				ret = false;
 			}
@@ -131,11 +131,11 @@ bool	add_bool(char const *program_name, char const *field_name, bool *target, ya
 {
 	bool	ret = true;
 
-	snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Parsing %s in %s'%s'\n", field_name, program_name?"program ":"", program_name?program_name:"server");
+	snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Parsing %s in %s'%s'\n", field_name, program_name?"program ":"", program_name?program_name:"server");
 	report(reporter, false);
 	if (value->type != YAML_SCALAR_NODE)
 	{
-		snprintf(reporter->buffer, PIPE_BUF, "%s: Wrong format for field %s in %s'%s', expected a scalar value, encountered %s\n", program_name ? "ERROR" : "CRITICAL", field_name, program_name ? "program" : "", program_name ? program_name : "server", value->tag);
+		snprintf(reporter->buffer, PIPE_BUF, "%s : Wrong format for field %s in %s'%s', expected a scalar value, encountered %s\n", program_name ? "ERROR   " : "CRITICAL", field_name, program_name ? "program" : "", program_name ? program_name : "server", value->tag);
 		report(reporter, program_name ? false : true );
 		ret = false;
 	}
@@ -153,7 +153,7 @@ bool	add_bool(char const *program_name, char const *field_name, bool *target, ya
 			*target = false;
 		else
 		{
-			snprintf(reporter->buffer, PIPE_BUF, "%s: Wrong value for field %s in %s%s, accepted values are:\n\t- For positive values: true, True, on, yes\n\t- For negative values: false, False, off, no\n", program_name ? "ERROR" : "CRITICAL", field_name, program_name ? "program" : "", program_name ? program_name : "server");
+			snprintf(reporter->buffer, PIPE_BUF, "%s : Wrong value for field %s in %s%s, accepted values are:\n\t- For positive values: true, True, on, yes\n\t- For negative values: false, False, off, no\n", program_name ? "ERROR   " : "CRITICAL", field_name, program_name ? "program" : "", program_name ? program_name : "server");
 			report(reporter, program_name ? false : true );
 			ret = false;
 		}
@@ -169,11 +169,11 @@ bool	parse_env(char const *program_name, yaml_node_t *map, yaml_document_t *docu
 	struct s_env	*current = NULL;
 	struct s_env	*position = NULL;
 
-	snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Parsing environment in %s'%s'\n", program_name?"program ":"", program_name?program_name:"server");
+	snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Parsing environment in %s'%s'\n", program_name?"program ":"", program_name?program_name:"server");
 	report(reporter, false);
 	if (map->type != YAML_MAPPING_NODE)
 	{
-		snprintf(reporter->buffer, PIPE_BUF, "%s: Wrong format for environment in %s'%s', expected a scalar value, encountered %s\n", program_name ? "ERROR" : "CRITICAL", program_name ? "program" : "", program_name ? program_name : "server", map->tag);
+		snprintf(reporter->buffer, PIPE_BUF, "%s : Wrong format for environment in %s'%s', expected a scalar value, encountered %s\n", program_name ? "ERROR   " : "CRITICAL", program_name ? "program" : "", program_name ? program_name : "server", map->tag);
 		report(reporter, program_name ? false : true );
 		ret = false;
 	}
@@ -189,14 +189,14 @@ bool	parse_env(char const *program_name, yaml_node_t *map, yaml_document_t *docu
 				{
 					if (strchr((char*)key->data.scalar.value, '='))
 					{
-						snprintf(reporter->buffer, PIPE_BUF, "%s: Encountered illegal character '=' in environment for key %s in %s'%s'\n", program_name ? "ERROR" : "CRITICAL", key->data.scalar.value, program_name ? "program" : "", program_name ? program_name : "server");
+						snprintf(reporter->buffer, PIPE_BUF, "%s : Encountered illegal character '=' in environment for key %s in %s'%s'\n", program_name ? "ERROR   " : "CRITICAL", key->data.scalar.value, program_name ? "program" : "", program_name ? program_name : "server");
 						report(reporter, program_name ? false : true );
 						ret = false;
 						break ;
 					}
 					if (key->data.scalar.value[0] == '\0')
 					{
-						snprintf(reporter->buffer, PIPE_BUF, "%s: Found empty environment key in %s'%s'\n", program_name ? "ERROR" : "CRITICAL", program_name ? "program" : "", program_name ? program_name : "server");
+						snprintf(reporter->buffer, PIPE_BUF, "%s : Found empty environment key in %s'%s'\n", program_name ? "ERROR   " : "CRITICAL", program_name ? "program" : "", program_name ? program_name : "server");
 						report(reporter, program_name ? false : true );
 						ret = false;
 						break ;
@@ -204,7 +204,7 @@ bool	parse_env(char const *program_name, yaml_node_t *map, yaml_document_t *docu
 					current = calloc(1, sizeof(*current));
 					if (!current)
 					{
-						snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not allocate environment node in %s'%s'\n", program_name?"program ":"", program_name?program_name:"server");
+						snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not allocate environment node in %s'%s'\n", program_name?"program ":"", program_name?program_name:"server");
 						report(reporter, true);
 						ret = false;
 						*dest = free_s_env(*dest);
@@ -213,7 +213,7 @@ bool	parse_env(char const *program_name, yaml_node_t *map, yaml_document_t *docu
 					current->key = calloc(strlen((char *)key->data.scalar.value) + 1, sizeof(char));
 					if (!current->key)
 					{
-						snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not allocate environment node in %s'%s'\n", program_name?"program ":"", program_name?program_name:"server");
+						snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not allocate environment node in %s'%s'\n", program_name?"program ":"", program_name?program_name:"server");
 						report(reporter, true);
 						ret = false;
 						*dest = free_s_env(*dest);
@@ -222,7 +222,7 @@ bool	parse_env(char const *program_name, yaml_node_t *map, yaml_document_t *docu
 					current->value = calloc(strlen((char *)value->data.scalar.value) + 1, sizeof(char));
 					if (!current->value)
 					{
-						snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not allocate environment node in %s'%s'\n", program_name?"program ":"", program_name?program_name:"server");
+						snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not allocate environment node in %s'%s'\n", program_name?"program ":"", program_name?program_name:"server");
 						report(reporter, true);
 						ret = false;
 						*dest = free_s_env(*dest);
@@ -239,7 +239,7 @@ bool	parse_env(char const *program_name, yaml_node_t *map, yaml_document_t *docu
 				}
 				else
 				{
-					snprintf(reporter->buffer, PIPE_BUF, "%s: Wrong format in environment for key %s in %s'%s', expected a scalar value, encountered %s\n", program_name ? "ERROR" : "CRITICAL", key->data.scalar.value, program_name ? "program" : "", program_name ? program_name : "server", value->tag);
+					snprintf(reporter->buffer, PIPE_BUF, "%s : Wrong format in environment for key %s in %s'%s', expected a scalar value, encountered %s\n", program_name ? "ERROR   " : "CRITICAL", key->data.scalar.value, program_name ? "program" : "", program_name ? program_name : "server", value->tag);
 					report(reporter, program_name ? false : true );
 					ret = false;
 					break ;
@@ -247,7 +247,7 @@ bool	parse_env(char const *program_name, yaml_node_t *map, yaml_document_t *docu
 			}
 			else
 			{
-				snprintf(reporter->buffer, PIPE_BUF, "%s: Wrong format in environment for %s'%s', expected a scalar value, encountered %s\n", program_name ? "ERROR" : "CRITICAL", program_name ? "program" : "", program_name ? program_name : "server", key->tag);
+				snprintf(reporter->buffer, PIPE_BUF, "%s : Wrong format in environment for %s'%s', expected a scalar value, encountered %s\n", program_name ? "ERROR   " : "CRITICAL", program_name ? "program" : "", program_name ? program_name : "server", key->tag);
 				report(reporter, program_name ? false : true );
 				ret = false;
 				break ;

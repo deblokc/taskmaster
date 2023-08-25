@@ -91,7 +91,7 @@ void	*initial_log(void *fds)
 	epoll_fd = epoll_create(1);
 	if (epoll_fd == -1)
 	{
-		if (write(2, "CRITICAL: Could not instantiate epoll, exiting process\n", strlen("CRITICAL: Could not instantiate epoll, exiting process\n")) == -1) {};
+		if (write(2, "CRITICAL : Could not instantiate epoll, exiting process\n", strlen("CRITICAL : Could not instantiate epoll, exiting process\n")) == -1) {};
 		reporter_pipe[3] = 1;
 		pthread_exit(&(reporter_pipe[3]));
 	}
@@ -99,7 +99,7 @@ void	*initial_log(void *fds)
 	event.events = EPOLLIN;
 	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, reporter_pipe[0], &event))
 	{
-		if (write(2, "CRITICAL: Could not add pipe to epoll events, exiting process\n", strlen("CRITICAL: Could not add pipe to epoll events, exiting process\n")) == -1) {};
+		if (write(2, "CRITICAL : Could not add pipe to epoll events, exiting process\n", strlen("CRITICAL : Could not add pipe to epoll events, exiting process\n")) == -1) {};
 		close(epoll_fd);
 		reporter_pipe[3] = 1;
 		pthread_exit(&(reporter_pipe[3]));
@@ -110,7 +110,7 @@ void	*initial_log(void *fds)
 		{
 			if (errno == EINTR)
 				continue ;
-			if (write(2, "CRITICAL: Error while waiting for epoll event, exiting process\n", strlen("CRITICAL: Error while waiting for epoll event, exiting process\n")) == -1) {};
+			if (write(2, "CRITICAL : Error while waiting for epoll event, exiting process\n", strlen("CRITICAL : Error while waiting for epoll event, exiting process\n")) == -1) {};
 			event.data.fd = reporter_pipe[0];
 			event.events = EPOLLIN;
 			epoll_ctl(epoll_fd, EPOLL_CTL_DEL, reporter_pipe[0], &event);

@@ -21,7 +21,7 @@ static bool parse_document(struct s_server *server, yaml_document_t * document, 
 	yaml_node_t	*current_node;
 	yaml_node_t	*key_node;
 
-	snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Parsing YAML document\n");
+	snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Parsing YAML document\n");
 	report(reporter, false);
 	current_node = yaml_document_get_root_node(document);
 	if (!current_node)
@@ -40,7 +40,7 @@ static bool parse_document(struct s_server *server, yaml_document_t * document, 
 				{
 					if (!strcmp((char *)key_node->data.scalar.value, "programs"))
 					{
-						snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Parsing 'programs' block\n");
+						snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Parsing 'programs' block\n");
 						report(reporter, false);
 						if (!parse_programs(server, document, (current_node->data.mapping.pairs.start + i)->value, reporter))
 						{
@@ -50,7 +50,7 @@ static bool parse_document(struct s_server *server, yaml_document_t * document, 
 					}
 					else if (!strcmp((char*)key_node->data.scalar.value, "server"))
 					{
-						snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Parsing 'server' block\n");
+						snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Parsing 'server' block\n");
 						report(reporter, false);
 						if (!parse_server(server, document, (current_node->data.mapping.pairs.start + i)->value, reporter))
 						{
@@ -60,7 +60,7 @@ static bool parse_document(struct s_server *server, yaml_document_t * document, 
 					}
 					else if (!strcmp((char*)key_node->data.scalar.value, "socket"))
 					{
-						snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Parsing 'socket' block\n");
+						snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Parsing 'socket' block\n");
 						report(reporter, false);
 						if (!parse_socket(server, document, (current_node->data.mapping.pairs.start + i)->value, reporter))
 						{
@@ -76,14 +76,14 @@ static bool parse_document(struct s_server *server, yaml_document_t * document, 
 				}
 				else
 				{
-					snprintf(reporter->buffer, PIPE_BUF, "ERROR: Wrong node format encountered in root YAML map: %s\n", key_node->data.scalar.value);
+					snprintf(reporter->buffer, PIPE_BUF, "ERROR    : Wrong node format encountered in root YAML map: %s\n", key_node->data.scalar.value);
 					report(reporter, false);
 				}
 			}
 		}
 		else
 		{
-			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Expected map at the root of yaml document, found: %s\n", current_node->tag);
+			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Expected map at the root of yaml document, found: %s\n", current_node->tag);
 			report(reporter, true);
 			ret = false;
 		}
@@ -100,7 +100,7 @@ static bool	parse_config_yaml(struct s_server * server, FILE *config_file_handle
 
 	if (!yaml_parser_initialize(&parser))
 	{
-		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not initialize parser\n");
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not initialize parser\n");
 		report(reporter, true);
 		ret = false;
 	}
@@ -110,7 +110,7 @@ static bool	parse_config_yaml(struct s_server * server, FILE *config_file_handle
 		yaml_parser_set_input_file(&parser, config_file_handle);
 		if (!yaml_parser_load(&parser, &document))
 		{
-			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not load configuration file, please verify YAML syntax\n");
+			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not load configuration file, please verify YAML syntax\n");
 			report(reporter, true);
 			ret = false;
 		}
@@ -141,7 +141,7 @@ static void	resolve_path(char** target, char* file_path, char* target_key, struc
 		*target = strdup(config_trimmed);
 		if (!*target)
 		{
-			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not allocate path for current working directory\n");
+			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not allocate path for current working directory\n");
 			report(reporter, true);
 		}
 	}
@@ -150,7 +150,7 @@ static void	resolve_path(char** target, char* file_path, char* target_key, struc
 		cwd = getcwd(NULL, 4096);
 		if (!cwd)
 		{
-			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not allocate path for current working directory\n");
+			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not allocate path for current working directory\n");
 			report(reporter, true);
 		}
 		else
@@ -158,7 +158,7 @@ static void	resolve_path(char** target, char* file_path, char* target_key, struc
 			*target = calloc((strlen(cwd) + strlen(config_trimmed) + 2), sizeof(char));
 			if (!*target)
 			{
-				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not allocate path for %s\n", target_key);
+				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not allocate path for %s\n", target_key);
 				report(reporter, true);
 			}
 			else
@@ -173,7 +173,7 @@ static void	resolve_path(char** target, char* file_path, char* target_key, struc
 	}
 	if (!reporter->critical)
 	{
-		snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Path to %s resolved: %s\n", target_key, *target);
+		snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Path to %s resolved: %s\n", target_key, *target);
 		report(reporter, false);
 	}
 }
@@ -187,7 +187,7 @@ struct s_server*	parse_config(char* bin_path, char* config_file, struct s_report
 	if (server)
 	{
 		init_server(server);
-		snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Buiding server\n");
+		snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Buiding server\n");
 		report(reporter, false);
 		resolve_path(&server->bin_path, bin_path, "binary path", reporter);
 		if (reporter->critical)
@@ -198,7 +198,7 @@ struct s_server*	parse_config(char* bin_path, char* config_file, struct s_report
 		config_file_handle = fopen(config_file, "r");	
 		if (!config_file_handle)
 		{
-			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not open configuration file\n");
+			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not open configuration file\n");
 			report(reporter, true);
 			server = server->cleaner(server);
 		}
@@ -219,7 +219,7 @@ struct s_server*	parse_config(char* bin_path, char* config_file, struct s_report
 	}
 	else
 	{
-		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not allocate server\n");
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not allocate server\n");
 		report(reporter, true);
 	}
 	return (server);

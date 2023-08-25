@@ -65,11 +65,11 @@ void	init_server(struct s_server * server)
 
 static void add_loglevel(enum log_level *log_level_field, char* field_name, yaml_node_t *value, struct s_report *reporter)
 {
-	snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Parsing %s in 'server'\n", field_name);
+	snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Parsing %s in 'server'\n", field_name);
 	report(reporter, false);
 	if (value->type != YAML_SCALAR_NODE)
 	{
-		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Wrong format for %s in 'server', expected a scalar value, encountered %s\n", field_name, value->tag);
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Wrong format for %s in 'server', expected a scalar value, encountered %s\n", field_name, value->tag);
 		report(reporter, true);
 	}
 	else
@@ -86,7 +86,7 @@ static void add_loglevel(enum log_level *log_level_field, char* field_name, yaml
 			*log_level_field = DEBUG;
 		else
 		{
-			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Wrong value for %s in 'server', accepted values are: CRITICAL ; ERROR ; WARN ; INFO ; DEBUG\n", field_name);
+			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Wrong value for %s in 'server', accepted values are: CRITICAL ; ERROR ; WARN ; INFO ; DEBUG\n", field_name);
 			report(reporter, true);
 		}
 	}
@@ -125,7 +125,7 @@ static void add_value(struct s_server *server, yaml_document_t *document, char* 
 		parse_env(NULL, value, document, &server->env, reporter);
 	else
 	{
-		snprintf(reporter->buffer, PIPE_BUF, "WARNING: Encountered unknown key '%s' in server configuration\n", key);
+		snprintf(reporter->buffer, PIPE_BUF, "WARNING  : Encountered unknown key '%s' in server configuration\n", key);
 		report(reporter, false);
 	}
 }
@@ -140,7 +140,7 @@ bool	parse_server(struct s_server *server, yaml_document_t *document, int value_
 	params_node = yaml_document_get_node(document, value_index);
 	if (params_node->type != YAML_MAPPING_NODE)
 	{
-		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Unexpected format for block server, expected map, encountered %s\n", params_node->tag);
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Unexpected format for block server, expected map, encountered %s\n", params_node->tag);
 		report(reporter, true);
 		ret = false;
 	}
@@ -161,7 +161,7 @@ bool	parse_server(struct s_server *server, yaml_document_t *document, int value_
 			}
 			else
 			{
-				snprintf(reporter->buffer, PIPE_BUF, "WARNING: Incorrect format detected in server block, expected keys to be scalars, encountered: %s\n" , key_node->tag);
+				snprintf(reporter->buffer, PIPE_BUF, "WARNING  : Incorrect format detected in server block, expected keys to be scalars, encountered: %s\n" , key_node->tag);
 				report(reporter, false);
 			}
 		}
