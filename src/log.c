@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/08/24 14:00:05 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/25 12:44:47 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/25 18:16:28 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,6 +19,46 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <sys/epoll.h>
+#include <string.h>
+
+bool next_string(char* buffer, char* log, size_t *current_index, bool add_stamp)
+{
+	size_t	offset;
+	size_t	diff;
+
+	offset = add_stamp ? 22 : 0;
+	for (size_t runner = *current_index; buffer[runner]; ++runner)
+	{
+		if (buffer[runner] == '\n')
+		{
+			diff = runner - *current_index + 1;
+			if (add_stamp)
+				get_stamp(log);
+			memcpy(&log[offset], &buffer[*current_index], diff);
+			log[diff + offset] = '\0';
+			*current_index = *current_index + diff;
+			return (true);
+		}
+	}
+	if (*current_index != 0)
+	{
+		if (buffer[*current_index] == '\0')
+		{
+			bzero(buffer, PIPE_BUF + 1);
+			*current_index = 0;
+		}
+		else
+		{
+			diff = strlen(&buffer[*current_index]);
+			memmove(buffer, &buffer[*current_index], diff);
+			buffer[diff] = '\0';
+			*current_index = diff;
+		}
+	}
+	else
+		*current_index = strlen(buffer);
+	return (false);
+}
 
 static bool	should_log(enum log_level loglevel, char* line)
 {
@@ -230,7 +270,7 @@ static bool	register_curl_opt(CURL *handle, char *channel, struct curl_slist *sl
 	return (curl_easy_setopt(handle, CURLOPT_URL, channel) == CURLE_OK
 		&& curl_easy_setopt(handle, CURLOPT_POST, 1) == CURLE_OK
 		&& curl_easy_setopt(handle, CURLOPT_FAILONERROR, 1L) == CURLE_OK
-		&& curl_easy_setopt(handle, CURLOPT_TIMEOUT, 3L) == CURLE_OK
+		&& curl_easy_setopt(handle, CURLOPT_TIMEOUT, 5L) == CURLE_OK
 		&& curl_easy_setopt(handle, CURLOPT_POSTFIELDS, data) == CURLE_OK
 		&& curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, write_callback) == CURLE_OK
 		&& curl_easy_setopt(handle, CURLOPT_HTTPHEADER, slist) == CURLE_OK);
@@ -313,6 +353,8 @@ void	log_discord(struct s_discord_logger *discord_logger, char *data)
 
 void	*discord_logger_thread(void *void_discord_logger)
 {
+	char					main_buffer[PIPE_BUF + 1];
+	size_t					current_index;
 	struct s_discord_logger	*discord_logger;
 	int						nb_events;
 	int						epoll_fd;
@@ -322,13 +364,15 @@ void	*discord_logger_thread(void *void_discord_logger)
 
 	discord_logger = (struct s_discord_logger*)void_discord_logger;
 	bzero(&event, sizeof(event));
+	bzero(buffer, PIPE_BUF + 1);
+	current_index = 0;
 	epoll_fd = epoll_create(1);
 	if (epoll_fd == -1)
 	{
 		discord_logger->logging = false;
 		strcpy(discord_logger->reporter.buffer, "CRITICAL: Could not instantiate epoll, exiting discord logging thread\n");
 		report(&discord_logger->reporter, true);
-		pthread_exit(NULL);
+		return(NULL);
 	}
 	event.data.fd = discord_logger->com[0];
 	event.events = EPOLLIN;
@@ -338,7 +382,7 @@ void	*discord_logger_thread(void *void_discord_logger)
 		strcpy(discord_logger->reporter.buffer, "CRITICAL: Could not add pipe to epoll events in Discord logging thread\n");
 		report(&discord_logger->reporter, true);
 		close(epoll_fd);
-		pthread_exit(NULL);
+		return(NULL);
 	}
 	strcpy(discord_logger->reporter.buffer, "DEBUG: Discord thread ready for logging\n");
 	report(&discord_logger->reporter, false);
@@ -354,12 +398,16 @@ void	*discord_logger_thread(void *void_discord_logger)
 			event.events = EPOLLIN;
 			epoll_ctl(epoll_fd, EPOLL_CTL_DEL, discord_logger->com[0], &event);
 			close(epoll_fd);
-			pthread_exit(NULL);
+			return(NULL);
 		}
 		if (nb_events)
 		{
-			ret = read(discord_logger->com[0], buffer, PIPE_BUF);
-			if (ret > 0)
+			ret = read(discord_logger->com[0], &main_buffer[current_index], PIPE_BUF - current_index);
+			if (ret <= 0)
+				continue;
+			main_buffer[(size_t)ret + current_index] = '\0';
+			current_index = 0;
+			while (next_string(main_buffer, buffer, &current_index, false))
 			{
 				buffer[ret] = '\0';
 				if (!strncmp("ENDLOG\n", buffer, 7))
@@ -368,7 +416,7 @@ void	*discord_logger_thread(void *void_discord_logger)
 					event.events = EPOLLIN;
 					epoll_ctl(epoll_fd, EPOLL_CTL_DEL, discord_logger->com[0], &event);
 					close(epoll_fd);
-					pthread_exit(NULL);
+					return(NULL);
 				}
 				else if (discord_logger->logging)
 					log_discord(discord_logger, buffer);
@@ -380,6 +428,8 @@ void	*discord_logger_thread(void *void_discord_logger)
 
 void	*main_logger(void *void_server)
 {
+	char					buffer[PIPE_BUF + 1];
+	size_t					current_index;
 	struct s_report			reporter;
 	struct s_discord_logger	discord_logger;
 	struct s_server			*server;
@@ -393,6 +443,8 @@ void	*main_logger(void *void_server)
 	server = (struct s_server*)void_server;
 	bzero(&discord_logger, sizeof(discord_logger));
 	bzero(&reporter, sizeof(reporter));
+	bzero(buffer, PIPE_BUF + 1);
+	current_index = 0;
 	discord_logger.logging = false;
 	discord_logger.running = false;
 	if (server->log_discord)
@@ -419,7 +471,7 @@ void	*main_logger(void *void_server)
 	}
 	if (discord_logger.logging)
 	{
-		if (pipe2(discord_logger.com, O_DIRECT | O_NONBLOCK) == -1)
+		if (pipe2(discord_logger.com, O_CLOEXEC | O_NONBLOCK) == -1)
 		{
 			get_stamp(reporter.buffer);
 			strcpy(&reporter.buffer[22], "CRITICAL: Could not open pipe to communicate with discord logging thread\n");
@@ -471,7 +523,7 @@ void	*main_logger(void *void_server)
 			close(discord_logger.com[0]);
 			close(discord_logger.com[1]);
 		}
-		pthread_exit(NULL);
+		return(NULL);
 	}
 	event.data.fd = server->log_pipe[0];
 	event.events = EPOLLIN;
@@ -496,7 +548,7 @@ void	*main_logger(void *void_server)
 			close(discord_logger.com[1]);
 		}
 		close(epoll_fd);
-		pthread_exit(NULL);
+		return(NULL);
 	}
 	get_stamp(reporter.buffer);
 	strcpy(&reporter.buffer[22], "DEBUG: Ready for logging\n");
@@ -538,17 +590,19 @@ void	*main_logger(void *void_server)
 			event.events = EPOLLIN;
 			epoll_ctl(epoll_fd, EPOLL_CTL_DEL, server->log_pipe[0], &event);
 			close(epoll_fd);
-			pthread_exit(NULL);
+			return(NULL);
 		}
 		if (nb_events)
 		{
 			if (event.data.fd == server->log_pipe[0]) 
 			{
-				get_stamp(reporter.buffer);
-				ret = read(server->log_pipe[0], &reporter.buffer[22], PIPE_BUF - 22);
-				if (ret > 0)
+				ret = read(server->log_pipe[0], &buffer[current_index], PIPE_BUF - current_index);
+				if (ret <= 0)
+					continue;
+				buffer[(size_t)ret + current_index] = '\0';
+				current_index = 0;
+				while (next_string(buffer, reporter.buffer, &current_index, true))
 				{
-					reporter.buffer[ret + 22] = '\0';
 					if (!strncmp("ENDLOG\n", &reporter.buffer[22], 7))
 					{
 						struct s_logging_client	*head = list;
@@ -656,7 +710,7 @@ void	*main_logger(void *void_server)
 								if (write(2, reporter.buffer, strlen(reporter.buffer)) == -1) {}
 							}
 						}
-						pthread_exit(NULL);
+						return(NULL);
 					}
 					else if (!strncmp("maintail", &reporter.buffer[22], 8))
 					{
@@ -761,7 +815,7 @@ void	*main_logger(void *void_server)
 							write_log(&server->logger, reporter.buffer);
 							if (!server->daemon)
 							{
-								if (write(2, reporter.buffer, (size_t)ret + 22) == -1) {}
+								if (write(2, reporter.buffer, strlen(reporter.buffer)) == -1) {}
 							}
 						}
 						if (discord_logger.logging && should_log(discord_logger.loglevel, &reporter.buffer[22]))
@@ -856,7 +910,7 @@ bool	start_logging_thread(struct s_server *server, bool daemonized)
 {
 	struct s_report	reporter;
 
-	if (pipe2(server->log_pipe, O_DIRECT | O_NONBLOCK) == -1)
+	if (pipe2(server->log_pipe, O_CLOEXEC | O_NONBLOCK) == -1)
 	{
 		get_stamp(reporter.buffer);
 		strcpy(&reporter.buffer[22], "CRITICAL: Could not open pipe for logging\n");

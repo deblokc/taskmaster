@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/25 13:08:09 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/25 18:15:58 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -78,7 +78,7 @@ static int	tmp_log(char tmp_log_file[1024])
 
 bool	tmp_logging(int reporter_pipe[4], char tmp_log_file[1024], struct s_report *reporter, bool is_first)
 {
-	if (pipe2(reporter_pipe, O_DIRECT | O_NONBLOCK) == -1)
+	if (pipe2(reporter_pipe, O_CLOEXEC | O_NONBLOCK) == -1)
 	{
 		if (is_first)
 		{

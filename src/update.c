@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/08/21 18:53:01 by bdetune           #+#    #+#             */
-/*   Updated: 2023/08/21 18:55:10 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/25 16:31:18 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -296,7 +296,11 @@ void	update_configuration(struct s_server *server, struct s_program *program_tre
 
 	server->priorities = NULL;
 	server->program_tree = program_tree;
-	update_umask(server);
+	for (struct s_program* current = server->begin(server); current; current = current->itnext(current))
+	{
+		current->stdout_logger.umask = server->umask;
+		current->stderr_logger.umask = server->umask;
+	}
 	if (program_tree)
 	{
 		strcpy(reporter->buffer, "DEBUG: Finding programs to stop\n");

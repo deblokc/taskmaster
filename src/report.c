@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/11 19:41:17 by bdetune           #+#    #+#             */
-/*   Updated: 2023/08/24 14:15:08 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/25 18:18:32 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -75,17 +75,19 @@ void	report_critical(int fd, int report_fd)
 
 void	*initial_log(void *fds)
 {
+	char				main_buffer[PIPE_BUF + 1];
+	size_t				current_index;
 	int					*reporter_pipe;	
 	int					nb_events;
 	int					epoll_fd;
 	ssize_t				ret;
 	char				buffer[PIPE_BUF + 1];
-	char				stamp[23];
 	struct epoll_event	event;
 
 	reporter_pipe = (int *)fds;
 	bzero(&event, sizeof(event));
-	bzero(stamp, sizeof(*stamp)*23);
+	bzero(buffer, PIPE_BUF + 1);
+	current_index = 0;
 	epoll_fd = epoll_create(1);
 	if (epoll_fd == -1)
 	{
@@ -118,11 +120,15 @@ void	*initial_log(void *fds)
 		}
 		if (nb_events)
 		{
-			ret = read(reporter_pipe[0], buffer, PIPE_BUF);
-			if (ret > 0)
+
+			ret = read(reporter_pipe[0], &main_buffer[current_index], PIPE_BUF - current_index);
+			if (ret <= 0)
+				continue;
+			main_buffer[(size_t)ret + current_index] = '\0';
+			current_index = 0;
+			while (next_string(main_buffer, buffer, &current_index, true))
 			{
-				buffer[ret] = '\0';
-				if (!strncmp("ENDLOG\n", buffer, 7))
+				if (!strncmp("ENDLOG\n", &buffer[22], 7))
 				{
 					event.data.fd = reporter_pipe[0];
 					event.events = EPOLLIN;
@@ -133,12 +139,12 @@ void	*initial_log(void *fds)
 				}
 				else
 				{
-					get_stamp(stamp);
-					if (write(reporter_pipe[2], stamp, 22)) {}					
-					if (write(reporter_pipe[2], buffer, (size_t)ret)) {}
+					if (write(reporter_pipe[2], buffer, strlen(buffer))) {}
 				}
 			}
 		}
 	}
+	reporter_pipe[3] = 1;
+	pthread_exit(&(reporter_pipe[3]));
 	return (NULL);
 }
