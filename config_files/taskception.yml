@@ -1,0 +1,18 @@
+programs:
+  inception:
+    command: /mnt/nfs/homes/tnaton/taskmaster/taskmasterctl/taskmasterctl
+    numprocs: 1
+    autrestart: always
+    priority: 10
+  shell:
+    command: /bin/bash
+    numprocs: 1
+    priority: 50
+server:
+  daemon: false
+  logfile: /tmp/taskmaster.log
+  loglevel: INFO
+socket:
+  enable: true
+  socketpath: /tmp/taskmaster.sock
+

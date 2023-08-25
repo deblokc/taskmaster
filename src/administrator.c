@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/25 15:18:11 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/25 17:22:55 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -313,6 +313,7 @@ int handle_command(struct s_process *process, char *buf, int epollfd) {
 		if (process->status == STOPPED || process->status == EXITED || process->status == FATAL) { // if process is stopped start it
 			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s was stopped, starting it\n", process->name);
 			report(&reporter, false);
+			process->count_restart = 0;
 			process->bool_start = true;
 		} else { // if not stopped do nothing
 			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s was running, did nothing\n", process->name);
