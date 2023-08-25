@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/08/24 14:00:05 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/25 12:44:47 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/25 14:04:34 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -706,13 +706,15 @@ void	*main_logger(void *void_server)
 						client->log = (char *)calloc(sizeof(char), size + 1);
 						struct stat tmp;
 						size_t out_logsize = 0;
+						size_t current_size = 0;
 						if (!fstat(server->logger.logfd, &tmp)) {
 							out_logsize = (size_t)tmp.st_size;
 							if (out_logsize > size) {
 								out_logsize = size;
 							}
 							lseek(server->logger.logfd, -(int)out_logsize, SEEK_END);
-							if (read(server->logger.logfd, client->log, out_logsize)) {}
+							if (read(server->logger.logfd, client->log + (size - out_logsize), out_logsize)) {}
+							current_size += out_logsize;
 						}
 	 // then read from backups files 
 						int i = 1;
@@ -726,14 +728,18 @@ void	*main_logger(void *void_server)
 							int tmpfd = open(path, O_RDONLY);
 							if (!fstat(tmpfd, &tmp)) {
 								out_logsize = (size_t)tmp.st_size;
-								if (out_logsize > (size - strlen(client->log))) {
-									out_logsize = (size - strlen(client->log));
+								if (out_logsize > (size - current_size)) {
+									out_logsize = (size - current_size);
 								}
 								lseek(tmpfd, -(int)out_logsize, SEEK_END);
-								if (read(tmpfd, client->log + strlen(client->log), out_logsize)) {}
+								if (read(tmpfd, client->log + (size - current_size - out_logsize), out_logsize)) {}
+								current_size += out_logsize;
 							}
 							i++;
 							close(tmpfd);
+						}
+						if (current_size < size) {
+							memmove(client->log, client->log + (size - current_size), current_size);
 						}
 						if (strlen(client->log) == 0) {
 							snprintf(client->log, size + 1, "Empty stdout logging\n");

@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/25 13:22:14 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/25 14:04:55 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -478,6 +478,9 @@ int handle_command(struct s_process *process, char *buf, int epollfd) {
 						i++;
 						close(tmpfd);
 					}
+					if (current_size < size) {
+						memmove(client->log, client->log + (size - current_size), current_size);
+					}
 					if (strlen(client->log) == 0) {
 						snprintf(client->log, size + 1, "Empty stdout logging\n");
 					}
@@ -490,6 +493,7 @@ int handle_command(struct s_process *process, char *buf, int epollfd) {
 
 				struct stat tmp;
 				size_t out_logsize = 0;
+				size_t current_size = 0;
 				if (process->stderrlog) { // first read from current logfile
 					if (!fstat(process->stderr_logger.logfd, &tmp)) {
 						out_logsize = (size_t)tmp.st_size;
@@ -497,7 +501,8 @@ int handle_command(struct s_process *process, char *buf, int epollfd) {
 							out_logsize = size;
 						}
 						lseek(process->stderr_logger.logfd, -(int)out_logsize, SEEK_END);
-						if (read(process->stderr_logger.logfd, client->log + strlen(client->log), out_logsize)) {}
+						if (read(process->stderr_logger.logfd, client->log + (size - out_logsize), out_logsize)) {}
+						current_size += out_logsize;
 					}
  // then read from backups files 
 					int i = 1;
@@ -511,13 +516,17 @@ int handle_command(struct s_process *process, char *buf, int epollfd) {
 						int tmpfd = open(path, O_RDONLY);
 						if (!fstat(tmpfd, &tmp)) {
 							out_logsize = (size_t)tmp.st_size;
-							if (out_logsize > (size - strlen(client->log))) {
-								out_logsize = (size - strlen(client->log));
+							if (out_logsize > (size - current_size)) {
+								out_logsize = (size - current_size);
 							}
 							lseek(tmpfd, -(int)out_logsize, SEEK_END);
-							if (read(tmpfd, client->log, out_logsize)) {}
+							if (read(tmpfd, client->log + (size - current_size - out_logsize), out_logsize)) {}
+							current_size += out_logsize;
 						}
 						i++;
+					}
+					if (current_size < size) {
+						memmove(client->log, client->log + (size - current_size), current_size);
 					}
 					if (strlen(client->log) == 0) {
 						snprintf(client->log, size + 1, "Empty stderr logging\n");
@@ -646,11 +655,12 @@ void handle_logging_client(struct s_process *process, struct epoll_event event, 
 void send_clients(struct s_process *process, int epollfd, char *buf) {
 	struct s_logging_client *tmp = process->list;
 	char trunc[PIPE_BUF - 20 + 1];
+	bzero(trunc, PIPE_BUF - 20 + 1);
 
-	memcpy(trunc, buf, PIPE_BUF - 20 + 1);
+	memcpy(trunc, buf, PIPE_BUF - 20);
 	while (tmp) {
 		if (tmp->fg) {
-			snprintf(tmp->buf + strlen(tmp->buf), PIPE_BUF + 1 - strlen(tmp->buf), "%s", trunc);
+			snprintf(tmp->buf + strlen(tmp->buf), PIPE_BUF - strlen(tmp->buf), "%s", trunc);
 			tmp->poll.events = EPOLLIN | EPOLLOUT;
 			epoll_ctl(epollfd, EPOLL_CTL_MOD, tmp->poll.data.fd, &(tmp->poll));
 		}
