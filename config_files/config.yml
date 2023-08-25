@@ -30,12 +30,12 @@ programs:
         stdout_logfile_backups: 3
 
 server:
-    daemon: true
+    daemon: false
     logfile: /tmp/taskmaster.log
     loglevel: DEBUG
     log_discord: true
     loglevel_discord: INFO
-    logfile_maxbytes: 1024
+    logfile_maxbytes: 4096
     logfile_backups: 3
 
 socket:

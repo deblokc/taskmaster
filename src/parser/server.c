@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 19:48:45 by bdetune           #+#    #+#             */
-/*   Updated: 2023/08/22 16:40:05 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/25 13:15:50 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -132,18 +132,11 @@ static void add_value(struct s_server *server, yaml_document_t *document, char* 
 
 bool	parse_server(struct s_server *server, yaml_document_t *document, int value_index, struct s_report *reporter)
 {
-	static bool duplicate = false;
 	bool		ret = true;
 	yaml_node_t	*params_node = NULL;
 	yaml_node_t	*key_node = NULL;
 	yaml_node_t	*value_node = NULL;
 
-	if (duplicate)
-	{
-		snprintf(reporter->buffer, PIPE_BUF, "WARNING: Encountered two blocks server in configuration file\n");
-		report(reporter, false);
-	}
-	duplicate = true;
 	params_node = yaml_document_get_node(document, value_index);
 	if (params_node->type != YAML_MAPPING_NODE)
 	{

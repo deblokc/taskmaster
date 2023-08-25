@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/24 14:53:42 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/25 12:45:59 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -82,7 +82,11 @@ void child_exec(struct s_process *proc) {
 		begin = proc->program->env;
 		while (begin)
 		{
-			putenv(strdup(begin->value));
+			if (setenv(begin->key, begin->value, 1))
+			{
+				snprintf(reporter.buffer, PIPE_BUF - 22, "CRITICAL: Could not update env key %s for program: %s\n",begin->key, proc->name);
+				report(&reporter, false);
+			}
 			begin = begin->next;
 		}
 	}

@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/08/08 11:24:49 by bdetune           #+#    #+#             */
-/*   Updated: 2023/08/09 16:58:18 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/25 13:16:05 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -75,18 +75,11 @@ static bool add_value(struct s_socket *socket, char* key, yaml_node_t *value, st
 
 bool	parse_socket(struct s_server *server, yaml_document_t *document, int value_index, struct s_report *reporter)
 {
-	static bool duplicate = false;
 	bool		ret = true;
 	yaml_node_t	*params_node = NULL;
 	yaml_node_t	*key_node = NULL;
 	yaml_node_t	*value_node = NULL;
 
-	if (duplicate)
-	{
-		snprintf(reporter->buffer, PIPE_BUF, "WARNING: Encountered two blocks 'socket' in configuration file\n");
-		report(reporter, false);
-	}
-	duplicate = true;
 	params_node = yaml_document_get_node(document, value_index);
 	if (params_node->type != YAML_MAPPING_NODE)
 	{
