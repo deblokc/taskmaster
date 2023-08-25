@@ -10,6 +10,8 @@ programs:
         autorestart: onerror
         stopsignal: TERM
         priority: 5
+        stdout_logfile_maxbytes: 100
+        stdout_logfile_backups: 30
     solo:
         command: /bin/bash -c "sleep 10"
         numprocs: 1
