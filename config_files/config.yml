@@ -10,7 +10,7 @@ programs:
         autorestart: onerror
         stopsignal: TERM
         priority: 5
-        stdout_logfile_maxbytes: 10
+        stdout_logfile_maxbytes: 100
         stdout_logfile_backups: 30
     solo:
         command: /bin/bash -c "sleep 10"
@@ -37,7 +37,7 @@ server:
     loglevel: DEBUG
     log_discord: true
     loglevel_discord: INFO
-    logfile_maxbytes: 1024
+    logfile_maxbytes: 4096
     logfile_backups: 3
 
 socket:
