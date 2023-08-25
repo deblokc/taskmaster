@@ -313,6 +313,7 @@ int handle_command(struct s_process *process, char *buf, int epollfd) {
 		if (process->status == STOPPED || process->status == EXITED || process->status == FATAL) { // if process is stopped start it
 			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG    : %s was stopped, starting it\n", process->name);
 			report(&reporter, false);
+			process->count_restart = 0;
 			process->bool_start = true;
 		} else { // if not stopped do nothing
 			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG    : %s was running, did nothing\n", process->name);
@@ -478,6 +479,9 @@ int handle_command(struct s_process *process, char *buf, int epollfd) {
 						i++;
 						close(tmpfd);
 					}
+					if (current_size < size) {
+						memmove(client->log, client->log + (size - current_size), current_size);
+					}
 					if (strlen(client->log) == 0) {
 						snprintf(client->log, size + 1, "Empty stdout logging\n");
 					}
@@ -490,6 +494,7 @@ int handle_command(struct s_process *process, char *buf, int epollfd) {
 
 				struct stat tmp;
 				size_t out_logsize = 0;
+				size_t current_size = 0;
 				if (process->stderrlog) { // first read from current logfile
 					if (!fstat(process->stderr_logger.logfd, &tmp)) {
 						out_logsize = (size_t)tmp.st_size;
@@ -497,7 +502,8 @@ int handle_command(struct s_process *process, char *buf, int epollfd) {
 							out_logsize = size;
 						}
 						lseek(process->stderr_logger.logfd, -(int)out_logsize, SEEK_END);
-						if (read(process->stderr_logger.logfd, client->log + strlen(client->log), out_logsize)) {}
+						if (read(process->stderr_logger.logfd, client->log + (size - out_logsize), out_logsize)) {}
+						current_size += out_logsize;
 					}
  // then read from backups files 
 					int i = 1;
@@ -511,13 +517,17 @@ int handle_command(struct s_process *process, char *buf, int epollfd) {
 						int tmpfd = open(path, O_RDONLY);
 						if (!fstat(tmpfd, &tmp)) {
 							out_logsize = (size_t)tmp.st_size;
-							if (out_logsize > (size - strlen(client->log))) {
-								out_logsize = (size - strlen(client->log));
+							if (out_logsize > (size - current_size)) {
+								out_logsize = (size - current_size);
 							}
 							lseek(tmpfd, -(int)out_logsize, SEEK_END);
-							if (read(tmpfd, client->log, out_logsize)) {}
+							if (read(tmpfd, client->log + (size - current_size - out_logsize), out_logsize)) {}
+							current_size += out_logsize;
 						}
 						i++;
+					}
+					if (current_size < size) {
+						memmove(client->log, client->log + (size - current_size), current_size);
 					}
 					if (strlen(client->log) == 0) {
 						snprintf(client->log, size + 1, "Empty stderr logging\n");
@@ -562,9 +572,13 @@ void handle_logging_client(struct s_process *process, struct epoll_event event, 
 			bzero(client->buf, PIPE_BUF + 1);
 		}
 		if (client->log) {
-			send(event.data.fd, client->log, strlen(client->log), 0);
+			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: senind %ld bytes client %d\n", strlen(client->log), client->poll.data.fd);
+			report(&reporter, false);
+			ssize_t ret = send(event.data.fd, client->log, strlen(client->log), 0);
 			free(client->log);
 			client->log = NULL;
+			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: sent %ld bytes client %d\n", ret, client->poll.data.fd);
+			report(&reporter, false);
 		}
 		client->poll.events = EPOLLIN;
 		if (epoll_ctl(epollfd, EPOLL_CTL_MOD, client->poll.data.fd, &client->poll)) {
@@ -645,17 +659,46 @@ void handle_logging_client(struct s_process *process, struct epoll_event event, 
 
 void send_clients(struct s_process *process, int epollfd, char *buf) {
 	struct s_logging_client *tmp = process->list;
-	char trunc[PIPE_BUF - 20 + 1];
+	struct s_report reporter;
+	reporter.report_fd = process->log;
+	size_t size = 0;
 
-	memcpy(trunc, buf, PIPE_BUF - 20 + 1);
 	while (tmp) {
 		if (tmp->fg) {
-			snprintf(tmp->buf + strlen(tmp->buf), PIPE_BUF + 1 - strlen(tmp->buf), "%s", trunc);
-			tmp->poll.events = EPOLLIN | EPOLLOUT;
-			epoll_ctl(epollfd, EPOLL_CTL_MOD, tmp->poll.data.fd, &(tmp->poll));
+			if (!tmp->log) {
+				size = strlen(buf);
+				tmp->log = (char *)calloc(sizeof(char), strlen(buf) + 1);
+			} else {
+				size = strlen(tmp->log) + strlen(buf);
+				tmp->log = (char *)realloc(tmp->log, sizeof(char) * (strlen(tmp->log) + strlen(buf) + 1));
+			}
+			if (tmp->log) {
+				snprintf(tmp->log + strlen(tmp->log), size, "%s", buf); 
+				tmp->poll.events = EPOLLIN | EPOLLOUT;
+				epoll_ctl(epollfd, EPOLL_CTL_MOD, tmp->poll.data.fd, &(tmp->poll));
+				snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s to %d client buffer is %ld bytes \n", process->name, tmp->poll.data.fd, strlen(tmp->log));
+				report(&reporter, false);
+			}
 		}
 		tmp = tmp->next;
 	}
+
+/*
+	char trunc[PIPE_BUF - 20 + 1];
+	bzero(trunc, PIPE_BUF - 20 + 1);
+
+	memcpy(trunc, buf, PIPE_BUF - 20);
+	while (tmp) {
+		if (tmp->fg) {
+			snprintf(tmp->buf + strlen(tmp->buf), PIPE_BUF - strlen(tmp->buf), "%s", trunc);
+			tmp->poll.events = EPOLLIN | EPOLLOUT;
+			epoll_ctl(epollfd, EPOLL_CTL_MOD, tmp->poll.data.fd, &(tmp->poll));
+			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s to %d client buffer is %ld bytes \n", process->name, tmp->poll.data.fd, strlen(tmp->buf));
+			report(&reporter, false);
+		}
+		tmp = tmp->next;
+	}
+	*/
 }
 
 static void kick_clients(struct s_logging_client **list) {
@@ -700,7 +743,7 @@ void *administrator(void *arg) {
 	process->bool_start = false; // this bool serve for autostart and start signal sent by controller
 	process->bool_exit = false;
 	int					nfds = 0;
-	struct epoll_event	events[3], in;
+	struct epoll_event	events[10], in;
 	int					epollfd = epoll_create(1);
 
 	process->stop.tv_sec = 0;           // NEED TO SET W/ gettimeofday WHEN CHANGING STATUS TO STOPPING
@@ -773,13 +816,16 @@ void *administrator(void *arg) {
 			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG    : %s starting epoll time to wait : %lld\n", process->name, ((long long)process->program->startsecs * 1000) - (tmp_micro - start_micro));
 			report(&reporter, false);
 			if (((long long)process->program->startsecs * 1000) - (tmp_micro - start_micro) > INT_MAX) { // if time to wait is bigger than an int, we wait as much as possible and come again if we got no event
-				nfds = epoll_wait(epollfd, events, 3, INT_MAX);
+				nfds = epoll_wait(epollfd, events, 10, INT_MAX);
 			} else {
-				nfds = epoll_wait(epollfd, events, 3, (int)(((long long)process->program->startsecs * 1000) - (tmp_micro - start_micro)));
+				nfds = epoll_wait(epollfd, events, 10, (int)(((long long)process->program->startsecs * 1000) - (tmp_micro - start_micro)));
 			}
 			if (nfds) { // if not timeout
 				for (int i = 0; i < nfds; i++) {
 				/* handles fds as needed */
+					if (process->list) {
+						handle_logging_client(process, events[0], epollfd);
+					}
 					if (events[i].data.fd == process->stdout[0]) { // if process print in stdout
 						char buf[PIPE_BUF + 1];
 						bzero(buf, PIPE_BUF + 1);
@@ -810,8 +856,7 @@ void *administrator(void *arg) {
 								break ;
 							}
 						}
-					}
-					if (events[i].data.fd == process->stderr[0]) { // if process print in stderr
+					} else if (events[i].data.fd == process->stderr[0]) { // if process print in stderr
 						char buf[PIPE_BUF + 1];
 						bzero(buf, PIPE_BUF + 1);
 						if (read(process->stderr[0], buf, PIPE_BUF) > 0) {
@@ -841,8 +886,7 @@ void *administrator(void *arg) {
 								break ;
 							}
 						}
-					}
-					if (events[i].data.fd == in.data.fd) {
+					} else if (events[i].data.fd == in.data.fd) {
 						char buf[PIPE_BUF + 1];
 						bzero(buf, PIPE_BUF + 1);
 						if (read(in.data.fd, buf, PIPE_BUF) > 0) {
@@ -883,9 +927,6 @@ void *administrator(void *arg) {
 							process->bool_exit = true;
 						}
 					}
-					if (process->list) {
-						handle_logging_client(process, events[0], epollfd);
-					}
 				}
 			} else if (((long long)process->program->startsecs * 1000) - (tmp_micro - start_micro) > INT_MAX) { // if timeout and not because time to wait is bigger than an int
 				process->status = RUNNING;
@@ -893,12 +934,15 @@ void *administrator(void *arg) {
 				report(&reporter, false);
 			}
 		} else if (process->status == RUNNING) {
-			nfds = epoll_wait(epollfd, events, 3, -1); // busy wait for smth to do
+			nfds = epoll_wait(epollfd, events, 10, -1); // busy wait for smth to do
 			char buf[PIPE_BUF + 1];
 
 			if (nfds) {
 				for (int i = 0; i < nfds; i++) {
 				/* handles fds as needed */
+					if (process->list) {
+						handle_logging_client(process, events[i], epollfd);
+					}
 					if (events[i].data.fd == process->stdout[0]) { // if process print in stdout
 						bzero(buf, PIPE_BUF + 1);
 						if (read(process->stdout[0], buf, PIPE_BUF) > 0) {
@@ -913,8 +957,7 @@ void *administrator(void *arg) {
 							report(&reporter, false);
 							break ;
 						}
-					}
-					if (events[i].data.fd == process->stderr[0]) { // if process print in stderr
+					} else if (events[i].data.fd == process->stderr[0]) { // if process print in stderr
 						bzero(buf, PIPE_BUF + 1);
 						if (read(process->stderr[0], buf, PIPE_BUF) > 0) {
 							if (process->stderrlog) {
@@ -928,8 +971,7 @@ void *administrator(void *arg) {
 							report(&reporter, false);
 							break ;
 						}
-					}
-					if (events[i].data.fd == in.data.fd) {
+					} else if (events[i].data.fd == in.data.fd) {
 						bzero(buf, PIPE_BUF + 1);
 						if (read(in.data.fd, buf, PIPE_BUF) > 0) {
 							snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG    : %s's administrator received something from main thread while RUNNING\n", process->name);
@@ -968,9 +1010,6 @@ void *administrator(void *arg) {
 							}
 							process->bool_exit = true;
 						}
-					}
-					if (process->list) {
-						handle_logging_client(process, events[i], epollfd);
 					}
 				}
 			} else {
@@ -1015,10 +1054,13 @@ void *administrator(void *arg) {
 			}
 			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG    : %s stopping epoll time to wait : %lld\n", process->name, ((long long)process->program->stopwaitsecs * 1000) - (tmp_micro - stop_micro));
 			report(&reporter, false);
-			nfds = epoll_wait(epollfd, events, 3, (int)((process->program->stopwaitsecs * 1000) - (tmp_micro - stop_micro)));
+			nfds = epoll_wait(epollfd, events, 10, (int)((process->program->stopwaitsecs * 1000) - (tmp_micro - stop_micro)));
 			if (nfds) { // if not timeout
 				for (int i = 0; i < nfds; i++) {
 				/* handles fds as needed */
+					if (process->list) {
+						handle_logging_client(process, events[i], epollfd);
+					}
 					if (events[i].data.fd == process->stdout[0]) { // if process print in stdout
 						char buf[PIPE_BUF + 1];
 						bzero(buf, PIPE_BUF + 1);
@@ -1049,8 +1091,7 @@ void *administrator(void *arg) {
 							}
 							break ;
 						}
-					}
-					if (events[i].data.fd == process->stderr[0]) { // if process print in stderr
+					} else if (events[i].data.fd == process->stderr[0]) { // if process print in stderr
 						char buf[PIPE_BUF + 1];
 						bzero(buf, PIPE_BUF + 1);
 						if (read(process->stderr[0], buf, PIPE_BUF) > 0) {
@@ -1080,8 +1121,7 @@ void *administrator(void *arg) {
 							}
 							break ;
 						}
-					}
-					if (events[i].data.fd == in.data.fd) {
+					} else if (events[i].data.fd == in.data.fd) {
 						char buf[PIPE_BUF + 1];
 						bzero(buf, PIPE_BUF + 1);
 						if (read(in.data.fd, buf, PIPE_BUF) > 0) {
@@ -1122,9 +1162,6 @@ void *administrator(void *arg) {
 							process->bool_exit = true;
 						}
 					}
-					if (process->list) {
-						handle_logging_client(process, events[i], epollfd);
-					}
 				}
 			} else { // if timeout
 				process->status = STOPPED;
@@ -1150,8 +1187,11 @@ void *administrator(void *arg) {
 		} else if (process->status == STOPPED || process->status == EXITED || process->status == FATAL) {
 			char buf[PIPE_BUF + 1];
 			bzero(buf, PIPE_BUF + 1);
-			nfds = epoll_wait(epollfd, events, 3, -1); // busy wait for main thread to send instruction
+			nfds = epoll_wait(epollfd, events, 10, -1); // busy wait for main thread to send instruction
 			for (int i = 0; i < nfds; i++) {
+				if (process->list) {
+					handle_logging_client(process, events[i], epollfd);
+				}
 				if (events[i].data.fd == in.data.fd) {
 					if (read(in.data.fd, buf, PIPE_BUF) > 0) {
 						snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG    : %s's administrator received something from main thread while STOPPED\n", process->name);
@@ -1180,9 +1220,6 @@ void *administrator(void *arg) {
 						kick_clients(&process->list);
 						return NULL;
 					}
-				}
-				if (process->list) {
-					handle_logging_client(process, events[i], epollfd);
 				}
 			}
 		}
