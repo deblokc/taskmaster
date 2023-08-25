@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/08/24 14:00:05 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/24 19:09:24 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/25 12:44:47 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -733,6 +733,7 @@ void	*main_logger(void *void_server)
 								if (read(tmpfd, client->log + strlen(client->log), out_logsize)) {}
 							}
 							i++;
+							close(tmpfd);
 						}
 						if (strlen(client->log) == 0) {
 							snprintf(client->log, size + 1, "Empty stdout logging\n");
