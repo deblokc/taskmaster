@@ -141,7 +141,7 @@ static void	add_priority(struct s_priority** head, struct s_program *current, st
 {
 	struct s_priority*	location;
 	
-	snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Adding program %s in list of priorities\n", current->name);
+	snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Adding program %s in list of priorities\n", current->name);
 	report(reporter, false);
 	if (head)
 	{
@@ -150,7 +150,7 @@ static void	add_priority(struct s_priority** head, struct s_program *current, st
 			*head = calloc(1, sizeof(**head));
 			if (!*head)
 			{
-				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: could not allocate space for priority node\n");
+				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : could not allocate space for priority node\n");
 				report(reporter, true);
 				return ;
 			}
@@ -170,7 +170,7 @@ static void	add_priority(struct s_priority** head, struct s_program *current, st
 				location = calloc(1, sizeof(*location));
 				if (!location)
 				{
-					snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: could not allocate space for priority node\n");
+					snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : could not allocate space for priority node\n");
 					report(reporter, true);
 					return ;
 				}

@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/08/21 18:53:01 by bdetune           #+#    #+#             */
-/*   Updated: 2023/08/21 18:55:10 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/25 16:31:18 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,7 +21,7 @@ static struct s_program *get_programs(yaml_document_t * document, struct s_repor
 
 	bzero(&server, sizeof(server));
 	init_server(&server);
-	snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Parsing YAML document\n");
+	snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Parsing YAML document\n");
 	report(reporter, false);
 	current_node = yaml_document_get_root_node(document);
 	if (!current_node)
@@ -40,7 +40,7 @@ static struct s_program *get_programs(yaml_document_t * document, struct s_repor
 				{
 					if (!strcmp((char *)key_node->data.scalar.value, "programs"))
 					{
-						snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Parsing 'programs' block\n");
+						snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Parsing 'programs' block\n");
 						report(reporter, false);
 						if (!parse_programs(&server, document, (current_node->data.mapping.pairs.start + i)->value, reporter))
 							break ;
@@ -48,14 +48,14 @@ static struct s_program *get_programs(yaml_document_t * document, struct s_repor
 				}
 				else
 				{
-					snprintf(reporter->buffer, PIPE_BUF, "ERROR: Wrong node format encountered in root YAML map: %s\n", key_node->data.scalar.value);
+					snprintf(reporter->buffer, PIPE_BUF, "ERROR    : Wrong node format encountered in root YAML map: %s\n", key_node->data.scalar.value);
 					report(reporter, false);
 				}
 			}
 		}
 		else
 		{
-			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Expected map at the root of yaml document, found: %s\n", current_node->tag);
+			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Expected map at the root of yaml document, found: %s\n", current_node->tag);
 			report(reporter, true);
 		}
 	}
@@ -73,13 +73,13 @@ struct s_program	*get_current_programs(struct s_server *server, struct s_report 
 	config_file_handle = fopen(server->config_file, "r");
 	if (!config_file_handle)
 	{
-		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not open configuration file\n");
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not open configuration file\n");
 		report(reporter, true);
 		return (program_tree);
 	}
 	if (!yaml_parser_initialize(&parser))
 	{
-		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not initialize parser\n");
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not initialize parser\n");
 		report(reporter, true);
 		fclose(config_file_handle);
 		return (program_tree);
@@ -88,7 +88,7 @@ struct s_program	*get_current_programs(struct s_server *server, struct s_report 
 	yaml_parser_set_input_file(&parser, config_file_handle);
 	if (!yaml_parser_load(&parser, &document))
 	{
-		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not load configuration file, please verify YAML syntax\n");
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not load configuration file, please verify YAML syntax\n");
 		report(reporter, true);
 	}
 	else
@@ -296,15 +296,19 @@ void	update_configuration(struct s_server *server, struct s_program *program_tre
 
 	server->priorities = NULL;
 	server->program_tree = program_tree;
-	update_umask(server);
+	for (struct s_program* current = server->begin(server); current; current = current->itnext(current))
+	{
+		current->stdout_logger.umask = server->umask;
+		current->stderr_logger.umask = server->umask;
+	}
 	if (program_tree)
 	{
-		strcpy(reporter->buffer, "DEBUG: Finding programs to stop\n");
+		strcpy(reporter->buffer, "DEBUG    : Finding programs to stop\n");
 		report(reporter, false);
 		server->priorities = create_priorities(server, reporter);
 		if (reporter->critical)
 		{
-			strcpy(reporter->buffer, "CRITICAL: Could not build priorities for new programs, exiting taskmasterd\n");
+			strcpy(reporter->buffer, "CRITICAL : Could not build priorities for new programs, exiting taskmasterd\n");
 			report(reporter, true);
 			if (server->priorities)
 				server->priorities->destructor(server->priorities);
@@ -317,7 +321,7 @@ void	update_configuration(struct s_server *server, struct s_program *program_tre
 	}
 	else
 	{
-		strcpy(reporter->buffer, "DEBUG: No new programs\n");
+		strcpy(reporter->buffer, "DEBUG    : No new programs\n");
 		report(reporter, false);
 	}
 	exit_admins(to_stop);

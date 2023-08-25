@@ -1,7 +1,7 @@
 programs:
     exception:
         command: /bin/sh
-        numprocs: 3
+        numprocs: 1
         retry: 3
         exitcodes:
             - 0
@@ -14,7 +14,7 @@ programs:
         stdout_logfile_backups: 30
     solo:
         command: /bin/bash -c "sleep 10"
-        numprocs: 1
+        numprocs: 10
         retry: 3
         umask: 022
         exitcodes:
@@ -26,7 +26,7 @@ programs:
     printeur_fou:
         command: cat /dev/random
         startsecs: 0
-        numprocs: 2
+        numprocs: 5
         priority: 7
         stdout_logfile_maxbytes: 1024
         stdout_logfile_backups: 3

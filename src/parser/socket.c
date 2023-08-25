@@ -66,7 +66,7 @@ static bool add_value(struct s_socket *socket, char* key, yaml_node_t *value, st
 		ret = add_char(NULL, "password", &socket->password, value, reporter);
 	else
 	{
-		snprintf(reporter->buffer, PIPE_BUF, "WARNING: Encountered unknown key '%s' in socket configuration\n", key);
+		snprintf(reporter->buffer, PIPE_BUF, "WARNING  : Encountered unknown key '%s' in socket configuration\n", key);
 		report(reporter, false);
 	}
 	return (ret);
@@ -83,7 +83,7 @@ bool	parse_socket(struct s_server *server, yaml_document_t *document, int value_
 	params_node = yaml_document_get_node(document, value_index);
 	if (params_node->type != YAML_MAPPING_NODE)
 	{
-		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Unexpected format for block 'socket', expected map, encountered %s, ignoring configuration block (socket connection might not be available)\n", params_node->tag);
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Unexpected format for block 'socket', expected map, encountered %s, ignoring configuration block (socket connection might not be available)\n", params_node->tag);
 		report(reporter, false);
 		ret = false;
 	}
@@ -97,7 +97,7 @@ bool	parse_socket(struct s_server *server, yaml_document_t *document, int value_
 				value_node = yaml_document_get_node(document, (params_node->data.mapping.pairs.start + i)->value);
 				if (!add_value(&server->socket, (char*)key_node->data.scalar.value, value_node, reporter))
 				{
-					snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Error while parsing block 'socket', not enabling it\n");
+					snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Error while parsing block 'socket', not enabling it\n");
 					server->socket.destructor(&server->socket);
 					report(reporter, false);
 					ret = false;
@@ -106,7 +106,7 @@ bool	parse_socket(struct s_server *server, yaml_document_t *document, int value_
 			}
 			else
 			{
-				snprintf(reporter->buffer, PIPE_BUF, "WARNING: Incorrect format detected in 'socket' block, expected keys to be scalars, encountered: %s\n" , key_node->tag);
+				snprintf(reporter->buffer, PIPE_BUF, "WARNING  : Incorrect format detected in 'socket' block, expected keys to be scalars, encountered: %s\n" , key_node->tag);
 				report(reporter, false);
 			}
 		}

@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/25 12:18:56 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/08/25 18:12:02 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -259,6 +259,8 @@ void				delete_clients(struct s_client **clients_lst, struct s_report *reporter)
 void				update_configuration(struct s_server *server, struct s_program *program_tree, struct s_report *reporter);
 struct s_program*	get_current_programs(struct s_server *server, struct s_report *reporter);
 void				update_umask(struct s_server *server);
+bool				next_string(char* buffer, char* log, size_t *current_index, bool add_stamp);
+
 struct s_logging_client	*new_logging_client(struct s_logging_client **list, int client_fd, struct s_report *reporter);
 
 extern volatile sig_atomic_t g_sig;

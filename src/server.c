@@ -43,13 +43,13 @@ bool	init_epoll(struct s_server *server, struct s_report *reporter)
 	efd = epoll_create1(EPOLL_CLOEXEC);
 	if (efd == -1)
 	{
-		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not init epoll for socket connection, exiting process\n");
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not init epoll for socket connection, exiting process\n");
 		report(reporter, true);
 		return (false);
 	}
 	if (epoll_ctl(efd, EPOLL_CTL_ADD, server->socket.sockfd, &sock) == -1)
 	{
-		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not add socket to epoll instance, exiting process\n");
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not add socket to epoll instance, exiting process\n");
 		report(reporter, true);
 		return (false);
 	}
@@ -68,14 +68,14 @@ void	create_socket(struct s_server *server, struct s_report *reporter) {
 		server->socket.socketpath = strdup("/tmp/taskmasterd.sock");
 		if (!server->socket.socketpath)
 		{
-			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not allocate string for socketpath, exiting process\n");
+			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not allocate string for socketpath, exiting process\n");
 			report(reporter, true);
 			return ;
 		}
 	}
 	server->socket.sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (server->socket.sockfd < 0) {
-		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not open socket, exiting process\n");
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not open socket, exiting process\n");
 		report(reporter, true);
 		return ;
 	}
@@ -83,13 +83,13 @@ void	create_socket(struct s_server *server, struct s_report *reporter) {
 	addr.sun_family = AF_UNIX;
 	strcpy(addr.sun_path, server->socket.socketpath);
 	if (bind(server->socket.sockfd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not create socket, exiting process\n");
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not create socket, exiting process\n");
 		report(reporter, true);
 		return ;
 	}
 	if (chmod(server->socket.socketpath, 0666 & ~server->socket.umask) == -1)
 	{
-		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not change rights of socket, exiting process\n");
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not change rights of socket, exiting process\n");
 		report(reporter, true);
 		unlink(server->socket.socketpath);
 		return ;
@@ -102,12 +102,12 @@ void	create_socket(struct s_server *server, struct s_report *reporter) {
 		{
 			if (errno == 0 || errno == ENOENT || errno == ESRCH || errno == EBADF || errno == EPERM)
 			{
-				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Unkown user %s, cannot change ownership of socket, exiting process\n", server->socket.uid);
+				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Unkown user %s, cannot change ownership of socket, exiting process\n", server->socket.uid);
 				report(reporter, true);
 			}
 			else
 			{
-				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not get information on user %s, cannot change ownership of socket, exiting process\n", server->socket.uid);
+				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not get information on user %s, cannot change ownership of socket, exiting process\n", server->socket.uid);
 				report(reporter, true);
 			}
 			unlink(server->socket.socketpath);
@@ -122,12 +122,12 @@ void	create_socket(struct s_server *server, struct s_report *reporter) {
 			{
 				if (errno == 0 || errno == ENOENT || errno == ESRCH || errno == EBADF || errno == EPERM)
 				{
-					snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Unkown group %s, cannot change ownership of socket, exiting process\n", server->socket.gid);
+					snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Unkown group %s, cannot change ownership of socket, exiting process\n", server->socket.gid);
 					report(reporter, true);
 				}
 				else
 				{
-					snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not get information on group %s, cannot change ownership of socket, exiting process\n", server->socket.gid);
+					snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not get information on group %s, cannot change ownership of socket, exiting process\n", server->socket.gid);
 					report(reporter, true);
 				}
 				unlink(server->socket.socketpath);
@@ -137,12 +137,12 @@ void	create_socket(struct s_server *server, struct s_report *reporter) {
 		}
 		if (chown(server->socket.socketpath, user, group) == -1)
 		{
-			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Could not change ownership of socket to %s:%s, exiting process\n", server->socket.uid, server->socket.gid);
+			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not change ownership of socket to %s:%s, exiting process\n", server->socket.uid, server->socket.gid);
 			report(reporter, true);
 			unlink(server->socket.socketpath);
 			return ;
 		}
-		snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Successfully changed ownership of socket to %s:%s\n", server->socket.uid, server->socket.gid);
+		snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Successfully changed ownership of socket to %s:%s\n", server->socket.uid, server->socket.gid);
 		report(reporter, false);
 
 	}
@@ -156,7 +156,7 @@ struct s_client *new_client(struct s_client **list, int client_fd, struct s_repo
 	new_client = calloc(1, sizeof(struct s_client));
 	if (!new_client)
 	{
-		strcpy(reporter->buffer, "CRITICAL: Could not calloc new client, connection will be ignored\n");
+		strcpy(reporter->buffer, "CRITICAL : Could not calloc new client, connection will be ignored\n");
 		report(reporter, false);
 		close(client_fd);
 		return (NULL);
@@ -276,7 +276,7 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 	for (int i = 0; i < nb_events; ++i)
 	{
 		if (events[i].data.fd == server->socket.sockfd) {
-			strcpy(reporter->buffer, "INFO: Received new connection on socket\n");
+			strcpy(reporter->buffer, "INFO     : Received new connection on socket\n");
 			report(reporter, false);
 			if ((client_socket = accept(server->socket.sockfd, NULL, NULL)) != -1)
 			{
@@ -286,7 +286,7 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 				client->poll.events = EPOLLIN;// | EPOLLOUT;
 				if (epoll_ctl(efd, EPOLL_CTL_ADD, client->poll.data.fd, &client->poll) == -1)
 				{
-					strcpy(reporter->buffer, "CRITICAL: Could not add new client to epoll list\n");
+					strcpy(reporter->buffer, "CRITICAL : Could not add new client to epoll list\n");
 					report(reporter, false);
 					close(client->poll.data.fd);
 					client->poll.data.fd = -1;
@@ -300,11 +300,11 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 			if (!client)
 				continue ;
 			if (events[i].events & EPOLLIN) {
-				snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Received data from client with socket fd %d\n", client->poll.data.fd);
+				snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Received data from client with socket fd %d\n", client->poll.data.fd);
 				report(reporter, false);
 				bzero(buf, PIPE_BUF + 1);
 				if ((recv(client->poll.data.fd, buf, PIPE_BUF, MSG_DONTWAIT) <= 0)) {
-					snprintf(reporter->buffer, PIPE_BUF, "INFO: Client disconnected\n");
+					snprintf(reporter->buffer, PIPE_BUF, "INFO     : Client disconnected\n");
 					report(reporter, false);
 					epoll_ctl(efd, EPOLL_CTL_DEL, client->poll.data.fd, &client->poll);
 					if (client == *clients_lst) {
@@ -322,21 +322,21 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 					}
 					continue ;
 				}
-				snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Data received from client with socket fd %d\n", client->poll.data.fd);
+				snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Data received from client with socket fd %d\n", client->poll.data.fd);
 				report(reporter, false);
 				client->poll.events = EPOLLOUT;
 				if (epoll_ctl(efd, EPOLL_CTL_MOD, client->poll.data.fd, &client->poll) == -1)
 				{
-					snprintf(reporter->buffer, PIPE_BUF, "ERROR: Could not modify client events in epoll list for client with socket fd %d\n", client->poll.data.fd);
+					snprintf(reporter->buffer, PIPE_BUF, "ERROR    : Could not modify client events in epoll list for client with socket fd %d\n", client->poll.data.fd);
 					report(reporter, false);
 				}
 				cmd = process_line(buf);
 				if (!cmd) {
-					snprintf(reporter->buffer, PIPE_BUF, "CRITICAL: Fatal error while parsing command received from client with socket fd %d\n", client->poll.data.fd);
+					snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Fatal error while parsing command received from client with socket fd %d\n", client->poll.data.fd);
 					memcpy(client->buf, reporter->buffer, strlen(reporter->buffer));
 					report(reporter, false);
 				} else {
-					snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: client with socket fd %d sent command \"%s", client->poll.data.fd, cmd->cmd);
+					snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG    : client with socket fd %d sent command \"%s", client->poll.data.fd, cmd->cmd);
 					if (cmd->arg) {
 						for (int i = 0; cmd->arg[i]; i++) {
 							snprintf(reporter->buffer + strlen(reporter->buffer), PIPE_BUF - 22, "\" \"%s", cmd->arg[i]);
@@ -347,25 +347,25 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 					}
 					report(reporter, false);
 					if (!strcmp(cmd->cmd, "maintail")) {      //send via logging thread
-						snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: controller has sent maintail command\n");
+						snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG    : controller has sent maintail command\n");
 						report(reporter, false);
 						size_t size = 0;
 						if (cmd->arg) {
 							if (!strcmp(cmd->arg[0], "-f")) {
-								snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: starting infinitemaintailling\n");
+								snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG    : starting infinitemaintailling\n");
 								report(reporter, false);
 								snprintf(reporter->buffer, PIPE_BUF - 22, "maintail %d\n", client->poll.data.fd);
 								report(reporter, false);
 								if (epoll_ctl(efd, EPOLL_CTL_DEL, client->poll.data.fd, &client->poll) == -1)
 								{
-									snprintf(reporter->buffer, PIPE_BUF, "ERROR: Could not remove client events in epoll list for client with socket fd %d\n", client->poll.data.fd);
+									snprintf(reporter->buffer, PIPE_BUF, "ERROR    : Could not remove client events in epoll list for client with socket fd %d\n", client->poll.data.fd);
 									report(reporter, false);
 								}
 								// register client
 							} else {
 								size = (size_t)atoi(cmd->arg[0] + 1);
 								if (size >= INT_MAX) {
-									snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: maintail size is 0 or below\n");
+									snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG    : maintail size is 0 or below\n");
 									report(reporter, false);
 									snprintf(client->buf, PIPE_BUF + 1, "invalid maintail size\n");
 								}
@@ -374,47 +374,47 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 							size = 1600;
 						}
 						if (size > 0 && size < INT_MAX) {
-							snprintf(reporter->buffer, PIPE_BUF, "DEBUG: sending client %d request for maintail of %d size\n", client->poll.data.fd, (int)size);
+							snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : sending client %d request for maintail of %d size\n", client->poll.data.fd, (int)size);
 							report(reporter, false);
 							snprintf(reporter->buffer, PIPE_BUF - 22, "getlog %d %d\n", (int)size, client->poll.data.fd);
 							report(reporter, false);
 							if (epoll_ctl(efd, EPOLL_CTL_DEL, client->poll.data.fd, &client->poll) == -1)
 							{
-								snprintf(reporter->buffer, PIPE_BUF, "ERROR: Could not remove client events in epoll list for client with socket fd %d\n", client->poll.data.fd);
+								snprintf(reporter->buffer, PIPE_BUF, "ERROR    : Could not remove client events in epoll list for client with socket fd %d\n", client->poll.data.fd);
 								report(reporter, false);
 							}
 						}
 					} else if (!strcmp(cmd->cmd, "signal")) {  //administrator send signal
-						snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: controller has sent signal command\n");
+						snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG    : controller has sent signal command\n");
 						report(reporter, false);
 						if (cmd->arg) {
 							char msg[5] = "sig ";
 							if (!strcmp(cmd->arg[0], "SIGHUP")) {
-								snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: signal to be send is SIGHUP\n");
+								snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG    : signal to be send is SIGHUP\n");
 								report(reporter, false);
 								msg[3] = SIGHUP;
 							} else if (!strcmp(cmd->arg[0], "SIGINT")) {
-								snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: signal to be send is SIGINT\n");
+								snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG    : signal to be send is SIGINT\n");
 								report(reporter, false);
 								msg[3] = SIGINT;
 							} else if (!strcmp(cmd->arg[0], "SIGQUIT")) {
-								snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: signal to be send is SIGQUIT\n");
+								snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG    : signal to be send is SIGQUIT\n");
 								report(reporter, false);
 								msg[3] = SIGQUIT;
 							} else if (!strcmp(cmd->arg[0], "SIGKILL")) {
-								snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: signal to be send is SIGKILL\n");
+								snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG    : signal to be send is SIGKILL\n");
 								report(reporter, false);
 								msg[3] = SIGKILL;
 							} else if (!strcmp(cmd->arg[0], "SIGUSR1")) {
-								snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: signal to be send is SIGUSR1\n");
+								snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG    : signal to be send is SIGUSR1\n");
 								report(reporter, false);
 								msg[3] = SIGUSR1;
 							} else if (!strcmp(cmd->arg[0], "SIGUSR2")) {
-								snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: signal to be send is SIGUSR2\n");
+								snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG    : signal to be send is SIGUSR2\n");
 								report(reporter, false);
 								msg[3] = SIGUSR2;
 							} else if (!strcmp(cmd->arg[0], "SIGTERM")) {
-								snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: signal to be send is SIGTERM\n");
+								snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG    : signal to be send is SIGTERM\n");
 								report(reporter, false);
 								msg[3] = SIGTERM;
 							} else {
@@ -443,14 +443,14 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 							}
 						}
 					} else if (!strcmp(cmd->cmd, "stop")) {    //administrator stop process
-						snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: controller has sent stop command\n");
+						snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG    : controller has sent stop command\n");
 						report(reporter, false);
 						if (cmd->arg) {
 							send_command_multiproc(cmd, server);
 						}
 					} else if (!strcmp(cmd->cmd, "avail")) {   //main thread return available process
 					} else if (!strcmp(cmd->cmd, "fg")) {      //administrator send logging and stdin
-						snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: controller has sent fg command\n");
+						snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG    : controller has sent fg command\n");
 						report(reporter, false);
 						if (cmd->arg) {
 							for (struct s_program *current = server->begin(server); current; current = current->itnext(current)) {
@@ -479,19 +479,19 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 						g_sig = SIGHUP;
 						return ;
 					} else if (!strcmp(cmd->cmd, "restart")) { //administrator stop then start process
-						snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: controller has sent start command\n");
+						snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG    : controller has sent start command\n");
 						report(reporter, false);
 						if (cmd->arg) {
 							send_command_multiproc(cmd, server);
 						}
 					} else if (!strcmp(cmd->cmd, "start")) {   //administrator start process
-						snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: controller has sent start command\n");
+						snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG    : controller has sent start command\n");
 						report(reporter, false);
 						if (cmd->arg) {
 							send_command_multiproc(cmd, server);
 						}
 					} else if (!strcmp(cmd->cmd, "tail")) {    //administrator send logging
-						snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: controller has sent tail command\n");
+						snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG    : controller has sent tail command\n");
 						report(reporter, false);
 						if (cmd->arg) {
 							char buf[PIPE_BUF + 1];
@@ -560,7 +560,7 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 							char trunc[PIPE_BUF / 2];
 							bzero(trunc, PIPE_BUF / 2);
 							memcpy(trunc, buf, PIPE_BUF / 2);
-							snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: sending tail command >%s< to %s\n", trunc, name);
+							snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG    : sending tail command >%s< to %s\n", trunc, name);
 							report(reporter, false);
 							for (struct s_program *current = server->begin(server); current; current = current->itnext(current)) {
 								if (!strncmp(current->name, name, strlen(current->name))) {
@@ -579,7 +579,7 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 							}
 						}
 					} else if (!strcmp(cmd->cmd, "pid")) {     //main thread send pid of process
-						snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG: controller has sent pid command\n");
+						snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG    : controller has sent pid command\n");
 						report(reporter, false);
 						if (cmd->arg) {
 							if (!strcmp(cmd->arg[0], "all")) {
@@ -660,31 +660,31 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 			} else if (events[i].events & EPOLLOUT) {
 				// send response located in client->buf
 				if (strlen(client->buf)) {
-					snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Sending to client with socket fd %d\n", client->poll.data.fd);
+					snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Sending to client with socket fd %d\n", client->poll.data.fd);
 					report(reporter, false);
 					send(events[i].data.fd, client->buf, strlen(client->buf), 0);
 					bzero(client->buf, PIPE_BUF + 1);
 				} else if (client->log) {
-					snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Sending log to client with socket fd %d\n", client->poll.data.fd);
+					snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Sending log to client with socket fd %d\n", client->poll.data.fd);
 					report(reporter, false);
 					send(events[i].data.fd, client->log, strlen(client->log), 0);
 					free(client->log);
 					client->log = NULL;
 				} else {
-					snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Sending to client with socket fd %d NON ZERO RESPONSE\n", client->poll.data.fd);
+					snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Sending to client with socket fd %d NON ZERO RESPONSE\n", client->poll.data.fd);
 					report(reporter, false);
 					send(events[i].data.fd, ".\n", 2, 0);
 				}
 				client->poll.events = EPOLLIN;
 				if (epoll_ctl(efd, EPOLL_CTL_MOD, client->poll.data.fd, &client->poll))
 				{
-					snprintf(reporter->buffer, PIPE_BUF, "ERROR: Could not modify client events in epoll list for client with socket fd %d\n", client->poll.data.fd);
+					snprintf(reporter->buffer, PIPE_BUF, "ERROR    : Could not modify client events in epoll list for client with socket fd %d\n", client->poll.data.fd);
 					report(reporter, false);
 				}
 			}
 			else
 			{
-				snprintf(reporter->buffer, PIPE_BUF, "INFO: Client disconnected");
+				snprintf(reporter->buffer, PIPE_BUF, "INFO     : Client disconnected");
 				report(reporter, false);
 				epoll_ctl(efd, EPOLL_CTL_DEL, client->poll.data.fd, &client->poll);
 				if (client == *clients_lst) {

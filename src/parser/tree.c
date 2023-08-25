@@ -150,11 +150,11 @@ static void	insert(struct s_server* server, struct s_program* program, struct s_
 		diff = strcmp(target->name, program->name);
 		if (!diff)
 		{
-			snprintf(reporter->buffer, PIPE_BUF, "WARNING: Redefinition of program %s, discarding previous definition in favor of the latest one\n", program->name);
+			snprintf(reporter->buffer, PIPE_BUF, "WARNING  : Redefinition of program %s, discarding previous definition in favor of the latest one\n", program->name);
 			report(reporter, false);
 			if (server->program_tree == target)
 			{
-				snprintf(reporter->buffer, PIPE_BUF, "DEBUG: Switching root of program tree\n");
+				snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Switching root of program tree\n");
 				report(reporter, false);
 				server->program_tree = program;
 			}
