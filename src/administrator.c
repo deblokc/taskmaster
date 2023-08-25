@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/24 14:53:42 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/08/25 12:55:20 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -465,6 +465,7 @@ int handle_command(struct s_process *process, char *buf, int epollfd) {
 							if (read(tmpfd, client->log + strlen(client->log), out_logsize)) {}
 						}
 						i++;
+						close(tmpfd);
 					}
 					if (strlen(client->log) == 0) {
 						snprintf(client->log, size + 1, "Empty stdout logging\n");
@@ -646,6 +647,25 @@ void send_clients(struct s_process *process, int epollfd, char *buf) {
 	}
 }
 
+static void kick_clients(struct s_logging_client **list) {
+	if (!list) {
+		return ;
+	}
+
+	struct s_logging_client *head = *list;
+	struct s_logging_client *tmp = NULL;
+
+	while (head) {
+		tmp = head->next;
+		if (head->log) {
+			free(head->log);
+		}
+		free(head);
+		head = tmp;
+	}
+	list = NULL;
+}
+
 void *administrator(void *arg) {
 	struct s_process *process = (struct s_process *)arg;
 	process->list = NULL;
@@ -702,6 +722,7 @@ void *administrator(void *arg) {
 					if (process->stderr_logger.logfd > 0) {
 						close(process->stderr_logger.logfd);
 					}
+					kick_clients(&process->list);
 					return NULL;
 				}
 			} else {
@@ -723,6 +744,7 @@ void *administrator(void *arg) {
 				if (process->stderr_logger.logfd > 0) {
 					close(process->stderr_logger.logfd);
 				}
+				kick_clients(&process->list);
 				return NULL;
 			}
 
@@ -767,6 +789,7 @@ void *administrator(void *arg) {
 								if (process->stderr_logger.logfd > 0) {
 									close(process->stderr_logger.logfd);
 								}
+								kick_clients(&process->list);
 								return NULL;
 							} else {
 								snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s is now in BACKOFF\n", process->name);
@@ -797,6 +820,7 @@ void *administrator(void *arg) {
 								if (process->stderr_logger.logfd > 0) {
 									close(process->stderr_logger.logfd);
 								}
+								kick_clients(&process->list);
 								return NULL;
 							} else {
 								snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING: %s is now in BACKOFF\n", process->name);
@@ -823,6 +847,7 @@ void *administrator(void *arg) {
 								if (process->stderr_logger.logfd > 0) {
 									close(process->stderr_logger.logfd);
 								}
+								kick_clients(&process->list);
 								return NULL;
 							}
 						} else {
@@ -841,6 +866,7 @@ void *administrator(void *arg) {
 								if (process->stderr_logger.logfd > 0) {
 									close(process->stderr_logger.logfd);
 								}
+								kick_clients(&process->list);
 								return NULL;
 							}
 							process->bool_exit = true;
@@ -907,6 +933,7 @@ void *administrator(void *arg) {
 								if (process->stderr_logger.logfd > 0) {
 									close(process->stderr_logger.logfd);
 								}
+								kick_clients(&process->list);
 								return NULL;
 							}
 						} else {
@@ -925,6 +952,7 @@ void *administrator(void *arg) {
 								if (process->stderr_logger.logfd > 0) {
 									close(process->stderr_logger.logfd);
 								}
+								kick_clients(&process->list);
 								return NULL;
 							}
 							process->bool_exit = true;
@@ -952,6 +980,7 @@ void *administrator(void *arg) {
 				if (process->stderr_logger.logfd > 0) {
 					close(process->stderr_logger.logfd);
 				}
+				kick_clients(&process->list);
 				return NULL;
 			}
 
@@ -1004,6 +1033,7 @@ void *administrator(void *arg) {
 								if (process->stderr_logger.logfd > 0) {
 									close(process->stderr_logger.logfd);
 								}
+								kick_clients(&process->list);
 								return NULL;
 							}
 							break ;
@@ -1034,6 +1064,7 @@ void *administrator(void *arg) {
 								if (process->stderr_logger.logfd > 0) {
 									close(process->stderr_logger.logfd);
 								}
+								kick_clients(&process->list);
 								return NULL;
 							}
 							break ;
@@ -1055,6 +1086,7 @@ void *administrator(void *arg) {
 								if (process->stderr_logger.logfd > 0) {
 									close(process->stderr_logger.logfd);
 								}
+								kick_clients(&process->list);
 								return NULL;
 							}
 						} else {
@@ -1073,6 +1105,7 @@ void *administrator(void *arg) {
 								if (process->stderr_logger.logfd > 0) {
 									close(process->stderr_logger.logfd);
 								}
+								kick_clients(&process->list);
 								return NULL;
 							}
 							process->bool_exit = true;
@@ -1099,6 +1132,7 @@ void *administrator(void *arg) {
 					if (process->stderr_logger.logfd > 0) {
 						close(process->stderr_logger.logfd);
 					}
+					kick_clients(&process->list);
 					return NULL;
 				}
 			}
@@ -1119,6 +1153,7 @@ void *administrator(void *arg) {
 							if (process->stderr_logger.logfd > 0) {
 								close(process->stderr_logger.logfd);
 							}
+							kick_clients(&process->list);
 							return NULL;
 						}
 					} else {
@@ -1131,6 +1166,7 @@ void *administrator(void *arg) {
 						if (process->stderr_logger.logfd > 0) {
 							close(process->stderr_logger.logfd);
 						}
+						kick_clients(&process->list);
 						return NULL;
 					}
 				}
@@ -1140,5 +1176,5 @@ void *administrator(void *arg) {
 			}
 		}
 	}
+	kick_clients(&process->list);
 	return NULL;
-}
