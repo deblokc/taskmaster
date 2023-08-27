@@ -370,7 +370,7 @@ int main(int ac, char **av) {
 	epoll_ctl(efd, EPOLL_CTL_ADD, socket, &sock);
 
 	// SETUP EPOLL, IT CAN NOW BE CALLED IN NEEDED FUNCTION
-
+	signal(SIGPIPE, SIG_IGN);
 	signal(SIGINT, &sig_handler);
 	complete_init(tab);
 
