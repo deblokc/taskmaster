@@ -440,6 +440,13 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 										}
 									}
 								}
+								snprintf(client->buf, PIPE_BUF, "signal %s sent to", cmd->arg[0]);
+								int i = 1;
+								while (cmd->arg[i]) {
+									snprintf(client->buf + strlen(client->buf), PIPE_BUF - strlen(client->buf), " %s", cmd->arg[i]);
+									i++;
+								}
+								snprintf(client->buf + strlen(client->buf), PIPE_BUF - strlen(client->buf), "\n");
 							}
 						}
 					} else if (!strcmp(cmd->cmd, "stop")) {    //administrator stop process
@@ -447,8 +454,14 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 						report(reporter, false);
 						if (cmd->arg) {
 							send_command_multiproc(cmd, server);
+							snprintf(client->buf, PIPE_BUF, "stop request sent to");
+							int i = 0;
+							while (cmd->arg[i]) {
+								snprintf(client->buf + strlen(client->buf), PIPE_BUF - strlen(client->buf), " %s", cmd->arg[i]);
+								i++;
+							}
+							snprintf(client->buf + strlen(client->buf), PIPE_BUF - strlen(client->buf), "\n");
 						}
-					} else if (!strcmp(cmd->cmd, "avail")) {   //main thread return available process
 					} else if (!strcmp(cmd->cmd, "fg")) {      //administrator send logging and stdin
 						snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG    : controller has sent fg command\n");
 						report(reporter, false);
@@ -472,6 +485,7 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 							}
 						}
 					} else if (!strcmp(cmd->cmd, "reload")) {
+						snprintf(client->buf, PIPE_BUF, "reloading\n");
 						if (cmd->arg) {
 							free(cmd->arg);
 						}
@@ -483,12 +497,27 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 						report(reporter, false);
 						if (cmd->arg) {
 							send_command_multiproc(cmd, server);
+							snprintf(client->buf, PIPE_BUF, "restart request sent to");
+							int i = 0;
+							while (cmd->arg[i]) {
+								snprintf(client->buf + strlen(client->buf), PIPE_BUF - strlen(client->buf), " %s", cmd->arg[i]);
+								i++;
+							}
+							snprintf(client->buf + strlen(client->buf), PIPE_BUF - strlen(client->buf), "\n");
 						}
 					} else if (!strcmp(cmd->cmd, "start")) {   //administrator start process
 						snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG    : controller has sent start command\n");
 						report(reporter, false);
 						if (cmd->arg) {
 							send_command_multiproc(cmd, server);
+							snprintf(client->buf, PIPE_BUF, "start request sent to");
+							int i = 0;
+							while (cmd->arg[i]) {
+								snprintf(client->buf + strlen(client->buf), PIPE_BUF - strlen(client->buf), " %s", cmd->arg[i]);
+								i++;
+							}
+							snprintf(client->buf + strlen(client->buf), PIPE_BUF - strlen(client->buf), "\n");
+	
 						}
 					} else if (!strcmp(cmd->cmd, "tail")) {    //administrator send logging
 						snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG    : controller has sent tail command\n");
@@ -587,7 +616,7 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 									if (!current->processes)
 										continue ;
 									for (int i = 0; i < current->numprocs; i++) {
-										snprintf(client->buf + strlen(client->buf), PIPE_BUF + 1, "%s : %d\n", current->processes[i].name, current->processes[i].pid);
+										snprintf(client->buf + strlen(client->buf), PIPE_BUF + 1, "%-15s : %d\n", current->processes[i].name, current->processes[i].pid);
 									}
 								}
 							} else {
@@ -598,7 +627,7 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 												continue ;
 											for (int j = 0; j < current->numprocs; j++) {
 												if (!strcmp(cmd->arg[i], current->processes[j].name)) {
-													snprintf(client->buf + strlen(client->buf), PIPE_BUF + 1, "%s : %d\n", current->processes[j].name, current->processes[j].pid);
+													snprintf(client->buf + strlen(client->buf), PIPE_BUF + 1, "%-15s : %d\n", current->processes[j].name, current->processes[j].pid);
 												}
 											}
 										}
@@ -666,6 +695,7 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 							}
 						}
 					} else if (!strcmp(cmd->cmd, "update")) {
+						snprintf(client->buf, PIPE_BUF, "updating\n");
 						if (cmd->arg) {
 							free(cmd->arg);
 						}
