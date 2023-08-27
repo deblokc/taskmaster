@@ -623,9 +623,22 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 									if (!strncmp(current->name, cmd->arg[i], strlen(current->name))) {
 										if (!current->processes)
 											continue ;
+										struct timeval now;
+										gettimeofday(&now, NULL);
 										for (int j = 0; j < current->numprocs; j++) {
 											if (!strcmp(cmd->arg[i], current->processes[j].name)) {
-												snprintf(client->buf + strlen(client->buf), PIPE_BUF + 1, "%s : %s\n", current->processes[j].name, status[current->processes[j].status]);
+												int hour = 0;
+												int minute = 0;
+												int second = 0;
+												int stat = current->processes[j].status;
+												if (stat == STARTING || stat == RUNNING || stat == STOPPING) {
+													struct timeval start = current->processes[j].start;
+													hour = (int)(now.tv_sec- start.tv_sec) / 3600;
+													minute = (int)((now.tv_sec - start.tv_sec) / 60) % 60;
+													second = (int)(now.tv_sec - start.tv_sec) % 60;
+												}
+												snprintf(client->buf + strlen(client->buf), PIPE_BUF + 1, "%-15s : %-8s\tpid : %d\tuptime : %02d:%02d:%02d\n", current->processes[j].name, status[current->processes[j].status], current->processes[j].pid, hour, minute, second);
+	
 											}
 										}
 									}
@@ -635,8 +648,20 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 							for (struct s_program *current = server->begin(server); current; current = current->itnext(current)) {
 								if (!current->processes)
 									continue ;
+								struct timeval now;
+								gettimeofday(&now, NULL);
 								for (int i = 0; i < current->numprocs; i++) {
-									snprintf(client->buf + strlen(client->buf), PIPE_BUF + 1, "%s : %s\n", current->processes[i].name, status[current->processes[i].status]);
+									int hour = 0;
+									int minute = 0;
+									int second = 0;
+									int stat = current->processes[i].status;
+									if (stat == STARTING || stat == RUNNING || stat == STOPPING) {
+										struct timeval start = current->processes[i].start;
+										hour = (int)(now.tv_sec- start.tv_sec) / 3600;
+										minute = (int)((now.tv_sec - start.tv_sec) / 60) % 60;
+										second = (int)(now.tv_sec - start.tv_sec) % 60;
+									}
+									snprintf(client->buf + strlen(client->buf), PIPE_BUF + 1, "%-15s : %-8s\tpid : %d\tuptime : %02d:%02d:%02d\n", current->processes[i].name, status[current->processes[i].status], current->processes[i].pid, hour, minute, second);
 								}
 							}
 						}
