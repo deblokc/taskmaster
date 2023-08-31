@@ -690,7 +690,7 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 										minute = (int)((now.tv_sec - start.tv_sec) / 60) % 60;
 										second = (int)(now.tv_sec - start.tv_sec) % 60;
 									}
-									snprintf(client->buf + strlen(client->buf), PIPE_BUF + 1, "%-15s : %-8s\tpid : %d\tuptime : %02d:%02d:%02d\n", current->processes[i].name, status[current->processes[i].status], current->processes[i].pid, hour, minute, second);
+									snprintf(client->buf + strlen(client->buf), PIPE_BUF - strlen(client->buf), "%-15s : %-8s\tpid : %d\tuptime : %02d:%02d:%02d\n", current->processes[i].name, status[current->processes[i].status], current->processes[i].pid, hour, minute, second);
 								}
 							}
 						}
