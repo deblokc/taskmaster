@@ -18,7 +18,7 @@ NAME = taskmasterctl
 
 OBJDIR := obj
 
-SRCS = main.c file_history.c
+SRCS = main.c parser.c file_history.c
 
 READLINE = lib/readline.a
 
@@ -47,7 +47,7 @@ CC = gcc
 OBJS := $(patsubst %.c,$(OBJDIR)/%.o,$(SRCS))
 
 $(NAME) : $(READLINE) $(OBJS) $(INC)
-	$(CC) $(CFLAGS) $(OBJS) $(READLINE) -o $@
+	$(CC) $(CFLAGS) $(OBJS) $(READLINE) -L lib -lyaml -o $@
 
 $(OBJS): $(INC)
 
