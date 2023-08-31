@@ -335,9 +335,7 @@ void sig_handler(int sig) {
 	g_sig = 1;
 }
 
-#define SOCK_PATH "/tmp/taskmaster.sock"
-
-int open_socket(void) {
+int open_socket(char *socket_path) {
 	int fd;
 	struct sockaddr_un addr;
 	
@@ -347,21 +345,50 @@ int open_socket(void) {
 	}
 	bzero(&addr, sizeof(addr));
 	addr.sun_family = AF_UNIX;
-	strcpy(addr.sun_path, SOCK_PATH);
+	strcpy(addr.sun_path, socket_path);
 	if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
 		perror("connect");
+		close(fd);
+		return (-1);
 	}
 	return (fd);
 }
 
 int main(int ac, char **av) {
-	(void)ac;
-	(void)av;
+	char	error_message[PIPE_BUF + 1];
+	char*	socket_path = NULL;
 	char *tab[] = {"add", "exit", "maintail", "quit", "reread", "signal", "stop",\
 				"avail", "fg", "reload", "restart", "start", "tail",\
 			"clear", "help", "pid", "remove", "shutdown", "status", "update", NULL};
 
-	int socket = open_socket();
+	bzero(error_message, PIPE_BUF + 1);
+	if (ac > 2)
+	{
+		snprintf(error_message, PIPE_BUF, "Usage:\n%s\nOR\n%s CONFIGURATION-FILE\n", av[0], av[0]);
+		write(2, error_message, strlen(error_message));
+		return (1);
+	}
+	if (ac == 1)
+	{
+		socket_path = strdup("/tmp/taskmaster.sock");
+		if (!socket_path)
+		{
+			perror("Could not copy socket path");
+			return (1);
+		}
+	}
+	else
+	{
+		socket_path = parse_config(av[1]);
+		if (!socket_path)
+			return (1);
+	}
+	int socket = open_socket(socket_path);
+	if (socket == -1)
+	{
+		free(socket_path);
+		return (1);
+	}
 	struct epoll_event sock;
 	bzero(&sock, sizeof(sock));
 	sock.data.fd = socket;
@@ -401,4 +428,6 @@ int main(int ac, char **av) {
 	if (file) {
 		fclose(file);
 	}
+	free(socket_path);
+	return (0);
 }

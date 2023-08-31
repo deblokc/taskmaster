@@ -10,13 +10,22 @@
 /*                                                                            */
 /* ************************************************************************** */
 
+#ifndef TASKMASTERCTL_H
+# define TASKMASTERCTL_H
+
+# include <stdio.h>
+# include <limits.h>
+
 struct s_command {
 	char	*cmd;
 	char	*arg;
 };
 
-FILE *fopen_history(void);
-void add_old_history(FILE *file);
-void add_file_history(char *line, FILE *file);
+char	*parse_config(char *config_file);
+FILE	*fopen_history(void);
+void	add_old_history(FILE *file);
+void	add_file_history(char *line, FILE *file);
 
-char *ft_readline(char *prompt);
+char	*ft_readline(char *prompt);
+
+#endif
