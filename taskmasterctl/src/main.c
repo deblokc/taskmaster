@@ -28,84 +28,122 @@
 
 int g_sig = 0;
 
-void help(char *full_arg) {
+void help(char *full_arg)
+{
 	char *arg = NULL;
 	int i = 0;
-	while (full_arg[i] && full_arg[i] != ' ') {
+	while (full_arg[i] && full_arg[i] != ' ')
+	{
 		i++;
 	}
-	while (full_arg[i] && full_arg[i] == ' ') {
+	while (full_arg[i] && full_arg[i] == ' ')
+	{
 		i++;
 	}
 	arg = full_arg + i;
 
-	if (!strlen(arg)) {
+	if (!strlen(arg))
+	{
 		printf("default commands (type help <command>):\n");
 		printf("=======================================\n");
 		printf("exit maintail quit signal stop fg\n");
 		printf("reload restart start tail help pid\n");
 		printf("shutdown status update\n");
-	} else {
-		if (!strcmp(arg, "exit")) {
+	}
+	else
+	{
+		if (!strcmp(arg, "exit"))
+		{
 			printf("exit\tExit the taskmaster shell.\n");
-		} else if (!strcmp(arg, "maintail")) {
+		}
+		else if (!strcmp(arg, "maintail"))
+		{
 			printf("maintail -f\t\t\tContinuous tail of taskmaster main log file (Ctrl-D to exit)\n");
 			printf("maintail -100\t\t\tlast 100 *bytes* of taskmaster main log file\n");
 			printf("maintail\t\t\tlast 1600 *bytes* of taskmaster main log file\n");
-		} else if (!strcmp(arg, "quit")) {
+		}
+		else if (!strcmp(arg, "quit"))
+		{
 			printf("quit\tExit the taskmaster shell.\n");
-		} else if (!strcmp(arg, "signal")) {
+		}
+		else if (!strcmp(arg, "signal"))
+		{
 			printf("signal <signal name> <name>\t\tSignal a process\n");
 			printf("signal <signal name> <name> <name>\tSignal multiple processes or groups\n");
 			printf("signal <signal name> all\t\tSignal all processes\n");
-		} else if (!strcmp(arg, "stop")) {
+		}
+		else if (!strcmp(arg, "stop"))
+		{
 			printf("stop <name>\t\tStop a process\n");
 			printf("stop <name> <name>\tStop multiple processes or groups\n");
 			printf("stop all\t\tStop all processes\n");
-		} else if (!strcmp(arg, "fg")) {
+		}
+		else if (!strcmp(arg, "fg"))
+		{
 			printf("fg <process>\tConnect to a process in foreground mode\n");
 			printf("\t\tCtrl-D to exit\n");
-		} else if (!strcmp(arg, "reload")) {
+		}
+		else if (!strcmp(arg, "reload"))
+		{
 			printf("reload\t\tRestart the remote taskmasterd.\n");
-		} else if (!strcmp(arg, "restart")) {
+		}
+		else if (!strcmp(arg, "restart"))
+		{
 			printf("restart <name>\t\tRestart a process\n");
 			printf("restart <name> <name>\tRestart multiple processes or groups\n");
 			printf("restart all\t\tRestart all processes\n");
 			printf("Note: restart does not reread config files. For that, see reread and update.\n");
-		} else if (!strcmp(arg, "start")) {
+		}
+		else if (!strcmp(arg, "start"))
+		{
 			printf("start <name>\t\tStart a process\n");
 			printf("start <name> <name>\tStart multiple processes or groups\n");
 			printf("start all\t\tStart all processes\n");
-		} else if (!strcmp(arg, "tail")) {
+		}
+		else if (!strcmp(arg, "tail"))
+		{
 			printf("tail [-f] <name>\t[stdout|stderr] (default stdout)\n");
 			printf("Ex:\n");
 			printf("tail -f <name>\t\tContinuous tail of named process stdout\n");
 			printf("\t\t\tCtrl-D to exit\n");
 			printf("tail -100 <name>\tlast 100 *bytes* of process stdout\n");
 			printf("tail <name> stderr\tlast 1600 *bytes* of process stderr\n");
-		} else if (!strcmp(arg, "help")) {
+		}
+		else if (!strcmp(arg, "help"))
+		{
 			printf("help\t\t\tPrint a list of available commands\n");
 			printf("help <command>\t\tPrint help for <command>\n");
-		} else if (!strcmp(arg, "pid")) {
+		}
+		else if (!strcmp(arg, "pid"))
+		{
 			printf("pid\t\t\tGet the PID of taskmasterd.\n");
 			printf("pid <name>\t\tGet the PID of a single child process by name.\n");
 			printf("pid all\t\t\tGet the PID of every child process, one per line.\n");
-		} else if (!strcmp(arg, "shutdown")) {
+		}
+		else if (!strcmp(arg, "shutdown"))
+		{
 			printf("shutdown\t\tShut the remote taskmasterd down.\n");
-		} else if (!strcmp(arg, "status")) {
+		}
+		else if (!strcmp(arg, "status"))
+		{
 			printf("status <name>\t\tGet status for a single process\n");
 			printf("status <name> <name>\tGet status for multiple named processes\n");
 			printf("status\t\t\tGet all process status info\n");
-		} else if (!strcmp(arg, "update")) {
+		}
+		else if (!strcmp(arg, "update"))
+		{
 			printf("update\t\t\tReload config and add/remove as necessary, and will restart affected programs\n");
 			printf("update all\t\tReload config and add/remove as necessary, and will restart affected programs\n");
-		} else {
+		}
+		else
+		{
 			printf("*** No help on %s\n", arg);
 		}
 	}
 }
 
-void *thread_log(void *arg) {
+void *thread_log(void *arg)
+{
 	struct epoll_event *sock = (struct epoll_event *)arg;
 	int efd = epoll_create(1);
 	sock->events = EPOLLIN;
@@ -115,11 +153,15 @@ void *thread_log(void *arg) {
 
 	char buf[PIPE_BUF + 1];
 	bzero(buf, PIPE_BUF + 1);
-	while (!g_sig) {
-		if (epoll_wait(efd, &event, 1, 0) > 0) {
-			if (event.data.fd == sock->data.fd) {
+	while (!g_sig)
+	{
+		if (epoll_wait(efd, &event, 1, 0) > 0)
+		{
+			if (event.data.fd == sock->data.fd)
+			{
 				bzero(buf, PIPE_BUF + 1);
-				if (recv(event.data.fd, buf, PIPE_BUF, 0) > 0) {
+				if (recv(event.data.fd, buf, PIPE_BUF, 0) > 0)
+				{
 					printf("%s", buf);
 					fflush(stdout);
 				}
@@ -132,7 +174,8 @@ void *thread_log(void *arg) {
 	return NULL;
 }
 
-void tail(int efd, struct epoll_event sock) {
+void tail(int efd, struct epoll_event sock)
+{
 	int ret;
 	struct epoll_event event;
 	char *line;
@@ -144,28 +187,39 @@ void tail(int efd, struct epoll_event sock) {
 	epoll_ctl(efd, EPOLL_CTL_MOD, sock.data.fd, &sock);
 	pthread_create(&thread, NULL, &thread_log, &sock);
 	g_sig = 0;
-	while (!g_sig) {
+	while (!g_sig)
+	{
 		line = ft_readline("");
-		if (line) {
+		if (line)
+		{
 			free(line);
-		} else {
+		}
+		else
+		{
 			g_sig = 1;
 		}
 	}
 	pthread_join(thread, NULL);
 
 	ret = epoll_wait(efd, &event, 1, 60 * 1000);
-	if (ret > 0) {
-		if (event.events & EPOLLOUT) {
+	if (ret > 0)
+	{
+		if (event.events & EPOLLOUT)
+		{
 			send(event.data.fd, "exit", strlen("exit"), 0);
 		}
-	} else if (ret == 0) {
+	}
+	else if (ret == 0)
+	{
 		printf("SOCKET TIMED OUT\n");
-	} else {
+	}
+	else
+	{
 		perror("epoll_wait(EPOLLOUT)");
 	}
 	int i = 0;
-	while (i < 42) { 
+	while (i < 42)
+	{
 		recv(sock.data.fd, buf, PIPE_BUF, MSG_DONTWAIT);
 		bzero(buf, PIPE_BUF + 1);
 		usleep(10);
@@ -174,7 +228,8 @@ void tail(int efd, struct epoll_event sock) {
 	fflush(stdout);
 }
 
-void foreground(int efd, struct epoll_event sock) {
+void foreground(int efd, struct epoll_event sock)
+{
 	int ret;
 	struct epoll_event event;
 	char *line;
@@ -185,44 +240,61 @@ void foreground(int efd, struct epoll_event sock) {
 	sock.events = EPOLLOUT;
 	epoll_ctl(efd, EPOLL_CTL_MOD, sock.data.fd, &sock);
 	pthread_create(&thread, NULL, &thread_log, &sock);
-	while (!g_sig) {
+	while (!g_sig)
+	{
 		line = ft_readline("");
-		if (line) {
+		if (line)
+		{
 			ret = epoll_wait(efd, &event, 1, 100);
-			if (ret > 0) {
-				if (event.events & EPOLLOUT) {
+			if (ret > 0)
+			{
+				if (event.events & EPOLLOUT)
+				{
 					bzero(buf, PIPE_BUF + 1);
 					snprintf(buf, PIPE_BUF + 1, "data:%s\n", line);
 					send(event.data.fd, buf, strlen(buf), 0);
 				}
-			} else if (ret == 0) {
+			}
+			else if (ret == 0)
+			{
 				printf("socket timed out\n");
 				g_sig = 1;
-				return ;
-			} else {
+				return;
+			}
+			else
+			{
 				perror("epoll_wait");
 				g_sig = 1;
-				return ;
+				return;
 			}
 			free(line);
-		} else {
+		}
+		else
+		{
 			g_sig = 1;
 		}
 	}
 	pthread_join(thread, NULL);
 
 	ret = epoll_wait(efd, &event, 1, 60 * 1000);
-	if (ret > 0) {
-		if (event.events & EPOLLOUT) {
+	if (ret > 0)
+	{
+		if (event.events & EPOLLOUT)
+		{
 			send(event.data.fd, "exit", strlen("exit"), 0);
 		}
-	} else if (ret == 0) {
+	}
+	else if (ret == 0)
+	{
 		printf("SOCKET TIMED OUT\n");
-	} else {
+	}
+	else
+	{
 		perror("epoll_wait(EPOLLOUT)");
 	}
 	int i = 0;
-	while (i < 42) { 
+	while (i < 42)
+	{
 		recv(sock.data.fd, buf, PIPE_BUF, MSG_DONTWAIT);
 		bzero(buf, PIPE_BUF + 1);
 		usleep(10);
@@ -231,7 +303,8 @@ void foreground(int efd, struct epoll_event sock) {
 	fflush(stdout);
 }
 
-void remote_exec(char *cmd, int efd, struct epoll_event sock) {
+void remote_exec(char *cmd, int efd, struct epoll_event sock)
+{
 	struct epoll_event tmp;
 
 	/*
@@ -239,22 +312,29 @@ void remote_exec(char *cmd, int efd, struct epoll_event sock) {
 	 *  THIS MEANS IT WILL ALWAYS FIRST `SEND A REQUEST` (OR MORE ACCURATELLY
 	 *  TRANSFER THE COMMAND) AND THEN `PRINT THE RESPONSE` WITHOUT ANY THOUGH
 	 */
-	if (strlen(cmd) > PIPE_BUF) {
+	if (strlen(cmd) > PIPE_BUF)
+	{
 		printf("line too long...\n");
-		return ;
+		return;
 	}
 
 	sock.events = EPOLLOUT;
 	epoll_ctl(efd, EPOLL_CTL_MOD, sock.data.fd, &sock);
 
 	int ret = epoll_wait(efd, &tmp, 1, 60 * 1000); // wait for max a minute
-	if (ret > 0) {
-		if (tmp.events & EPOLLOUT) { // SEND PHASE
+	if (ret > 0)
+	{
+		if (tmp.events & EPOLLOUT)
+		{ // SEND PHASE
 			send(tmp.data.fd, cmd, strlen(cmd), 0);
 		}
-	} else if (ret == 0) {
+	}
+	else if (ret == 0)
+	{
 		printf("SOCKET TIMED OUT\n");
-	} else {
+	}
+	else
+	{
 		perror("epoll_wait(EPOLLOUT)");
 	}
 
@@ -262,91 +342,126 @@ void remote_exec(char *cmd, int efd, struct epoll_event sock) {
 	epoll_ctl(efd, EPOLL_CTL_MOD, sock.data.fd, &sock);
 
 	ret = epoll_wait(efd, &tmp, 1, 60 * 1000); // wait for max a minute
-	if (ret > 0) {
-		if (tmp.events & EPOLLIN) { // RECV PHASE
+	if (ret > 0)
+	{
+		if (tmp.events & EPOLLIN)
+		{ // RECV PHASE
 			char buf[PIPE_BUF + 1];
 			bzero(buf, PIPE_BUF + 1);
 			recv(tmp.data.fd, buf, PIPE_BUF, 0);
-			if (!strncmp(buf, "fg", 2)) {
+			if (!strncmp(buf, "fg", 2))
+			{
 				printf("%s", buf + 2);
 				foreground(efd, sock);
 				g_sig = 0;
-			} else if (!strncmp(buf, "tail", 4)) {
+			}
+			else if (!strncmp(buf, "tail", 4))
+			{
 				printf("%s", buf + 4);
 				tail(efd, sock);
 				g_sig = 0;
-			}else {
+			}
+			else
+			{
 				printf("%s", buf); // DUMBLY PRINT RESPONSE
 				fflush(stdout);
 			}
 		}
-	} else if (ret == 0) {
+	}
+	else if (ret == 0)
+	{
 		printf("SOCKET TIMED OUT\n");
-	} else {
+	}
+	else
+	{
 		perror("epoll_wait(EPOLLIN)");
 	}
 }
 
-void get_cmd(char *cmd, char *full_cmd) {
-	if (strlen(full_cmd) < 4) {
-		return ;
-	} else if (full_cmd[4] != ' ' && full_cmd[4] != '\0') {
-		return ;
-	} else {
+void get_cmd(char *cmd, char *full_cmd)
+{
+	if (strlen(full_cmd) < 4)
+	{
+		return;
+	}
+	else if (full_cmd[4] != ' ' && full_cmd[4] != '\0')
+	{
+		return;
+	}
+	else
+	{
 		memcpy(cmd, full_cmd, 4);
 	}
 }
 
-int exec(char *full_cmd, int efd, struct epoll_event sock) {
+int exec(char *full_cmd, int efd, struct epoll_event sock)
+{
 	int ret = 0;
 	char cmd[5];
 
 	bzero(cmd, 5);
 	get_cmd(cmd, full_cmd);
-	if (strlen(cmd)) {
-		if (!strcmp(cmd, "help")) {
+	if (strlen(cmd))
+	{
+		if (!strcmp(cmd, "help"))
+		{
 			help(full_cmd);
-		} else if (!strcmp(cmd, "exit") || !strcmp(cmd, "quit")) {
+		}
+		else if (!strcmp(cmd, "exit") || !strcmp(cmd, "quit"))
+		{
 			ret = 1;
-		} else {
+		}
+		else
+		{
 			remote_exec(full_cmd, efd, sock);
 		}
-	} else {
+	}
+	else
+	{
 		remote_exec(full_cmd, efd, sock);
 	}
 	return (ret);
 }
 
-char *process_line(char *line) {
+char *process_line(char *line)
+{
 	int i = 0;
-	while (line[i] && line[i] == ' ') {
+	while (line[i] && line[i] == ' ')
+	{
 		i++;
 	}
 	char *cmd = line + i;
-	if (strlen(cmd)) {
+	if (strlen(cmd))
+	{
 		return cmd;
-	} else {
+	}
+	else
+	{
 		return NULL;
 	}
 }
 
-void sig_handler(int sig) {
+void sig_handler(int sig)
+{
 	(void)sig;
 	g_sig = 1;
 }
 
-int open_socket(char *socket_path) {
+int open_socket(char *socket_path)
+{
 	int fd;
 	struct sockaddr_un addr;
-	
+
 	fd = socket(AF_UNIX, SOCK_STREAM, 0);
-	if (fd < 0) {
+	if (fd < 0)
+	{
 		perror("socket");
 	}
 	bzero(&addr, sizeof(addr));
 	addr.sun_family = AF_UNIX;
 	strcpy(addr.sun_path, socket_path);
-	if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+	if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0)
+	{
 		perror("connect");
 		close(fd);
 		return (-1);
@@ -354,18 +469,21 @@ int open_socket(char *socket_path) {
 	return (fd);
 }
 
-int main(int ac, char **av) {
-	char	error_message[PIPE_BUF + 1];
-	char*	socket_path = NULL;
-	char *tab[] = {"add", "exit", "maintail", "quit", "reread", "signal", "stop",\
-				"avail", "fg", "reload", "restart", "start", "tail",\
-			"clear", "help", "pid", "remove", "shutdown", "status", "update", NULL};
+int main(int ac, char **av)
+{
+	char error_message[PIPE_BUF + 1];
+	char *socket_path = NULL;
+	char *tab[] = {"add", "exit", "maintail", "quit", "reread", "signal", "stop",
+				   "avail", "fg", "reload", "restart", "start", "tail",
+				   "clear", "help", "pid", "remove", "shutdown", "status", "update", NULL};
 
 	bzero(error_message, PIPE_BUF + 1);
 	if (ac > 2)
 	{
 		snprintf(error_message, PIPE_BUF, "Usage:\n%s\nOR\n%s CONFIGURATION-FILE\n", av[0], av[0]);
-		write(2, error_message, strlen(error_message));
+		if (write(2, error_message, strlen(error_message)))
+		{
+		}
 		return (1);
 	}
 	if (ac == 1)
@@ -406,15 +524,18 @@ int main(int ac, char **av) {
 
 	char *line = ft_readline("taskmasterctl>");
 	char *cmd = NULL;
-	while (line != NULL) {
+	while (line != NULL)
+	{
 		// process line (remove space n sht)
 		char *tmp = strdup(line);
 		cmd = process_line(line);
-		if (cmd) {
-			if (exec(cmd, efd, sock)) {
+		if (cmd)
+		{
+			if (exec(cmd, efd, sock))
+			{
 				free(line);
 				free(tmp);
-				break ;
+				break;
 			}
 			// add to history and read another line
 			add_history(tmp);
@@ -425,7 +546,8 @@ int main(int ac, char **av) {
 		line = ft_readline("taskmasterctl>");
 	}
 	clear_history();
-	if (file) {
+	if (file)
+	{
 		fclose(file);
 	}
 	free(socket_path);

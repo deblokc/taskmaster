@@ -17,7 +17,8 @@
 
 static struct s_program *cleaner(struct s_program *self)
 {
-	if (self->processes) {
+	if (self->processes)
+	{
 		free(self->processes);
 	}
 	if (self->name)
@@ -43,19 +44,19 @@ static struct s_program *cleaner(struct s_program *self)
 	return (NULL);
 }
 
-static void	print(struct s_program* self)
+static void print(struct s_program *self)
 {
-	struct s_env	*current;
+	struct s_env *current;
 
 	printf("\n************************** PROGRAM **************************\n");
-	printf("\tName                  :\t%s\n", self->name? self->name:"(NULL)");
-	printf("\tCommand               :\t%s\n", self->command? self->command:"(NULL)");
+	printf("\tName                  :\t%s\n", self->name ? self->name : "(NULL)");
+	printf("\tCommand               :\t%s\n", self->command ? self->command : "(NULL)");
 	printf("\tNumprocs              :\t%d\n", self->numprocs);
 	printf("\tPriority              :\t%d\n", self->priority);
 	printf("\tAutostart             :\t%s\n", self->autostart ? "true" : "false");
 	printf("\tStartsecs             :\t%d\n", self->startsecs);
 	printf("\tStartretries          :\t%d\n", self->startretries);
-	printf("\tAutorestart           :\t%s\n", self->autorestart == NEVER ? "never": (self->autorestart == ONERROR? "onerror" : "always"));
+	printf("\tAutorestart           :\t%s\n", self->autorestart == NEVER ? "never" : (self->autorestart == ONERROR ? "onerror" : "always"));
 	if (self->exitcodes)
 	{
 		printf("\tExitcodes             :\n");
@@ -68,35 +69,36 @@ static void	print(struct s_program* self)
 	{
 		printf("\tExitcodes             :\n\t                       \t- 0\n");
 	}
-	switch (self->stopsignal){
-		case SIGHUP:
-			printf("\tStopsignal            :\tSIGHUP\n");
-			break;
-		case SIGINT:
-			printf("\tStopsignal            :\tSIGINT\n");
-			break;
-		case SIGQUIT:
-			printf("\tStopsignal            :\tSIGQUIT\n");
-			break;
-		case SIGKILL:
-			printf("\tStopsignal            :\tSIGKILL\n");
-			break;
-		case SIGUSR1:
-			printf("\tStopsignal            :\tSIGUSR1\n");
-			break;
-		case SIGUSR2:
-			printf("\tStopsignal            :\tSIGUSR2\n");
-			break;
-		default:
-			printf("\tStopsignal            :\tSIGTERM\n");
-			break;
+	switch (self->stopsignal)
+	{
+	case SIGHUP:
+		printf("\tStopsignal            :\tSIGHUP\n");
+		break;
+	case SIGINT:
+		printf("\tStopsignal            :\tSIGINT\n");
+		break;
+	case SIGQUIT:
+		printf("\tStopsignal            :\tSIGQUIT\n");
+		break;
+	case SIGKILL:
+		printf("\tStopsignal            :\tSIGKILL\n");
+		break;
+	case SIGUSR1:
+		printf("\tStopsignal            :\tSIGUSR1\n");
+		break;
+	case SIGUSR2:
+		printf("\tStopsignal            :\tSIGUSR2\n");
+		break;
+	default:
+		printf("\tStopsignal            :\tSIGTERM\n");
+		break;
 	}
 	printf("\tStopwaitsecs          :\t%d\n", self->stopwaitsecs);
 	printf("\tStopasgroup           :\t%s\n", self->stopasgroup ? "true" : "false");
 	if (self->stdoutlog)
 	{
 		printf("\tStdoutlog             :\ttrue\n");
-		printf("\tStdoutlogfile         :\t%s\n", self->stdout_logger.logfile ? self->stdout_logger.logfile: "(default location)");
+		printf("\tStdoutlogfile         :\t%s\n", self->stdout_logger.logfile ? self->stdout_logger.logfile : "(default location)");
 		printf("\tStdoutlogfile_maxbytes:\t%d\n", self->stdout_logger.logfile_maxbytes);
 		printf("\tStdoutlogfile_backups :\t%d\n", self->stdout_logger.logfile_backups);
 	}
@@ -107,7 +109,7 @@ static void	print(struct s_program* self)
 	if (self->stderrlog)
 	{
 		printf("\tStderrlog             :\ttrue\n");
-		printf("\tStderrlogfile         :\t%s\n", self->stderr_logger.logfile ? self->stderr_logger.logfile: "(default location)");
+		printf("\tStderrlogfile         :\t%s\n", self->stderr_logger.logfile ? self->stderr_logger.logfile : "(default location)");
 		printf("\tStderrlogfile_maxbytes:\t%d\n", self->stderr_logger.logfile_maxbytes);
 		printf("\tStderrlogfile_backups :\t%d\n", self->stderr_logger.logfile_backups);
 	}
@@ -135,7 +137,7 @@ static void	print(struct s_program* self)
 	printf("\tgroup                 :\t%s\n", self->group ? self->group : "(default group)");
 }
 
-static void	init_program(struct s_program *program)
+static void init_program(struct s_program *program)
 {
 	register_treefn_prog(program);
 	program->print = print;
@@ -156,7 +158,7 @@ static void	init_program(struct s_program *program)
 
 static bool add_autorestart(struct s_program *program, yaml_node_t *value, struct s_report *reporter)
 {
-	bool	ret = true;
+	bool ret = true;
 
 	snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Parsing autorestart in program %s\n", program->name);
 	report(reporter, false);
@@ -184,12 +186,12 @@ static bool add_autorestart(struct s_program *program, yaml_node_t *value, struc
 	return (ret);
 }
 
-static bool	add_exitcodes(struct s_program *program, yaml_document_t *document, yaml_node_t *value, struct s_report *reporter)
+static bool add_exitcodes(struct s_program *program, yaml_document_t *document, yaml_node_t *value, struct s_report *reporter)
 {
-	bool		isvalid = true;
-	bool		ret = true;
-	yaml_node_t	*current_exit_code_node;
-	long		number_exitcodes;
+	bool isvalid = true;
+	bool ret = true;
+	yaml_node_t *current_exit_code_node;
+	long number_exitcodes;
 
 	snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Parsing exitcodes in program %s\n", program->name);
 	report(reporter, false);
@@ -214,14 +216,14 @@ static bool	add_exitcodes(struct s_program *program, yaml_document_t *document, 
 			program->exitcodes[number_exitcodes] = -1;
 			for (int i = 0; (value->data.sequence.items.start + i) < value->data.sequence.items.top; i++)
 			{
-				current_exit_code_node =  yaml_document_get_node(document, *(value->data.sequence.items.start + i));
+				current_exit_code_node = yaml_document_get_node(document, *(value->data.sequence.items.start + i));
 				isvalid = add_number(program->name, "exitcodes", &(program->exitcodes[i]), current_exit_code_node, 0, INT_MAX, reporter);
 				if (!isvalid)
 				{
 					free(program->exitcodes);
 					program->exitcodes = NULL;
 					ret = false;
-					break ;
+					break;
 				}
 			}
 		}
@@ -231,7 +233,7 @@ static bool	add_exitcodes(struct s_program *program, yaml_document_t *document, 
 
 static bool add_stopsignal(struct s_program *program, yaml_node_t *value, struct s_report *reporter)
 {
-	bool	ret = true;
+	bool ret = true;
 
 	snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Parsing stopsignal in program %s\n", program->name);
 	report(reporter, false);
@@ -267,15 +269,14 @@ static bool add_stopsignal(struct s_program *program, yaml_node_t *value, struct
 	return (ret);
 }
 
-
 static bool add_value(struct s_program *program, yaml_document_t *document, char *key, yaml_node_t *value, struct s_report *reporter)
 {
-	bool	ret = true;
+	bool ret = true;
 
 	if (!strcmp("command", key))
 		ret = add_char(program->name, "command", &program->command, value, reporter);
 	else if (!strcmp("numprocs", key))
-		ret = add_number(program->name, "numprocs", &program->numprocs, value, 1, 255, reporter);
+		ret = add_number(program->name, "numprocs", &program->numprocs, value, 1, 100, reporter);
 	else if (!strcmp("priority", key))
 		ret = add_number(program->name, "priority", &program->priority, value, 0, 999, reporter);
 	else if (!strcmp("autostart", key))
@@ -299,7 +300,7 @@ static bool add_value(struct s_program *program, yaml_document_t *document, char
 	else if (!strcmp("stdout_logfile", key))
 		ret = add_char(program->name, "stdout_logfile", &program->stdout_logger.logfile, value, reporter);
 	else if (!strcmp("stdout_logfile_maxbytes", key))
-		ret = add_number(program->name, "stdout_logfile_maxbytes", &program->stdout_logger.logfile_maxbytes, value, 100, 1024*1024*1024, reporter);
+		ret = add_number(program->name, "stdout_logfile_maxbytes", &program->stdout_logger.logfile_maxbytes, value, 100, 1024 * 1024 * 1024, reporter);
 	else if (!strcmp("stdout_logfile_backups", key))
 		ret = add_number(program->name, "stdout_logfile_backups", &program->stdout_logger.logfile_backups, value, 0, 100, reporter);
 	else if (!strcmp("stderrlog", key))
@@ -307,7 +308,7 @@ static bool add_value(struct s_program *program, yaml_document_t *document, char
 	else if (!strcmp("stderr_logfile", key))
 		ret = add_char(program->name, "stderr_logfile", &program->stderr_logger.logfile, value, reporter);
 	else if (!strcmp("stderr_logfile_maxbytes", key))
-		ret = add_number(program->name, "stderr_logfile_maxbytes", &program->stderr_logger.logfile_maxbytes, value, 100, 1024*1024*1024, reporter);
+		ret = add_number(program->name, "stderr_logfile_maxbytes", &program->stderr_logger.logfile_maxbytes, value, 100, 1024 * 1024 * 1024, reporter);
 	else if (!strcmp("stderr_logfile_backups", key))
 		ret = add_number(program->name, "stderr_logfile_backups", &program->stderr_logger.logfile_backups, value, 0, 100, reporter);
 	else if (!strcmp("workingdir", key))
@@ -330,7 +331,7 @@ static bool add_value(struct s_program *program, yaml_document_t *document, char
 
 static bool parse_values(struct s_program *program, yaml_document_t *document, yaml_node_t *params, struct s_report *reporter)
 {
-	bool		ret = true;
+	bool ret = true;
 	yaml_node_t *key;
 	yaml_node_t *value;
 
@@ -343,39 +344,37 @@ static bool parse_values(struct s_program *program, yaml_document_t *document, y
 			snprintf(reporter->buffer, PIPE_BUF, "ERROR    : Incorrect format detected for parameters in program '%s', expected keys to be scalars, encountered: %s\n", program->name, key->tag);
 			report(reporter, false);
 			ret = false;
-			break ;
+			break;
 		}
 		if (!add_value(program, document, (char *)key->data.scalar.value, value, reporter))
 		{
 			ret = false;
-			break ;
+			break;
 		}
-
 	}
 	return (ret);
 }
 
-
 static void trim(struct s_program *program, struct s_report *reporter)
 {
-	char	*swap;
-	size_t	i = 0;
-	size_t	j = 0;
+	char *swap;
+	size_t i = 0;
+	size_t j = 0;
 
 	if (!program->command)
-		return ;
+		return;
 	while (program->command[i] && ((program->command[i] >= '\t' && program->command[i] <= '\r') || program->command[i] == ' '))
 		++i;
 	if (!program->command[i])
 	{
 		free(program->command);
 		program->command = NULL;
-		return ;
+		return;
 	}
 	j = strlen(program->command) - 1;
 	if (!((program->command[0] >= '\t' && program->command[0] <= '\r') || program->command[0] == ' ') &&
 		!((program->command[j] >= '\t' && program->command[j] <= '\r') || program->command[j] == ' '))
-		return ;
+		return;
 	while ((program->command[j] >= '\t' && program->command[j] <= '\r') || program->command[j] == ' ')
 		--j;
 	program->command[j + 1] = '\0';
@@ -384,16 +383,16 @@ static void trim(struct s_program *program, struct s_report *reporter)
 	{
 		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : could not allocate command for program '%s'\n", program->name);
 		report(reporter, true);
-		return ;
+		return;
 	}
 	free(program->command);
 	program->command = swap;
 }
 
-static bool has_arg(char* cmd, size_t *index, size_t len)
+static bool has_arg(char *cmd, size_t *index, size_t len)
 {
-	bool	dbl_qu = false;
-	bool	spl_qu = false;
+	bool dbl_qu = false;
+	bool spl_qu = false;
 
 	while (*index != len && (cmd[*index] == '\0' || ((cmd[*index] >= '\t' && cmd[*index] <= '\r') || cmd[*index] == ' ')))
 	{
@@ -402,7 +401,7 @@ static bool has_arg(char* cmd, size_t *index, size_t len)
 	}
 	if (*index == len)
 		return (false);
-	while (*index!= len)
+	while (*index != len)
 	{
 		if (cmd[*index] == '\\' && !spl_qu && !dbl_qu)
 		{
@@ -448,17 +447,17 @@ static bool has_arg(char* cmd, size_t *index, size_t len)
 			spl_qu ^= true;
 		}
 		else if (cmd[*index] == '\0')
-			break ;
+			break;
 		else if (!spl_qu && !dbl_qu && ((cmd[*index] >= '\t' && cmd[*index] <= '\r') || cmd[*index] == ' '))
-			break ;
+			break;
 		*index += 1;
 	}
 	return (true);
 }
 
-static char*	add_arg(char* command, size_t *index, size_t len)
+static char *add_arg(char *command, size_t *index, size_t len)
 {
-	char*	ret;
+	char *ret;
 
 	while (*index != len && command[*index] == '\0')
 	{
@@ -474,9 +473,9 @@ static char*	add_arg(char* command, size_t *index, size_t len)
 
 static bool parse_command(struct s_program *program, struct s_report *reporter)
 {
-	size_t	nb_arg = 0;
-	size_t	current_arg = 0;
-	size_t	max;
+	size_t nb_arg = 0;
+	size_t current_arg = 0;
+	size_t max;
 
 	trim(program, reporter);
 	if (reporter->critical)
@@ -507,9 +506,9 @@ static bool parse_command(struct s_program *program, struct s_report *reporter)
 	return (true);
 }
 
-static void	add_program(struct s_server *server, yaml_document_t *document, yaml_node_t *name, yaml_node_t *params, struct s_report *reporter)
+static void add_program(struct s_server *server, yaml_document_t *document, yaml_node_t *name, yaml_node_t *params, struct s_report *reporter)
 {
-	struct s_program	*program = NULL;
+	struct s_program *program = NULL;
 
 	snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Parsing program '%s'\n", name->data.scalar.value);
 	report(reporter, false);
@@ -563,12 +562,12 @@ static void	add_program(struct s_server *server, yaml_document_t *document, yaml
 	}
 }
 
-bool	parse_programs(struct s_server *server, yaml_document_t *document, int value_index, struct s_report *reporter)
+bool parse_programs(struct s_server *server, yaml_document_t *document, int value_index, struct s_report *reporter)
 {
-	bool		ret = true;
-	yaml_node_t	*value_node = NULL;
-	yaml_node_t	*key_node = NULL;
-	yaml_node_t	*program_node = NULL;
+	bool ret = true;
+	yaml_node_t *value_node = NULL;
+	yaml_node_t *key_node = NULL;
+	yaml_node_t *program_node = NULL;
 
 	value_node = yaml_document_get_node(document, value_index);
 	if (value_node->type != YAML_MAPPING_NODE)
@@ -589,12 +588,12 @@ bool	parse_programs(struct s_server *server, yaml_document_t *document, int valu
 				if (reporter->critical)
 				{
 					ret = false;
-					break ;
+					break;
 				}
 			}
 			else
 			{
-				snprintf(reporter->buffer, PIPE_BUF, "WARNING  : Incorrect format detected in programs block, expected keys to be scalars, encountered: %s\n" , key_node->tag);
+				snprintf(reporter->buffer, PIPE_BUF, "WARNING  : Incorrect format detected in programs block, expected keys to be scalars, encountered: %s\n", key_node->tag);
 				report(reporter, false);
 			}
 		}

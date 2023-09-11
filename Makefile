@@ -66,7 +66,7 @@ CC = gcc
 OBJS := $(patsubst %.c,$(OBJDIR)/%.o,$(SRCS))
 
 $(NAME) : $(OBJS) $(INC)
-	$(CC) $(CFLAGS) $(OBJS) -L libs -lyaml -lpthread -lcurl -o $@
+	$(CC) $(CFLAGS) $(OBJS) -pthread -L libs -lyaml -lcurl -o $@
 
 $(OBJS): $(INC)
 
