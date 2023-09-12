@@ -66,6 +66,11 @@ CC = gcc
 OBJS := $(patsubst %.c,$(OBJDIR)/%.o,$(SRCS))
 
 $(NAME) : $(OBJS) $(INC)
+	test -d ./libs/yaml-0.2.5 || (cd ./libs && tar -xvf libyaml.tar.gz)
+	test -f inc/yaml.h || cp ./libs/yaml-0.2.5/include/yaml.h inc/yaml.h
+	test -f ./libs/libyaml.so || ((test -f ./libs/yaml-0.2.5/src/.libs/libyaml-0.so.2.0.9 || (cd ./libs/yaml-0.2.5; ./configure; make;)) && rm -f ./libs/libyaml.so; ln -s $(PWD)/libs/yaml-0.2.5/src/.libs/libyaml-0.so.2.0.9 ./libs/libyaml.so)
+	test -d ./libs/curl-8.2.1 || (cd ./libs && tar -xvf curl-8.2.1.tar.gz)
+	test -f ./libs/libcurl.so || ((test -f ./libs/curl-8.2.1/lib/.libs/libcurl.so.4.8.0 || (cd ./libs/curl-8.2.1; ./configure --with-openssl; make;)) && rm -f ./libs/libcurl.so; ln -s $(PWD)/libs/curl-8.2.1/lib/.libs/libcurl.so.4.8.0 ./libs/libcurl.so)
 	$(CC) $(CFLAGS) $(OBJS) -pthread -L libs -lyaml -lcurl -o $@
 
 $(OBJS): $(INC)
@@ -73,6 +78,9 @@ $(OBJS): $(INC)
 $(OBJS) : | $(OBJDIR)
 
 $(OBJDIR)/%.o: %.c
+	test -d ./libs/yaml-0.2.5 || (cd ./libs && tar -xvf libyaml.tar.gz)
+	test -f inc/yaml.h || cp ./libs/yaml-0.2.5/include/yaml.h inc/yaml.h
+	test -d ./libs/curl-8.2.1 || (cd ./libs && tar -xvf curl-8.2.1.tar.gz)
 	$(CC) $(CFLAGS) -I inc -I libs/curl-8.2.1/include/curl -o $@ -c $<
 
 $(OBJDIR) :
