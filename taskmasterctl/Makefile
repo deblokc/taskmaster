@@ -49,7 +49,6 @@ OBJS := $(patsubst %.c,$(OBJDIR)/%.o,$(SRCS))
 $(NAME) : $(READLINE) $(OBJS) $(INC)
 	test -d ../libs/yaml-0.2.5 || (cd ../libs && tar -xvf libyaml.tar.gz)
 	test -f ./lib/libyaml.so || ((test -f ../libs/yaml-0.2.5/src/.libs/libyaml-0.so.2.0.9 || (cd ../libs/yaml-0.2.5; ./configure; make;)) && rm -f ./lib/libyaml.so; ln -s $(PWD)/../libs/yaml-0.2.5/src/.libs/libyaml-0.so.2.0.9 ./lib/libyaml.so)
-	test -f inc/yaml.h || cp ../libs/yaml-0.2.5/include/yaml.h inc/yaml.h
 	$(CC) $(CFLAGS) $(OBJS) $(READLINE) -L lib -lyaml -o $@
 
 $(OBJS): $(INC)
