@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/08/24 14:00:05 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/25 18:16:28 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/09/14 20:43:25 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -778,10 +778,10 @@ void *main_logger(void *void_server)
 					else if (!strncmp("getlog", &reporter.buffer[22], 6))
 					{
 						char *arg[2];
-						char *ret = strtok(&reporter.buffer[22] + 6, " ");
-						arg[0] = ret; // size
-						ret = strtok(NULL, " ");
-						arg[1] = ret; // client fd
+						char *ret_tok = strtok(&reporter.buffer[22] + 6, " ");
+						arg[0] = ret_tok; // size
+						ret_tok = strtok(NULL, " ");
+						arg[1] = ret_tok; // client fd
 						int fd = atoi(arg[1]);
 
 						struct s_logging_client *client = new_logging_client(&list, fd, &reporter);
