@@ -12,4 +12,5 @@ yaml.h
 taskmasterctl/taskmasterctl
 readline.a
 logs/
+libs/
 curl-8.2.1/
