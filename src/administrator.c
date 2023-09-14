@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/25 16:18:40 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/09/14 17:50:44 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -235,6 +235,9 @@ void closeall(struct s_process *process, int epollfd) {
 		close(process->stderr[0]);
 	}
 	waitpid(process->pid, NULL, 0);
+	process->pid = 0;
+	snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG    : %s pid is now %d\n", process->name, process->pid);
+	report(&reporter, false);
 }
 
 struct s_logging_client *new_logging_client(struct s_logging_client **list, int client_fd, struct s_report *reporter) {
@@ -630,6 +633,9 @@ void handle_logging_client(struct s_process *process, struct epoll_event event, 
 			if (client == process->list) {
 				process->list = client->next;
 				bzero(client->buf, PIPE_BUF + 1);
+				if (client->log) {
+					free(client->log);
+				}
 				free(client);
 			} else {
 				struct s_logging_client *head = process->list;
@@ -638,6 +644,9 @@ void handle_logging_client(struct s_process *process, struct epoll_event event, 
 				}
 				head->next = client->next;
 				bzero(client->buf, PIPE_BUF + 1);
+				if (client->log) {
+					free(client->log);
+				}
 				free(client);
 			}
 			return ;
@@ -682,23 +691,6 @@ void send_clients(struct s_process *process, int epollfd, char *buf) {
 		}
 		tmp = tmp->next;
 	}
-
-/*
-	char trunc[PIPE_BUF - 20 + 1];
-	bzero(trunc, PIPE_BUF - 20 + 1);
-
-	memcpy(trunc, buf, PIPE_BUF - 20);
-	while (tmp) {
-		if (tmp->fg) {
-			snprintf(tmp->buf + strlen(tmp->buf), PIPE_BUF - strlen(tmp->buf), "%s", trunc);
-			tmp->poll.events = EPOLLIN | EPOLLOUT;
-			epoll_ctl(epollfd, EPOLL_CTL_MOD, tmp->poll.data.fd, &(tmp->poll));
-			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: %s to %d client buffer is %ld bytes \n", process->name, tmp->poll.data.fd, strlen(tmp->buf));
-			report(&reporter, false);
-		}
-		tmp = tmp->next;
-	}
-	*/
 }
 
 static void kick_clients(struct s_logging_client **list) {

@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/24 18:38:27 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/09/14 16:10:05 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 #include "taskmaster.h"
@@ -666,7 +666,7 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 													minute = (int)((now.tv_sec - start.tv_sec) / 60) % 60;
 													second = (int)(now.tv_sec - start.tv_sec) % 60;
 												}
-												snprintf(client->buf + strlen(client->buf), PIPE_BUF + 1, "%-15s : %-8s\tpid : %d\tuptime : %02d:%02d:%02d\n", current->processes[j].name, status[current->processes[j].status], current->processes[j].pid, hour, minute, second);
+												snprintf(client->buf + strlen(client->buf), PIPE_BUF + 1, "%-15s : %-8s\tpid : %-5d uptime : %02d:%02d:%02d\n", current->processes[j].name, status[current->processes[j].status], current->processes[j].pid, hour, minute, second);
 	
 											}
 										}
