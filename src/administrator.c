@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/14 17:50:44 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/09/14 18:51:44 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -655,9 +655,9 @@ void handle_logging_client(struct s_process *process, struct epoll_event event, 
 		bzero(msg, PIPE_BUF / 2);
 		memcpy(msg, buf, PIPE_BUF / 2);
 		msg[(PIPE_BUF / 2) - 1] = '\0';
-		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG    : %s received \"%s\" from client %d\n", process->name, msg, client->poll.data.fd);
+		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG    : %s received something from client %d\n", process->name, client->poll.data.fd);
 		report(&reporter, false);
-		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG    : %s is sending \"%s\" to its process\n", process->name, msg + 5);
+		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG    : %s is sending something to its process\n", process->name);
 		report(&reporter, false);
 		if (write(process->stdin[1], buf + 5, strlen(buf + 5)) < 0) {
 			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG    : %s could not write to its process\n", process->name);
