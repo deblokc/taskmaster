@@ -19,9 +19,11 @@
 #include <sys/un.h>
 #include <sys/epoll.h>
 
-int	early_error(char* msg, int* reporter_pipe, char* tmp_log, struct s_server *server)
+int early_error(char *msg, int *reporter_pipe, char *tmp_log, struct s_server *server)
 {
-	if (write(2, msg, strlen(msg))) {}
+	if (write(2, msg, strlen(msg)))
+	{
+	}
 	if (reporter_pipe[0] > 0)
 		close(reporter_pipe[0]);
 	if (reporter_pipe[1] > 0)
@@ -35,7 +37,7 @@ int	early_error(char* msg, int* reporter_pipe, char* tmp_log, struct s_server *s
 	return (1);
 }
 
-int	reload_early_error(int* reporter_pipe, char* tmp_log, struct s_server *server)
+int reload_early_error(int *reporter_pipe, char *tmp_log, struct s_server *server)
 {
 	if (reporter_pipe[0] > 0)
 		close(reporter_pipe[0]);
@@ -50,13 +52,12 @@ int	reload_early_error(int* reporter_pipe, char* tmp_log, struct s_server *serve
 	return (1);
 }
 
-static int	tmp_log(char tmp_log_file[1024])
+static int tmp_log(char tmp_log_file[1024])
 {
-	int				fd;
-	ssize_t			ret;
-	char			base[] = "0123456789-abcdefghijklmnopqrstuvwxyz_ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-	unsigned char	tmp;
-	
+	int fd;
+	ssize_t ret;
+	char base[] = "0123456789-abcdefghijklmnopqrstuvwxyz_ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+	unsigned char tmp;
 
 	bzero(tmp_log_file, sizeof(char) * 1024);
 	fd = open("/dev/urandom", O_RDONLY);
@@ -76,7 +77,7 @@ static int	tmp_log(char tmp_log_file[1024])
 	return (open(tmp_log_file, O_CREAT | O_TRUNC | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP));
 }
 
-bool	tmp_logging(int reporter_pipe[4], char tmp_log_file[1024], struct s_report *reporter, bool is_first)
+bool tmp_logging(int reporter_pipe[4], char tmp_log_file[1024], struct s_report *reporter, bool is_first)
 {
 	if (pipe2(reporter_pipe, O_CLOEXEC | O_NONBLOCK) == -1)
 	{
@@ -114,12 +115,13 @@ bool	tmp_logging(int reporter_pipe[4], char tmp_log_file[1024], struct s_report 
 	return (true);
 }
 
-
-static void	cleanup(struct s_server *server, bool remove_pidfile, struct s_report *reporter)
+static void cleanup(struct s_server *server, bool remove_pidfile, struct s_report *reporter)
 {
 	if (!end_logging_thread(reporter, server->logging_thread) && !server->daemon)
 	{
-		if (write(2, reporter->buffer, strlen(reporter->buffer))) {}
+		if (write(2, reporter->buffer, strlen(reporter->buffer)))
+		{
+		}
 	}
 	if (remove_pidfile)
 	{
@@ -136,7 +138,7 @@ static void	cleanup(struct s_server *server, bool remove_pidfile, struct s_repor
 	server->cleaner(server);
 }
 
-static void	soft_cleanup(struct s_server *server)
+static void soft_cleanup(struct s_server *server)
 {
 	if (!server->pidfile)
 		unlink("taskmasterd.pid");
@@ -155,15 +157,17 @@ static bool reload_error(struct s_server *server, struct s_report *reporter)
 	report(reporter, true);
 	if (!end_logging_thread(reporter, server->logging_thread) && !server->daemon)
 	{
-		if (write(2, reporter->buffer, strlen(reporter->buffer))) {}
+		if (write(2, reporter->buffer, strlen(reporter->buffer)))
+		{
+		}
 	}
 	server->cleaner(server);
 	return (false);
 }
 
-static void	flush_old_env(struct s_server *server)
+static void flush_old_env(struct s_server *server)
 {
-	struct s_env	*start;
+	struct s_env *start;
 
 	start = server->env;
 	while (start)
@@ -173,15 +177,15 @@ static void	flush_old_env(struct s_server *server)
 	}
 }
 
-static bool	reload_configuration(struct s_server **server, struct s_report *reporter)
+static bool reload_configuration(struct s_server **server, struct s_report *reporter)
 {
-	char			tmp_log_file[1024];
-	void			*thread_ret;
-	int				reporter_pipe[4];
-	int				ret = 0;
-	pthread_t		initial_logger;
-	struct s_server	*new_server = NULL;
-	struct s_report	tmp_reporter;
+	char tmp_log_file[1024];
+	void *thread_ret;
+	int reporter_pipe[4];
+	int ret = 0;
+	pthread_t initial_logger;
+	struct s_server *new_server = NULL;
+	struct s_report tmp_reporter;
 
 	soft_cleanup(*server);
 	bzero(reporter_pipe, sizeof(int) * 4);
@@ -253,7 +257,9 @@ static bool	reload_configuration(struct s_server **server, struct s_report *repo
 	report(reporter, false);
 	if (!end_logging_thread(reporter, (*server)->logging_thread) && !(*server)->daemon)
 	{
-		if (write(2, reporter->buffer, strlen(reporter->buffer))) {}
+		if (write(2, reporter->buffer, strlen(reporter->buffer)))
+		{
+		}
 	}
 	(*server)->cleaner(*server);
 	*server = new_server;
@@ -272,8 +278,10 @@ static bool	reload_configuration(struct s_server **server, struct s_report *repo
 		report(reporter, true);
 		if (!end_logging_thread(reporter, (*server)->logging_thread) && !(*server)->daemon)
 		{
-			if (write(2, reporter->buffer, strlen(reporter->buffer))) {}
-		}	
+			if (write(2, reporter->buffer, strlen(reporter->buffer)))
+			{
+			}
+		}
 		*server = (*server)->cleaner(*server);
 		return (false);
 	}
@@ -313,18 +321,15 @@ static bool	reload_configuration(struct s_server **server, struct s_report *repo
 	return (true);
 }
 
-
-
-int	main_routine(struct s_server *server, struct s_report *reporter)
+int main_routine(struct s_server *server, struct s_report *reporter)
 {
-	int					nb_events;
-	struct s_client		*clients = NULL;
-	struct epoll_event	events[10];
-	struct s_program	*program_tree = NULL;
-	struct s_program	*tmp_tree = NULL;
+	int nb_events;
+	struct s_client *clients = NULL;
+	struct epoll_event events[10];
+	struct s_program *program_tree = NULL;
+	struct s_program *tmp_tree = NULL;
 
-	if (!install_signal_handler(reporter) || !unblock_signals_thread(reporter)
-		|| (server->socket.enable && !init_epoll(server, reporter)))
+	if (!install_signal_handler(reporter) || !unblock_signals_thread(reporter) || (server->socket.enable && !init_epoll(server, reporter)))
 	{
 		exit_admins(server->priorities);
 		wait_priorities(server->priorities);
@@ -344,7 +349,7 @@ int	main_routine(struct s_server *server, struct s_report *reporter)
 			{
 				check_server(server, events, nb_events, &clients, reporter);
 				if (g_sig)
-					break ;
+					break;
 			}
 		}
 		if (g_sig)
@@ -358,8 +363,7 @@ int	main_routine(struct s_server *server, struct s_report *reporter)
 				wait_priorities(server->priorities);
 				if (!reload_configuration(&server, reporter))
 					return (1);
-				if (!install_signal_handler(reporter) || !unblock_signals_thread(reporter)
-					|| (server->socket.enable && !init_epoll(server, reporter)))
+				if (!install_signal_handler(reporter) || !unblock_signals_thread(reporter) || (server->socket.enable && !init_epoll(server, reporter)))
 				{
 					exit_admins(server->priorities);
 					wait_priorities(server->priorities);
@@ -407,14 +411,13 @@ int	main_routine(struct s_server *server, struct s_report *reporter)
 	return (0);
 }
 
-
-int	main(int ac, char **av)
+int main(int ac, char **av)
 {
-	char			tmp_log_file[1024];
-	void			*thread_ret;
-	int				ret = 0;
-	int				reporter_pipe[4];
-	pthread_t		initial_logger;
+	char tmp_log_file[1024];
+	void *thread_ret;
+	int ret = 0;
+	int reporter_pipe[4];
+	pthread_t initial_logger;
 	struct s_report reporter;
 	struct s_server *server = NULL;
 
@@ -426,6 +429,9 @@ int	main(int ac, char **av)
 	if (ac != 2)
 	{
 		snprintf(reporter.buffer, PIPE_BUF, "Usage: %s CONFIGURATION-FILE\n", av[0]);
+		if (write(2, reporter.buffer, strlen(reporter.buffer)))
+		{
+		}
 		return (1);
 	}
 	if (!block_signals(&reporter))
@@ -495,8 +501,10 @@ int	main(int ac, char **av)
 		report(&reporter, true);
 		if (!end_logging_thread(&reporter, server->logging_thread))
 		{
-			if (write(2, reporter.buffer, strlen(reporter.buffer))) {}
-		}	
+			if (write(2, reporter.buffer, strlen(reporter.buffer)))
+			{
+			}
+		}
 		server = server->cleaner(server);
 		return (1);
 	}

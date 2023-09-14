@@ -1,4 +1,5 @@
 vscode/
+.vscode/
 /obj
 *.log
 *.o

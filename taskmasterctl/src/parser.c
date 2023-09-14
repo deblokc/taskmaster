@@ -4,38 +4,44 @@
 #include <fcntl.h>
 #include <stdio.h>
 
-static char *parse_document(yaml_document_t * document)
+static char *parse_document(yaml_document_t *document)
 {
-	char		error_message[PIPE_BUF + 1];
-	char		*socket_path = NULL;
-	yaml_node_t	*current_node;
-	yaml_node_t	*params_node;
-	yaml_node_t	*key_node;
-	yaml_node_t	*value_node;
+	char error_message[PIPE_BUF + 1];
+	char *socket_path = NULL;
+	yaml_node_t *current_node;
+	yaml_node_t *params_node;
+	yaml_node_t *key_node;
+	yaml_node_t *value_node;
 
 	bzero(error_message, PIPE_BUF + 1);
 	current_node = yaml_document_get_root_node(document);
 	if (!current_node)
 	{
-		write(2, "Empty configuration file provided\n", strlen("Empty configuration file provided\n"));
-		return (NULL);	
+		if (write(2, "Empty configuration file provided\n", strlen("Empty configuration file provided\n")))
+		{
+		}
+		return (NULL);
 	}
 	if (current_node->type != YAML_MAPPING_NODE)
 	{
 		snprintf(error_message, PIPE_BUF, "Expected map at the root of yaml document, found: %s\n", current_node->tag);
-		write(2, error_message, strlen(error_message));
+		if (write(2, error_message, strlen(error_message)))
+		{
+		}
 		return (NULL);
 	}
 	for (int i = 0; (current_node->data.mapping.pairs.start + i) < current_node->data.mapping.pairs.top; ++i)
 	{
 		key_node = yaml_document_get_node(document, (current_node->data.mapping.pairs.start + i)->key);
-		if (key_node->type != YAML_SCALAR_NODE || strcmp((char*)key_node->data.scalar.value, "socket"))
-			continue ;
+		if (key_node->type != YAML_SCALAR_NODE || strcmp((char *)key_node->data.scalar.value, "socket"))
+			continue;
 		params_node = yaml_document_get_node(document, (current_node->data.mapping.pairs.start + i)->value);
 		if (params_node->type != YAML_MAPPING_NODE)
 		{
 			snprintf(error_message, PIPE_BUF, "Unexpected format for block 'socket', expected map, encountered %s\n", params_node->tag);
-			write(2, error_message, strlen(error_message));
+			if (write(2, error_message, strlen(error_message)))
+			{
+			}
 			if (socket_path)
 				free(socket_path);
 			return (NULL);
@@ -44,14 +50,16 @@ static char *parse_document(yaml_document_t * document)
 		{
 			key_node = yaml_document_get_node(document, (params_node->data.mapping.pairs.start + j)->key);
 			if (key_node->type != YAML_SCALAR_NODE)
-				continue ;
+				continue;
 			value_node = yaml_document_get_node(document, (params_node->data.mapping.pairs.start + j)->value);
-			if (!strcmp("socketpath", (char*)key_node->data.scalar.value))
+			if (!strcmp("socketpath", (char *)key_node->data.scalar.value))
 			{
 				if (value_node->type != YAML_SCALAR_NODE)
 				{
 					snprintf(error_message, PIPE_BUF, "Wrong format for socketpath, expected a scalar value, encountered %s\n", value_node->tag);
-					write(2, error_message, strlen(error_message));
+					if (write(2, error_message, strlen(error_message)))
+					{
+					}
 					if (socket_path)
 						free(socket_path);
 					return (NULL);
@@ -68,15 +76,19 @@ static char *parse_document(yaml_document_t * document)
 		}
 	}
 	if (!socket_path)
-		write(2, "No socketpath encountered in configuration file\n", strlen("No socketpath encountered in configuration file\n"));
+	{
+		if (write(2, "No socketpath encountered in configuration file\n", strlen("No socketpath encountered in configuration file\n")))
+		{
+		}
+	}
 	return socket_path;
 }
 
-static char	*parse_config_yaml(FILE *config_file_handle)
+static char *parse_config_yaml(FILE *config_file_handle)
 {
-	char			*socket_path = NULL;
-	yaml_parser_t	parser;
-	yaml_document_t	document;
+	char *socket_path = NULL;
+	yaml_parser_t parser;
+	yaml_document_t document;
 
 	if (!yaml_parser_initialize(&parser))
 	{
@@ -101,12 +113,12 @@ static char	*parse_config_yaml(FILE *config_file_handle)
 	return (socket_path);
 }
 
-char*	parse_config(char *config_file)
+char *parse_config(char *config_file)
 {
-	char	*socket_path = NULL;
-	FILE	*config_file_handle = NULL;
+	char *socket_path = NULL;
+	FILE *config_file_handle = NULL;
 
-	config_file_handle = fopen(config_file, "r");	
+	config_file_handle = fopen(config_file, "r");
 	if (!config_file_handle)
 	{
 		perror("Could not open configuration file");
