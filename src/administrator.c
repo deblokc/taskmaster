@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/25 16:18:40 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/09/14 17:50:44 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -236,6 +236,8 @@ void closeall(struct s_process *process, int epollfd) {
 	}
 	waitpid(process->pid, NULL, 0);
 	process->pid = 0;
+	snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG    : %s pid is now %d\n", process->name, process->pid);
+	report(&reporter, false);
 }
 
 struct s_logging_client *new_logging_client(struct s_logging_client **list, int client_fd, struct s_report *reporter) {
@@ -631,6 +633,9 @@ void handle_logging_client(struct s_process *process, struct epoll_event event, 
 			if (client == process->list) {
 				process->list = client->next;
 				bzero(client->buf, PIPE_BUF + 1);
+				if (client->log) {
+					free(client->log);
+				}
 				free(client);
 			} else {
 				struct s_logging_client *head = process->list;
@@ -639,6 +644,9 @@ void handle_logging_client(struct s_process *process, struct epoll_event event, 
 				}
 				head->next = client->next;
 				bzero(client->buf, PIPE_BUF + 1);
+				if (client->log) {
+					free(client->log);
+				}
 				free(client);
 			}
 			return ;
