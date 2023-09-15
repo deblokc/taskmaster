@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/14 18:51:44 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/09/15 19:42:21 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -65,9 +65,23 @@ void child_exec(struct s_process *proc) {
 	struct s_report reporter;
 	reporter.report_fd = proc->log;
 	// dup every standard stream to pipe
-	dup2(proc->stdin[0], 0);
-	dup2(proc->stdout[1], 1);
-	dup2(proc->stderr[1], 2);
+	if (dup2(proc->stdin[0], 0) < 0) {
+		snprintf(reporter.buffer, PIPE_BUF - 22, "CRITICAL : %s could not dup stdin\n", proc->name);
+		report(&reporter, false);
+	}
+	if (dup2(proc->stdout[1], 1) < 0) {
+		snprintf(reporter.buffer, PIPE_BUF - 22, "CRITICAL : %s could not dup stdout\n", proc->name);
+		report(&reporter, false);
+	}
+	if (dup2(proc->stderr[1], 2) < 0) {
+		snprintf(reporter.buffer, PIPE_BUF - 22, "CRITICAL : %s could not dup stderr\n", proc->name);
+		report(&reporter, false);
+	}
+
+	// close duped fds
+	close(proc->stdin[0]);
+	close(proc->stdout[1]);
+	close(proc->stderr[1]);
 
 	// close ends of pipe which doesnt belong to us
 	close(proc->stdin[1]);
@@ -137,13 +151,13 @@ int exec(struct s_process *process, int epollfd) {
 
 	struct epoll_event out, err;
 
-	if (pipe(process->stdin)) {
+	if (pipe2(process->stdin, O_CLOEXEC)) {
 		return 1;
 	}
-	if (pipe(process->stdout)) {
+	if (pipe2(process->stdout, O_CLOEXEC)) {
 		return 1;
 	}
-	if (pipe(process->stderr)) {
+	if (pipe2(process->stderr, O_CLOEXEC)) {
 		return 1;
 	}
 
@@ -819,6 +833,8 @@ void *administrator(void *arg) {
 						handle_logging_client(process, events[0], epollfd);
 					}
 					if (events[i].data.fd == process->stdout[0]) { // if process print in stdout
+						snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG     : %s has stdout while in STARTING epoll_wait\n", process->name);
+						report(&reporter, false);
 						char buf[PIPE_BUF + 1];
 						bzero(buf, PIPE_BUF + 1);
 						if (read(process->stdout[0], buf, PIPE_BUF) > 0) {
@@ -849,6 +865,8 @@ void *administrator(void *arg) {
 							}
 						}
 					} else if (events[i].data.fd == process->stderr[0]) { // if process print in stderr
+						snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG     : %s has stderr while in STARTING epoll_wait\n", process->name);
+						report(&reporter, false);
 						char buf[PIPE_BUF + 1];
 						bzero(buf, PIPE_BUF + 1);
 						if (read(process->stderr[0], buf, PIPE_BUF) > 0) {
@@ -918,6 +936,9 @@ void *administrator(void *arg) {
 							}
 							process->bool_exit = true;
 						}
+					} else {
+						snprintf(reporter.buffer, PIPE_BUF - 22, "ERROR    : %s got event from an unknown fd\n", process->name);
+						report(&reporter, false);
 					}
 				}
 			} else if (((long long)process->program->startsecs * 1000) - (tmp_micro - start_micro) > INT_MAX) { // if timeout and not because time to wait is bigger than an int

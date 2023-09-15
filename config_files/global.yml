@@ -9,7 +9,8 @@ programs:
     command: /bin/bash -c "sleep 10"
 
   should_fatal:
-    command: /bin/bash -c "sleep 5"
+    command: /bin/bash -c "echo stdout; echo stderr 1>&2; sleep 5"
+    numprocs: 50
     startretries: 0
     startsecs: 10
 
