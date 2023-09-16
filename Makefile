@@ -5,101 +5,37 @@
 #                                                     +:+ +:+         +:+      #
 #    By: tnaton <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
-#    Created: 2023/06/16 11:17:59 by tnaton            #+#    #+#              #
-#    Updated: 2023/09/16 11:47:11 by tnaton           ###   ########.fr        #
+#    Created: 2023/09/16 12:07:07 by tnaton            #+#    #+#              #
+#    Updated: 2023/09/16 12:12:04 by tnaton           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
-vpath %.h inc
+TASKMASTERD = taskmasterd
 
-NAME = taskmaster
+TASKMASTERCTL = taskmasterctl
 
-OBJDIR := obj
+TASKMASTERD_PATH = srcs/taskmasterd
 
-SRCDIR := src
-
-
-SRCS = main.c \
-	   parser/parser.c \
-	   parser/server.c \
-	   parser/socket.c \
-	   parser/logger.c \
-	   parser/program.c \
-	   parser/tree.c \
-	   parser/utils.c \
-	   parser/priorities.c \
-	   parser/free_errors.c \
-	   gnl/get_next_line.c \
-	   gnl/get_next_line_utils.c \
-	   signal.c \
-	   report.c \
-	   prelude_server.c \
-	   log.c \
-	   daemon.c \
-	   administrator.c \
-	   server.c \
-	   launcher.c \
-	   update.c
-
-INC = taskmaster.h
-
-MOREFLAGS = -Wformat=2				\
-			-Wformat-overflow=2		\
-			-Wformat-truncation=2	\
-			-Wstringop-overflow=4	\
-			-Winit-self				\
-			-ftrapv					\
-			-Wdate-time				\
-			-Wconversion			\
-			-Wshadow
-
-#	-Wformat=2						Check format when call to printf/scanf...
-#	-Wformat-overflow=2				Check overflow of buffer with sprintf/vsprintf
-#	-Wformat-truncation=2			Check output truncation with snprintf/vsnprintf
-#	-Wstringop-overflow=4			Check overflow when using memcpy and strcpy (which should not happen for obvious reason)
-#	-Winit-self						Check variable which initialise themself /* int i; i = i; */
-#	-ftrapv							Trap signed overflow for + - * 
-#	-Wdate-time						Warn if __TIME__ __DATE or __TIMESTAMP__ are encoutered to prevent bit-wise-identical compilation
-
-CFLAGS = -Wall -Wextra -Werror -Wpedantic -O3 -g $(MOREFLAGS)
-
-CC = gcc
-
-OBJS := $(patsubst %.c,$(OBJDIR)/%.o,$(SRCS))
-
-$(NAME) : $(OBJS) $(INC)
-	test -d ./libs/yaml-0.2.5 || (cd ./libs && tar -xvf libyaml.tar.gz)
-	test -f inc/yaml.h || cp ./libs/yaml-0.2.5/include/yaml.h inc/yaml.h
-	test -f ./libs/libyaml.so || ((test -f ./libs/yaml-0.2.5/src/.libs/libyaml-0.so.2.0.9 || (cd ./libs/yaml-0.2.5; ./configure; make;)) && rm -f ./libs/libyaml.so; ln -s $(PWD)/libs/yaml-0.2.5/src/.libs/libyaml-0.so.2.0.9 ./libs/libyaml.so)
-	test -d ./libs/curl-8.2.1 || (cd ./libs && tar -xvf curl-8.2.1.tar.gz)
-	test -f ./libs/libcurl.so || ((test -f ./libs/curl-8.2.1/lib/.libs/libcurl.so.4.8.0 || (cd ./libs/curl-8.2.1; ./configure --with-openssl; make;)) && rm -f ./libs/libcurl.so; ln -s $(PWD)/libs/curl-8.2.1/lib/.libs/libcurl.so.4.8.0 ./libs/libcurl.so)
-	$(CC) $(CFLAGS) $(OBJS) -pthread -L libs -lyaml -lcurl -o $@
-
-$(OBJS): $(INC)
-
-$(OBJS) : | $(OBJDIR)
-
-$(OBJDIR)/%.o: $(SRCDIR)/%.c
-	test -d ./libs/yaml-0.2.5 || (cd ./libs && tar -xvf libyaml.tar.gz)
-	test -f inc/yaml.h || cp ./libs/yaml-0.2.5/include/yaml.h inc/yaml.h
-	test -d ./libs/curl-8.2.1 || (cd ./libs && tar -xvf curl-8.2.1.tar.gz)
-	$(CC) $(CFLAGS) -I inc -I libs/curl-8.2.1/include/curl -o $@ -c $<
-
-$(OBJDIR) :
-	mkdir -p $(OBJDIR)/parser $(OBJDIR)/gnl
-
-.SECONDARY: $(OBJS)
+TASKMASTERCTL_PATH = srcs/taskmasterctl
 
 .PHONY: all
-all : $(NAME)
+all: $(TASKMASTERD) $(TASKMASTERCTL)
+
+$(TASKMASTERD):
+	$(MAKE) -C $(TASKMASTERD_PATH)
+
+$(TASKMASTERCTL):
+	$(MAKE) -C $(TASKMASTERCTL_PATH)
 
 .PHONY: clean
-clean : 
-	rm -rf $(OBJS)
+clean :
+	$(MAKE) clean -C $(TASKMASTERD_PATH)
+	$(MAKE) clean -C $(TASKMASTERCTL_PATH)
 
 .PHONY: fclean
-fclean:
-	rm -rf $(NAME) $(OBJS) $(OBJDIR)
+fclean :
+	$(MAKE) fclean -C $(TASKMASTERD_PATH)
+	$(MAKE) fclean -C $(TASKMASTERCTL_PATH)
 
 .PHONY: re
 re: fclean all

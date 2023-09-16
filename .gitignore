@@ -3,7 +3,8 @@ vscode/
 /obj
 *.log
 *.o
-taskmaster
+taskmasterd
+taskmasterctl
 .*.swp
 .nfs*
 yaml-0.2.5/
