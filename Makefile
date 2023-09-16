@@ -6,17 +6,18 @@
 #    By: tnaton <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/06/16 11:17:59 by tnaton            #+#    #+#              #
-#    Updated: 2023/09/14 20:37:46 by bdetune          ###   ########.fr        #
+#    Updated: 2023/09/16 11:47:11 by tnaton           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
-vpath %.c src
-vpath %.o obj
 vpath %.h inc
 
 NAME = taskmaster
 
 OBJDIR := obj
+
+SRCDIR := src
+
 
 SRCS = main.c \
 	   parser/parser.c \
@@ -78,7 +79,7 @@ $(OBJS): $(INC)
 
 $(OBJS) : | $(OBJDIR)
 
-$(OBJDIR)/%.o: %.c
+$(OBJDIR)/%.o: $(SRCDIR)/%.c
 	test -d ./libs/yaml-0.2.5 || (cd ./libs && tar -xvf libyaml.tar.gz)
 	test -f inc/yaml.h || cp ./libs/yaml-0.2.5/include/yaml.h inc/yaml.h
 	test -d ./libs/curl-8.2.1 || (cd ./libs && tar -xvf curl-8.2.1.tar.gz)
@@ -94,7 +95,7 @@ all : $(NAME)
 
 .PHONY: clean
 clean : 
-	rm -rf $(OBJS) $(OBJDIR)
+	rm -rf $(OBJS)
 
 .PHONY: fclean
 fclean:
