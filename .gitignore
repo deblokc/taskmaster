@@ -3,7 +3,8 @@ vscode/
 /obj
 *.log
 *.o
-taskmaster
+/taskmasterd
+/taskmasterctl
 .*.swp
 .nfs*
 yaml-0.2.5/
@@ -12,6 +13,7 @@ yaml.h
 taskmasterctl/taskmasterctl
 readline.a
 logs/
+libs/
 curl-8.2.1/
 libscrypt-1.22/
 libscrypt.so

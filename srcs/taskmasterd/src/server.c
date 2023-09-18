@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/24 18:38:27 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/09/14 20:47:34 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 #include "taskmaster.h"
@@ -273,9 +273,9 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 	char				buf[PIPE_BUF + 1];
 	struct s_command	*cmd;
 
-	for (int i = 0; i < nb_events; ++i)
+	for (int event_i = 0; event_i < nb_events; ++event_i)
 	{
-		if (events[i].data.fd == server->socket.sockfd) {
+		if (events[event_i].data.fd == server->socket.sockfd) {
 			strcpy(reporter->buffer, "INFO     : Received new connection on socket\n");
 			report(reporter, false);
 			if ((client_socket = accept(server->socket.sockfd, NULL, NULL)) != -1)
@@ -294,12 +294,12 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 			}
 		} else {
 			client = *clients_lst;
-			while (client && events[i].data.fd != client->poll.data.fd) {
+			while (client && events[event_i].data.fd != client->poll.data.fd) {
 				client = client->next;
 			}
 			if (!client)
 				continue ;
-			if (events[i].events & EPOLLIN) {
+			if (events[event_i].events & EPOLLIN) {
 				snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Received data from client with socket fd %d\n", client->poll.data.fd);
 				report(reporter, false);
 				bzero(buf, PIPE_BUF + 1);
@@ -472,7 +472,6 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 										continue ;
 									for (int i = 0; i < current->numprocs; i++) {
 										if (!strcmp(current->processes[i].name, cmd->arg[0])) {
-											char buf[PIPE_BUF + 1];
 											bzero(buf, PIPE_BUF + 1);
 											snprintf(buf, PIPE_BUF + 1, "fg %d", client->poll.data.fd);
 											if (write(current->processes[i].com[1], buf, strlen(buf))) {}
@@ -523,7 +522,6 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 						snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG    : controller has sent tail command\n");
 						report(reporter, false);
 						if (cmd->arg) {
-							char buf[PIPE_BUF + 1];
 							bzero(buf, PIPE_BUF + 1);
 							char *name = NULL;
 							if (cmd->arg[0][0] == '-') { // if specified size
@@ -666,7 +664,7 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 													minute = (int)((now.tv_sec - start.tv_sec) / 60) % 60;
 													second = (int)(now.tv_sec - start.tv_sec) % 60;
 												}
-												snprintf(client->buf + strlen(client->buf), PIPE_BUF + 1, "%-15s : %-8s\tpid : %d\tuptime : %02d:%02d:%02d\n", current->processes[j].name, status[current->processes[j].status], current->processes[j].pid, hour, minute, second);
+												snprintf(client->buf + strlen(client->buf), PIPE_BUF + 1, "%-15s : %-8s\tpid : %-5d uptime : %02d:%02d:%02d\n", current->processes[j].name, status[current->processes[j].status], current->processes[j].pid, hour, minute, second);
 	
 											}
 										}
@@ -712,23 +710,23 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 					free(cmd);
 					// execute cmd
 				}
-			} else if (events[i].events & EPOLLOUT) {
+			} else if (events[event_i].events & EPOLLOUT) {
 				// send response located in client->buf
 				if (strlen(client->buf)) {
 					snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Sending to client with socket fd %d\n", client->poll.data.fd);
 					report(reporter, false);
-					send(events[i].data.fd, client->buf, strlen(client->buf), 0);
+					send(events[event_i].data.fd, client->buf, strlen(client->buf), 0);
 					bzero(client->buf, PIPE_BUF + 1);
 				} else if (client->log) {
 					snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Sending log to client with socket fd %d\n", client->poll.data.fd);
 					report(reporter, false);
-					send(events[i].data.fd, client->log, strlen(client->log), 0);
+					send(events[event_i].data.fd, client->log, strlen(client->log), 0);
 					free(client->log);
 					client->log = NULL;
 				} else {
 					snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Sending to client with socket fd %d NON ZERO RESPONSE\n", client->poll.data.fd);
 					report(reporter, false);
-					send(events[i].data.fd, ".\n", 2, 0);
+					send(events[event_i].data.fd, ".\n", 2, 0);
 				}
 				client->poll.events = EPOLLIN;
 				if (epoll_ctl(efd, EPOLL_CTL_MOD, client->poll.data.fd, &client->poll))
