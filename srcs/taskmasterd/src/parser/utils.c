@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 17:17:31 by bdetune           #+#    #+#             */
-/*   Updated: 2023/08/25 12:50:23 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/09/18 19:20:18 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,9 +15,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-bool add_char(char const *program_name, char const *field_name, char **target, yaml_node_t *value, struct s_report *reporter)
+bool add_char(char const *program_name, char const *field_name, char **target, yaml_node_t *value, struct s_report *reporter, int max_size)
 {
-	bool	ret = true;
+	size_t	len;
 
 	snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Parsing %s in %s'%s'\n", field_name, program_name?"program ":"", program_name?program_name:"server");
 	report(reporter, false);
@@ -25,19 +25,23 @@ bool add_char(char const *program_name, char const *field_name, char **target, y
 	{
 		snprintf(reporter->buffer, PIPE_BUF, "%s : Wrong format for field %s in %s'%s', expected a scalar value, encountered %s\n", program_name ? "ERROR   " : "CRITICAL", field_name, program_name ? "program" : "", program_name ? program_name : "server", value->tag);
 		report(reporter, program_name ? false : true );
-		ret = false;
+		return (false);
 	}
-	else
+	len = strlen((char *)value->data.scalar.value);
+	if (max_size != -1 && len > (size_t)max_size)
 	{
-		*target = strdup((char *)value->data.scalar.value);
-		if (!*target)
-		{
-			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not allocate %s in %s'%s'\n", field_name, program_name?"program ":"", program_name?program_name:"server");
-			report(reporter, true);
-			ret = false;
-		}
+		snprintf(reporter->buffer, PIPE_BUF, "%s : Field %s in %s'%s' too long, maximum size is %d, encountered value of size %lu\n", program_name ? "ERROR   " : "CRITICAL", field_name, program_name ? "program " : "", program_name ? program_name : "server", max_size, len);
+		report(reporter, program_name ? false : true );
+		return (false);
 	}
-	return (ret);
+	*target = strdup((char *)value->data.scalar.value);
+	if (!*target)
+	{
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not allocate %s in %s'%s'\n", field_name, program_name?"program ":"", program_name?program_name:"server");
+		report(reporter, true);
+		return (false);
+	}
+	return (true);
 }
 
 bool	add_number(char const *program_name, char const *field_name, int *target, yaml_node_t *value, long min, long max, struct s_report *reporter)

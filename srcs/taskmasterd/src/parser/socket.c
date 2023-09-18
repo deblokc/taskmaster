@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/08/08 11:24:49 by bdetune           #+#    #+#             */
-/*   Updated: 2023/08/25 13:16:05 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/09/18 19:31:33 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -53,17 +53,17 @@ static bool add_value(struct s_socket *socket, char* key, yaml_node_t *value, st
 	if (!strcmp("enable", key))
 		ret = add_bool(NULL, "enable", &socket->enable, value, reporter);
 	else if (!strcmp("socketpath", key))
-		ret = add_char(NULL, "socketpath", &socket->socketpath, value, reporter);
+		ret = add_char(NULL, "socketpath", &socket->socketpath, value, reporter, PATH_SIZE);
 	else if (!strcmp("umask", key))
 		ret = add_octal(NULL, "umask", &socket->umask, value, 0, 0777, reporter);
 	else if (!strcmp("uid", key))
-		ret = add_char(NULL, "uid", &socket->uid, value, reporter);
+		ret = add_char(NULL, "uid", &socket->uid, value, reporter, 256);
 	else if (!strcmp("gid", key))
-		ret = add_char(NULL, "gid", &socket->gid, value, reporter);
+		ret = add_char(NULL, "gid", &socket->gid, value, reporter, 256);
 	else if (!strcmp("user", key))
-		ret = add_char(NULL, "user", &socket->user, value, reporter);
+		ret = add_char(NULL, "user", &socket->user, value, reporter, 256);
 	else if (!strcmp("password", key))
-		ret = add_char(NULL, "password", &socket->password, value, reporter);
+		ret = add_char(NULL, "password", &socket->password, value, reporter, 1024);
 	else
 	{
 		snprintf(reporter->buffer, PIPE_BUF, "WARNING  : Encountered unknown key '%s' in socket configuration\n", key);
