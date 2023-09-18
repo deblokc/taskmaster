@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/18 12:45:10 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/09/18 16:01:02 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -432,9 +432,10 @@ int main(int ac, char **av)
 		switch (opt) {
 			case 'x':
 				if (av[2]) {
-					char buf[SCRYPT_MCF_LEN];
+					char buf[SCRYPT_MCF_LEN + 1];
+					bzero(buf, SCRYPT_MCF_LEN + 1);
 					libscrypt_hash(buf, av[2], SCRYPT_N, SCRYPT_r, SCRYPT_p);
-					snprintf(reporter.buffer, PIPE_BUF, "HASH OF PASSWORD %s is >%s<\n", av[2], buf);
+					snprintf(reporter.buffer, PIPE_BUF, "%s\n", buf);
 					if (write(1, reporter.buffer, strlen(reporter.buffer)))
 					{
 					}
