@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 17:17:31 by bdetune           #+#    #+#             */
-/*   Updated: 2023/09/18 19:20:18 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/09/18 20:08:38 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -259,4 +259,14 @@ bool	parse_env(char const *program_name, yaml_node_t *map, yaml_document_t *docu
 		}	
 	}
 	return (ret);
+}
+
+int	nb_procs(struct s_server *server)
+{
+	int	numprocs = 0;
+	for (struct s_program *current = server->begin(server); current; current = current->itnext(current))
+	{
+		numprocs += current->numprocs;
+	}
+	return (numprocs);
 }

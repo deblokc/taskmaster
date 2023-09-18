@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/18 16:01:02 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/09/18 20:27:12 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -184,6 +184,7 @@ static bool reload_configuration(struct s_server **server, struct s_report *repo
 	void *thread_ret;
 	int reporter_pipe[4];
 	int ret = 0;
+	int	current_nbprocs = 0;
 	pthread_t initial_logger;
 	struct s_server *new_server = NULL;
 	struct s_report tmp_reporter;
@@ -198,7 +199,7 @@ static bool reload_configuration(struct s_server **server, struct s_report *repo
 	tmp_reporter.report_fd = reporter_pipe[1];
 	if (pthread_create(&initial_logger, NULL, initial_log, reporter_pipe))
 	{
-		snprintf(reporter->buffer, PIPE_BUF - 22, "CRITICAL : could not create initial log thread, exiting process\n");
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : could not create initial log thread, exiting process\n");
 		report(reporter, true);
 		reload_early_error(reporter_pipe, tmp_log_file, NULL);
 		return (reload_error(*server, reporter));
@@ -206,6 +207,15 @@ static bool reload_configuration(struct s_server **server, struct s_report *repo
 	new_server = parse_config((*server)->bin_path, (*server)->config_file, &tmp_reporter);
 	if (!new_server || tmp_reporter.critical)
 	{
+		if (end_initial_log(&tmp_reporter, &thread_ret, initial_logger) && *(int *)thread_ret != 1)
+			report_critical(reporter_pipe[2], reporter->report_fd);
+		reload_early_error(reporter_pipe, tmp_log_file, new_server);
+		return (reload_error(*server, reporter));
+	}
+	if ((current_nbprocs = nb_procs(new_server)) > MAXNUMPROCS)
+	{
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : New configuration requires %d processes, maximum number allowed is %d processes\n", current_nbprocs, MAXNUMPROCS);
+		report(reporter, true);
 		if (end_initial_log(&tmp_reporter, &thread_ret, initial_logger) && *(int *)thread_ret != 1)
 			report_critical(reporter_pipe[2], reporter->report_fd);
 		reload_early_error(reporter_pipe, tmp_log_file, new_server);
@@ -324,6 +334,7 @@ static bool reload_configuration(struct s_server **server, struct s_report *repo
 
 int main_routine(struct s_server *server, struct s_report *reporter)
 {
+	int	current_numprocs;
 	int nb_events;
 	struct s_client *clients = NULL;
 	struct epoll_event events[10];
@@ -391,9 +402,21 @@ int main_routine(struct s_server *server, struct s_report *reporter)
 						program_tree = NULL;
 					}
 				}
+				tmp_tree = server->program_tree;
+				server->program_tree = program_tree;
+				if ((current_numprocs = nb_procs(server)) > MAXNUMPROCS)
+				{
+					snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : New configuration requires %d processes, taskmasterd can only handle %d processes, server will continue with current configuration\n", current_numprocs, MAXNUMPROCS);
+					report(reporter, false);
+					server->delete_tree(server);
+					server->program_tree = tmp_tree;
+					program_tree = NULL;
+				}
 				else
 				{
+					server->program_tree = tmp_tree;
 					update_configuration(server, program_tree, reporter);
+					program_tree = NULL;
 				}
 				g_sig = 0;
 			}
@@ -418,6 +441,7 @@ int main(int ac, char **av)
 	void *thread_ret;
 	int ret = 0;
 	int opt = 0;
+	int	current_nbprocs = 0;
 	int reporter_pipe[4];
 	pthread_t initial_logger;
 	struct s_report reporter;
@@ -486,6 +510,15 @@ int main(int ac, char **av)
 		get_stamp(reporter.buffer);
 		snprintf(&reporter.buffer[22], PIPE_BUF - 22, "CRITICAL : could not start taskmasterd, exiting process\n");
 		return (early_error(reporter.buffer, reporter_pipe, tmp_log_file, server));
+	}
+	if ((current_nbprocs = nb_procs(server)) > MAXNUMPROCS)
+	{
+		if (end_initial_log(&reporter, &thread_ret, initial_logger) && *(int *)thread_ret != 1)
+			report_critical(reporter_pipe[2], 2);
+		get_stamp(reporter.buffer);
+		snprintf(&reporter.buffer[22], PIPE_BUF - 22, "CRITICAL : Maximum number of processes allowed is %d, found %d processes, exitiing process\n", MAXNUMPROCS, current_nbprocs);
+		return (early_error(reporter.buffer, reporter_pipe, tmp_log_file, server));
+
 	}
 	if (server->socket.enable)
 	{

@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/18 19:28:51 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/09/18 20:24:51 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,6 +24,7 @@
 #include <stddef.h>
 #define BUFFER_SIZE PIPE_BUF
 #define PATH_SIZE 2048
+#define MAXNUMPROCS 100
 #include "yaml.h"
 #include "curl.h"
 #include "get_next_line.h"
@@ -240,6 +241,7 @@ bool				add_octal(char const *program_name, char const *field_name, int *target,
 bool				add_bool(char const *program_name, char const *field_name, bool *target, yaml_node_t *value, struct s_report *reporter);
 struct s_env*		free_s_env(struct s_env *start);
 bool				parse_env(char const *program_name, yaml_node_t *map, yaml_document_t *document, struct s_env **dest, struct s_report *reporter);
+int					nb_procs(struct s_server* server);
 void				report_critical(int fd, int report_fd);
 struct s_priority*	create_priorities(struct s_server *server, struct s_report *reporter);
 void*				administrator(void *arg);
