@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/12 15:28:41 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/18 15:14:43 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/09/18 20:00:59 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -76,15 +76,19 @@ int	handle_line(struct s_readline *global) {
 				if (global->cursor != strlen(global->current->line)) { // if not at end of line
 					memcpy(global->current->line + global->cursor + 1, global->current->line + global->cursor, strlen(global->current->line) - global->cursor + 1);
 					global->current->line[global->cursor] = buf[i];
-					cursor_save();
-					if (write(1, global->current->line + global->cursor, strlen(global->current->line + global->cursor))) {} // reprint line with the character
-					cursor_restore();
-					cursor_right(global);
+					if (!global->shadow) {
+						cursor_save();
+						if (write(1, global->current->line + global->cursor, strlen(global->current->line + global->cursor))) {} // reprint line with the character
+						cursor_restore();
+						cursor_right(global);
+					}
 				} else { // if at end of line
 					global->current->line[strlen(global->current->line)] = buf[i];
 					global->cursor++;
-					if (write(1, &buf[i], 1) < 0) {
-						return (-1);
+					if (!global->shadow) {
+						if (write(1, &buf[i], 1) < 0) {
+							return (-1);
+						}
 					}
 				}
 			}

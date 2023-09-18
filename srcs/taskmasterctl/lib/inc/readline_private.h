@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/12 15:48:57 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/18 15:27:11 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/09/18 19:57:30 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,6 +40,7 @@ struct s_readline {
 	char				*prompt;
 	size_t				prompt_len;
 	bool				init;
+	bool				shadow;
 	struct termios		base;
 	struct termios		term;
 	struct s_history	*first; // oldest line added in history

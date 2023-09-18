@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/12 15:54:52 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/18 15:14:54 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/09/18 19:59:00 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,6 +42,11 @@ static int init_readline(struct s_readline* global) {
 	return (0);
 }
 
+void ft_readline_shadow(bool val) {
+	struct s_readline *global = get_global();
+	global->shadow = val;
+}
+
 struct s_readline *get_global(void) {
 	static struct s_readline global = {
 		.new = NULL,
@@ -52,6 +57,7 @@ struct s_readline *get_global(void) {
 		.first = NULL,
 		.last = NULL,
 		.init = false,
+		.shadow = false,
 		.tab_complete = NULL,
 	};
 	if (global.init == false) {

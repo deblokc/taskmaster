@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 15:17:03 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/18 19:27:54 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/09/18 20:05:28 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,6 +14,7 @@
 #include <limits.h>
 #include <pthread.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -506,7 +507,9 @@ int check_auth(int efd, struct epoll_event *sock)
 		return (0);
 	}
 	char *username = ft_readline("username :");
+	ft_readline_shadow(true);
 	char *password = ft_readline("password :");
+	ft_readline_shadow(false);
 
 	char *tosend = strjoin(username, "\n", password);
 	if (!tosend) {
