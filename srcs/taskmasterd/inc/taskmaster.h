@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/14 20:53:38 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/09/18 17:47:33 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -101,6 +101,7 @@ struct s_client
 	char*										log;
 	struct s_client*							next;
 	bool										tail;
+	bool										auth;
 };
 
 struct s_logging_client

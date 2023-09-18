@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 15:17:03 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/25 15:00:05 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/09/18 18:22:39 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -469,6 +469,24 @@ int open_socket(char *socket_path)
 	return (fd);
 }
 
+static char *strjoin(const char *s1, const char *s2, const char *s3)
+{
+	if (!s1 || !s2 || !s3)
+	{
+		return NULL;
+	}
+	char *result = (char *)calloc(sizeof(char), (strlen(s1) + strlen(s2) + strlen(s3) + 1));
+
+	if (result)
+	{
+		strcpy(result, s1);
+		strcat(result, s2);
+		strcat(result, s3);
+	}
+	return result;
+}
+
+
 int main(int ac, char **av)
 {
 	char error_message[PIPE_BUF + 1];
@@ -521,6 +539,13 @@ int main(int ac, char **av)
 
 	FILE *file = fopen_history();
 	add_old_history(file);
+
+	char *user = ft_readline("Username :");
+	char *password = ft_readline("Password :");
+
+	char *concat = strjoin(user, "\n", password);
+
+	send(sock.data.fd, concat, strlen(concat), 0);
 
 	char *line = ft_readline("taskmasterctl>");
 	char *cmd = NULL;
