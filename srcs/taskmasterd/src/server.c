@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/18 18:38:45 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/09/18 19:32:38 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 #include "taskmaster.h"
@@ -306,13 +306,20 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 				client = new_client(clients_lst, client_socket, reporter);
 				if (!client)
 					continue ;
-				client->poll.events = EPOLLIN;// | EPOLLOUT;
+				client->poll.events = EPOLLOUT;
 				if (epoll_ctl(efd, EPOLL_CTL_ADD, client->poll.data.fd, &client->poll) == -1)
 				{
 					strcpy(reporter->buffer, "CRITICAL : Could not add new client to epoll list\n");
 					report(reporter, false);
 					close(client->poll.data.fd);
 					client->poll.data.fd = -1;
+				}
+				if (server->socket.password) {
+					client->auth = false;
+					snprintf(client->buf, PIPE_BUF, "need");
+				} else {
+					client->auth = true;
+					snprintf(client->buf, PIPE_BUF, "okay");
 				}
 			}
 		} else {
@@ -345,9 +352,15 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 					}
 					continue ;
 				}
+				client->poll.events = EPOLLOUT;
+				if (epoll_ctl(efd, EPOLL_CTL_MOD, client->poll.data.fd, &client->poll) == -1)
+				{
+					snprintf(reporter->buffer, PIPE_BUF, "ERROR    : Could not modify client events in epoll list for client with socket fd %d\n", client->poll.data.fd);
+					report(reporter, false);
+				}
 				snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Data received from client with socket fd %d\n", client->poll.data.fd);
 				report(reporter, false);
-				if (server->socket.password == NULL || client->auth) {
+				if (client->auth) {
 					cmd = process_line(buf);
 				} else {
 					char trunc[PIPE_BUF / 4];
@@ -358,30 +371,13 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 					if (auth(client, buf, server, reporter)) {
 						snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Client %d was denied access\n", client->poll.data.fd);
 						report(reporter, false);
-						if (client == *clients_lst) {
-							*clients_lst = client->next;
-							close(client->poll.data.fd);
-							free(client);
-						} else {
-							struct s_client *head = *clients_lst;
-							while (head->next != client) {
-								head = head->next;
-							}
-							head->next = client->next;
-							close(client->poll.data.fd);
-							free(client);
-						}
+						snprintf(client->buf, PIPE_BUF, "nope");
 					} else {
+						snprintf(client->buf, PIPE_BUF, "okay");
 						snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Client %d succesfully logged in\n", client->poll.data.fd);
 						report(reporter, false);
 					}
 					continue ;
-				}
-				client->poll.events = EPOLLOUT;
-				if (epoll_ctl(efd, EPOLL_CTL_MOD, client->poll.data.fd, &client->poll) == -1)
-				{
-					snprintf(reporter->buffer, PIPE_BUF, "ERROR    : Could not modify client events in epoll list for client with socket fd %d\n", client->poll.data.fd);
-					report(reporter, false);
 				}
 				if (!cmd) {
 					snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Fatal error while parsing command received from client with socket fd %d\n", client->poll.data.fd);
