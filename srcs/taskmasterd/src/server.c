@@ -6,12 +6,13 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/14 20:47:34 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/09/18 19:32:38 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 #include "taskmaster.h"
 #include <fcntl.h>
 #include <limits.h>
+#include <libscrypt.h>
 #include <unistd.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -266,6 +267,28 @@ void send_command_multiproc(struct s_command *cmd, struct s_server *serv) {
 	}
 }
 
+int auth(struct s_client *client, char *buf, struct s_server *server, struct s_report *reporter) {
+	if (buf) {
+		char *token = strtok(buf, "\n");
+		if (strcmp(token, server->socket.user)) {
+			snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Wrong username\n");
+			report(reporter, false);
+			return (1);
+		}
+		token = strtok(NULL, "\n");
+		char dup[SCRYPT_MCF_LEN + 1];
+		bzero(dup, SCRYPT_MCF_LEN + 1);
+		memcpy(dup, server->socket.password, SCRYPT_MCF_LEN);
+		if (libscrypt_check(dup, token) < 1) {
+			snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Wrong password\n");
+			report(reporter, false);
+			return (1);
+		}
+		client->auth = true;
+	}
+	return (0);
+}
+
 void check_server(struct s_server *server, struct epoll_event *events, int nb_events, struct s_client **clients_lst, struct s_report *reporter)
 {
 	struct s_client		*client;
@@ -283,13 +306,20 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 				client = new_client(clients_lst, client_socket, reporter);
 				if (!client)
 					continue ;
-				client->poll.events = EPOLLIN;// | EPOLLOUT;
+				client->poll.events = EPOLLOUT;
 				if (epoll_ctl(efd, EPOLL_CTL_ADD, client->poll.data.fd, &client->poll) == -1)
 				{
 					strcpy(reporter->buffer, "CRITICAL : Could not add new client to epoll list\n");
 					report(reporter, false);
 					close(client->poll.data.fd);
 					client->poll.data.fd = -1;
+				}
+				if (server->socket.password) {
+					client->auth = false;
+					snprintf(client->buf, PIPE_BUF, "need");
+				} else {
+					client->auth = true;
+					snprintf(client->buf, PIPE_BUF, "okay");
 				}
 			}
 		} else {
@@ -322,15 +352,33 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 					}
 					continue ;
 				}
-				snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Data received from client with socket fd %d\n", client->poll.data.fd);
-				report(reporter, false);
 				client->poll.events = EPOLLOUT;
 				if (epoll_ctl(efd, EPOLL_CTL_MOD, client->poll.data.fd, &client->poll) == -1)
 				{
 					snprintf(reporter->buffer, PIPE_BUF, "ERROR    : Could not modify client events in epoll list for client with socket fd %d\n", client->poll.data.fd);
 					report(reporter, false);
 				}
-				cmd = process_line(buf);
+				snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Data received from client with socket fd %d\n", client->poll.data.fd);
+				report(reporter, false);
+				if (client->auth) {
+					cmd = process_line(buf);
+				} else {
+					char trunc[PIPE_BUF / 4];
+					bzero(trunc, PIPE_BUF / 4);
+					memcpy(trunc, buf, strlen(buf));
+					snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Client %d wants to authentificate with >%s<\n", client->poll.data.fd, trunc);
+					report(reporter, false);
+					if (auth(client, buf, server, reporter)) {
+						snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Client %d was denied access\n", client->poll.data.fd);
+						report(reporter, false);
+						snprintf(client->buf, PIPE_BUF, "nope");
+					} else {
+						snprintf(client->buf, PIPE_BUF, "okay");
+						snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Client %d succesfully logged in\n", client->poll.data.fd);
+						report(reporter, false);
+					}
+					continue ;
+				}
 				if (!cmd) {
 					snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Fatal error while parsing command received from client with socket fd %d\n", client->poll.data.fd);
 					memcpy(client->buf, reporter->buffer, strlen(reporter->buffer));

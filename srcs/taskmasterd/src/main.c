@@ -6,11 +6,12 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/14 20:50:25 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/09/18 16:01:02 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "taskmaster.h"
+#include "libscrypt.h"
 #include <limits.h>
 #include <signal.h>
 #include <fcntl.h>
@@ -416,6 +417,7 @@ int main(int ac, char **av)
 	char tmp_log_file[1024];
 	void *thread_ret;
 	int ret = 0;
+	int opt = 0;
 	int reporter_pipe[4];
 	pthread_t initial_logger;
 	struct s_report reporter;
@@ -426,9 +428,36 @@ int main(int ac, char **av)
 	bzero(tmp_log_file, sizeof(char) * 1024);
 	reporter.critical = false;
 	reporter.report_fd = 2;
+	while ((opt = getopt(ac, av, "x")) != -1) {
+		switch (opt) {
+			case 'x':
+				if (av[2]) {
+					char buf[SCRYPT_MCF_LEN + 1];
+					bzero(buf, SCRYPT_MCF_LEN + 1);
+					libscrypt_hash(buf, av[2], SCRYPT_N, SCRYPT_r, SCRYPT_p);
+					snprintf(reporter.buffer, PIPE_BUF, "%s\n", buf);
+					if (write(1, reporter.buffer, strlen(reporter.buffer)))
+					{
+					}
+					return (0);
+				} else {
+					snprintf(reporter.buffer, PIPE_BUF, "Usage: %s CONFIGURATION-FILE\nUsage: %s -x PASSWORD_TO_HASH\n", av[0], av[0]);
+					if (write(2, reporter.buffer, strlen(reporter.buffer)))
+					{
+					}
+					return (1);
+				}
+			default:
+				snprintf(reporter.buffer, PIPE_BUF, "Usage: %s CONFIGURATION-FILE\nUsage: %s -x PASSWORD_TO_HASH\n", av[0], av[0]);
+				if (write(2, reporter.buffer, strlen(reporter.buffer)))
+				{
+				}
+				return (1);
+		}
+	}
 	if (ac != 2)
 	{
-		snprintf(reporter.buffer, PIPE_BUF, "Usage: %s CONFIGURATION-FILE\n", av[0]);
+		snprintf(reporter.buffer, PIPE_BUF, "Usage: %s CONFIGURATION-FILE\nUsage: %s -x PASSWORD_TO_HASH\n", av[0], av[0]);
 		if (write(2, reporter.buffer, strlen(reporter.buffer)))
 		{
 		}

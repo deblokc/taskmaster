@@ -15,3 +15,5 @@ readline.a
 logs/
 libs/
 curl-8.2.1/
+libscrypt-1.22/
+libscrypt.so

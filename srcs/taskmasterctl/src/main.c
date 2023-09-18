@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 15:17:03 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/25 15:00:05 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/09/18 19:27:54 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -469,6 +469,73 @@ int open_socket(char *socket_path)
 	return (fd);
 }
 
+static char *strjoin(const char *s1, const char *s2, const char *s3)
+{
+	if (!s1 || !s2 || !s3)
+	{
+		return NULL;
+	}
+	char *result = (char *)calloc(sizeof(char), (strlen(s1) + strlen(s2) + strlen(s3) + 1));
+
+	if (result)
+	{
+		strcpy(result, s1);
+		strcat(result, s2);
+		strcat(result, s3);
+	}
+	return result;
+}
+
+int check_auth(int efd, struct epoll_event *sock)
+{
+	struct epoll_event event;
+	char buf[5];
+	bzero(buf, 5);
+
+	if (epoll_wait(efd, &event, 1, 1 * 1000) <= 0) {
+		printf("TIMEOUT EPOLL_WAIT\n");
+		return (1);
+	}
+	if (read(event.data.fd, buf, 4) < 4) {
+		printf("ERROR\n");
+		return (1);
+	}
+	sock->events = EPOLLOUT;
+	epoll_ctl(efd, EPOLL_CTL_MOD, sock->data.fd, sock);
+	if (!strcmp("okay", buf)) {
+		return (0);
+	}
+	char *username = ft_readline("username :");
+	char *password = ft_readline("password :");
+
+	char *tosend = strjoin(username, "\n", password);
+	if (!tosend) {
+		return (1);
+	}
+	if (epoll_wait(efd, &event, 1, 1 * 1000) <= 0) {
+		printf("TIMEOUT EPOLL_WAIT\n");
+		return (1);
+	}
+	if (write(event.data.fd, tosend, strlen(tosend))) {
+	}
+	sock->events = EPOLLIN;
+	epoll_ctl(efd, EPOLL_CTL_MOD, sock->data.fd, sock);
+	if (epoll_wait(efd, &event, 1, 1 * 1000) <= 0) {
+		printf("TIMEOUT EPOLL_WAIT\n");
+		return (1);
+	}
+	if (read(event.data.fd, buf, 4) < 4) {
+		return (1);
+	}
+	if (!strcmp("okay", buf)) {
+		sock->events = EPOLLOUT;
+		epoll_ctl(efd, EPOLL_CTL_MOD, sock->data.fd, sock);
+		return (0);
+	}
+	return (1);
+	
+}
+
 int main(int ac, char **av)
 {
 	char error_message[PIPE_BUF + 1];
@@ -510,10 +577,15 @@ int main(int ac, char **av)
 	struct epoll_event sock;
 	bzero(&sock, sizeof(sock));
 	sock.data.fd = socket;
-	sock.events = 0;
+	sock.events = EPOLLIN;
 	int efd = epoll_create(1);
 	epoll_ctl(efd, EPOLL_CTL_ADD, socket, &sock);
 
+	if (check_auth(efd, &sock)) {
+		printf("Error in authentification !\n");
+		free(socket_path);
+		return (1);
+	}
 	// SETUP EPOLL, IT CAN NOW BE CALLED IN NEEDED FUNCTION
 	signal(SIGPIPE, SIG_IGN);
 	signal(SIGINT, &sig_handler);
