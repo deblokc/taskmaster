@@ -6,7 +6,7 @@
 #    By: tnaton <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/06/16 11:17:59 by tnaton            #+#    #+#              #
-#    Updated: 2023/09/16 12:06:22 by tnaton           ###   ########.fr        #
+#    Updated: 2023/09/18 11:40:18 by tnaton           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -73,6 +73,9 @@ $(NAME) : $(OBJS) $(INC)
 	test -f ../../libs/libyaml.so || ((test -f ../../libs/yaml-0.2.5/src/.libs/libyaml-0.so.2.0.9 || (cd ../../libs/yaml-0.2.5; ./configure; make;)) && rm -f ../../libs/libyaml.so; ln -s $(PWD)/libs/yaml-0.2.5/src/.libs/libyaml-0.so.2.0.9 ../../libs/libyaml.so)
 	test -d ../../libs/curl-8.2.1 || (cd ../../libs && tar -xvf curl-8.2.1.tar.gz)
 	test -f ../../libs/libcurl.so || ((test -f ../../libs/curl-8.2.1/lib/.libs/libcurl.so.4.8.0 || (cd ../../libs/curl-8.2.1; ./configure --with-openssl; make;)) && rm -f ../../libs/libcurl.so; ln -s $(PWD)/libs/curl-8.2.1/lib/.libs/libcurl.so.4.8.0 ../../libs/libcurl.so)
+	test -d ../../libs/libscrypt-1.22 || (cd ../../libs && tar -xvf libscrypt-1.22.tar.gz)
+	test -f ../../libs/libscrypt.so || ((test -f ../../libs/libscrypt-1.22/libscrypt.so.0 || (cd ../../libs/libscrypt-1.22; make;)) && rm -f ../../libs/libscrypt.so; ln -s $(PWD)/libs/libscrypt-1.22/libscrypt.so.0 ../../libs/libscrypt.so)
+
 	$(CC) $(CFLAGS) $(OBJS) -pthread -L ../../libs -lyaml -lcurl -o $@
 
 $(OBJS): $(INC)
@@ -83,6 +86,8 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.c
 	test -d ../../libs/yaml-0.2.5 || (cd ../../libs && tar -xvf libyaml.tar.gz)
 	test -f inc/yaml.h || cp ../../libs/yaml-0.2.5/include/yaml.h inc/yaml.h
 	test -d ../../libs/curl-8.2.1 || (cd ../../libs && tar -xvf curl-8.2.1.tar.gz)
+	test -d ../../libs/libscrypt-1.22 || (cd ../../libs && tar -xvf libscrypt-1.22.tar.gz)
+	test -f inc/libscrypt.h || cp ../../libs/libscrypt-1.22/libscrypt.h inc/libscrypt.h	
 	$(CC) $(CFLAGS) -I inc -I ../../libs/curl-8.2.1/include/curl -o $@ -c $<
 
 $(OBJDIR) :
