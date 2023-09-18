@@ -6,7 +6,7 @@
 #    By: tnaton <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/06/16 11:17:59 by tnaton            #+#    #+#              #
-#    Updated: 2023/09/18 12:49:51 by tnaton           ###   ########.fr        #
+#    Updated: 2023/09/18 15:18:20 by tnaton           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -17,7 +17,6 @@ NAME = ../../taskmasterd
 OBJDIR := obj
 
 SRCDIR := src
-
 
 SRCS = main.c \
 	   parser/parser.c \
@@ -74,9 +73,9 @@ $(NAME) : $(OBJS) $(INC)
 	test -d ../../libs/curl-8.2.1 || (cd ../../libs && tar -xvf curl-8.2.1.tar.gz)
 	test -f ../../libs/libcurl.so || ((test -f ../../libs/curl-8.2.1/lib/.libs/libcurl.so.4.8.0 || (cd ../../libs/curl-8.2.1; ./configure --with-openssl; make;)) && rm -f ../../libs/libcurl.so; ln -s $(PWD)/libs/curl-8.2.1/lib/.libs/libcurl.so.4.8.0 ../../libs/libcurl.so)
 	test -d ../../libs/libscrypt-1.22 || (cd ../../libs && tar -xvf libscrypt-1.22.tar.gz)
-	test -f ../../libs/libscrypt.so || ((test -f ../../libs/libscrypt-1.22/libscrypt.so.0 || (cd ../../libs/libscrypt-1.22; make;)) && rm -f ../../libs/libscrypt.so; ln -s $(PWD)/libs/libscrypt-1.22/libscrypt.so.0 ../../libs/libscrypt.so)
+	test -f ../../libs/libscrypt.a || ((test -f ../../libs/libscrypt-1.22/libscrypt.a || (cd ../../libs/libscrypt-1.22; make;)) && rm -f ../../libs/libscrypt.a; ln -s $(PWD)/libs/libscrypt-1.22/libscrypt.a ../../libs/libscrypt.a)
 
-	$(CC) $(CFLAGS) $(OBJS) -pthread -L ../../libs -lyaml -lcurl -lscrypt -o $@
+	$(CC) $(CFLAGS) $(OBJS) ../../libs/libscrypt.a -pthread -L ../../libs -lyaml -lcurl -o $@
 
 $(OBJS): $(INC)
 
