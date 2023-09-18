@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/19 19:03:58 by bdetune           #+#    #+#             */
-/*   Updated: 2023/08/21 17:39:59 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/09/18 19:37:17 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -274,7 +274,7 @@ static bool add_value(struct s_program *program, yaml_document_t *document, char
 	bool ret = true;
 
 	if (!strcmp("command", key))
-		ret = add_char(program->name, "command", &program->command, value, reporter);
+		ret = add_char(program->name, "command", &program->command, value, reporter, 4096);
 	else if (!strcmp("numprocs", key))
 		ret = add_number(program->name, "numprocs", &program->numprocs, value, 1, 100, reporter);
 	else if (!strcmp("priority", key))
@@ -298,7 +298,7 @@ static bool add_value(struct s_program *program, yaml_document_t *document, char
 	else if (!strcmp("stdoutlog", key))
 		ret = add_bool(program->name, "stdoutlog", &program->stdoutlog, value, reporter);
 	else if (!strcmp("stdout_logfile", key))
-		ret = add_char(program->name, "stdout_logfile", &program->stdout_logger.logfile, value, reporter);
+		ret = add_char(program->name, "stdout_logfile", &program->stdout_logger.logfile, value, reporter, PATH_SIZE);
 	else if (!strcmp("stdout_logfile_maxbytes", key))
 		ret = add_number(program->name, "stdout_logfile_maxbytes", &program->stdout_logger.logfile_maxbytes, value, 100, 1024 * 1024 * 1024, reporter);
 	else if (!strcmp("stdout_logfile_backups", key))
@@ -306,21 +306,21 @@ static bool add_value(struct s_program *program, yaml_document_t *document, char
 	else if (!strcmp("stderrlog", key))
 		ret = add_bool(program->name, "stderrlog", &program->stderrlog, value, reporter);
 	else if (!strcmp("stderr_logfile", key))
-		ret = add_char(program->name, "stderr_logfile", &program->stderr_logger.logfile, value, reporter);
+		ret = add_char(program->name, "stderr_logfile", &program->stderr_logger.logfile, value, reporter, PATH_SIZE);
 	else if (!strcmp("stderr_logfile_maxbytes", key))
 		ret = add_number(program->name, "stderr_logfile_maxbytes", &program->stderr_logger.logfile_maxbytes, value, 100, 1024 * 1024 * 1024, reporter);
 	else if (!strcmp("stderr_logfile_backups", key))
 		ret = add_number(program->name, "stderr_logfile_backups", &program->stderr_logger.logfile_backups, value, 0, 100, reporter);
 	else if (!strcmp("workingdir", key))
-		ret = add_char(program->name, "workingdir", &program->workingdir, value, reporter);
+		ret = add_char(program->name, "workingdir", &program->workingdir, value, reporter, PATH_SIZE);
 	else if (!strcmp("umask", key))
 		ret = add_octal(program->name, "umask", &program->umask, value, 0, 0777, reporter);
 	else if (!strcmp("env", key))
 		ret = parse_env(program->name, value, document, &program->env, reporter);
 	else if (!strcmp("user", key))
-		ret = add_char(program->name, "user", &program->user, value, reporter);
+		ret = add_char(program->name, "user", &program->user, value, reporter, 256);
 	else if (!strcmp("group", key))
-		ret = add_char(program->name, "group", &program->group, value, reporter);
+		ret = add_char(program->name, "group", &program->group, value, reporter, 256);
 	else
 	{
 		snprintf(reporter->buffer, PIPE_BUF, "WARNING  : Encountered unknown key '%s' in program '%s'\n", key, program->name);
@@ -508,8 +508,16 @@ static bool parse_command(struct s_program *program, struct s_report *reporter)
 
 static void add_program(struct s_server *server, yaml_document_t *document, yaml_node_t *name, yaml_node_t *params, struct s_report *reporter)
 {
-	struct s_program *program = NULL;
+	size_t				len;
+	struct s_program	*program = NULL;
 
+	len = strlen((char *)name->data.scalar.value);
+	if (len > 256)
+	{
+		snprintf(reporter->buffer, PIPE_BUF, "ERROR    : Programs with names over 256 characters will be discarded\n");
+		report(reporter, false);
+		return ;
+	}
 	snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Parsing program '%s'\n", name->data.scalar.value);
 	report(reporter, false);
 	if (params->type != YAML_MAPPING_NODE)

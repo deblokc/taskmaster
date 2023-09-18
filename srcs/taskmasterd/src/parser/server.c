@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 19:48:45 by bdetune           #+#    #+#             */
-/*   Updated: 2023/08/25 13:15:50 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/09/18 19:31:10 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -96,7 +96,7 @@ static void add_value(struct s_server *server, yaml_document_t *document, char* 
 {
 	(void) document;
 	if (!strcmp("logfile", key))
-		add_char(NULL, "logfile", &server->logger.logfile, value, reporter);
+		add_char(NULL, "logfile", &server->logger.logfile, value, reporter, PATH_SIZE);
 	else if (!strcmp("logfile_maxbytes", key))
 		add_number(NULL, "logfile_maxbytes", &server->logger.logfile_maxbytes, value, 100, 1024*1024*1024, reporter);
 	else if (!strcmp("logfile_backups", key))
@@ -106,15 +106,15 @@ static void add_value(struct s_server *server, yaml_document_t *document, char* 
 	else if (!strcmp("loglevel_discord", key))
 		add_loglevel(&server->loglevel_discord, "loglevel_discord", value, reporter);
 	else if (!strcmp("discord_token", key))
-		add_char(NULL, "discord_token", &server->discord_token, value, reporter);
+		add_char(NULL, "discord_token", &server->discord_token, value, reporter, 512);
 	else if (!strcmp("discord_channel", key))
-		add_char(NULL, "discord_channel", &server->discord_channel, value, reporter);
+		add_char(NULL, "discord_channel", &server->discord_channel, value, reporter, 512);
 	else if (!strcmp("pidfile", key))
-		add_char(NULL, "pidfile", &server->pidfile, value, reporter);
+		add_char(NULL, "pidfile", &server->pidfile, value, reporter, PATH_SIZE);
 	else if (!strcmp("user", key))
-		add_char(NULL, "user", &server->user, value, reporter);
+		add_char(NULL, "user", &server->user, value, reporter, 256);
 	else if (!strcmp("workingdir", key))
-		add_char(NULL, "workingdir", &server->workingdir, value, reporter);
+		add_char(NULL, "workingdir", &server->workingdir, value, reporter, PATH_SIZE);
 	else if (!strcmp("umask", key))
 		add_octal(NULL, "umask", &server->umask, value, 0, 0777, reporter);
 	else if (!strcmp("daemon", key))
