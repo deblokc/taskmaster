@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/19 15:31:33 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/09/19 17:42:27 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -83,6 +83,8 @@ struct s_logger
 	int		umask;
 };
 
+
+#ifdef DISCORD
 struct s_discord_logger
 {
 	_Alignas(max_align_t) struct s_report	reporter;
@@ -94,6 +96,7 @@ struct s_discord_logger
 	bool									running;
 	enum log_level							loglevel;
 };
+#endif
 
 struct s_client
 {
@@ -212,8 +215,10 @@ struct s_server
 	struct s_env*							env;
 	char*									bin_path;
 	char*									config_file;
+#ifdef DISCORD
 	char*									discord_channel;
 	char*									discord_token;
+#endif
 	char*									pidfile;
 	char*									user;
 	char*									workingdir;
@@ -221,10 +226,14 @@ struct s_server
 	int										umask;
 	pthread_t								logging_thread;
 	pid_t									pid;
+#ifdef DISCORD
 	bool									log_discord;
+#endif
 	bool									daemon;
 	enum log_level							loglevel;
+#ifdef DISCORD
 	enum log_level							loglevel_discord;
+#endif
 };
 
 struct s_server*	parse_config(char *bin_path, char *config_file, struct s_report *reporter);

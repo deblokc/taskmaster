@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/25 18:58:58 by bdetune           #+#    #+#             */
-/*   Updated: 2023/08/25 12:50:58 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/09/19 17:45:04 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -59,8 +59,10 @@ void update_umask(struct s_server *server)
 
 void	prelude(struct s_server *server, struct s_report *reporter)
 {
+#ifdef DISCORD
 	char*			discord_channel = NULL;
 	char*			discord_token = NULL;
+#endif
 	struct passwd	*ret = NULL;
 	struct s_env	*current = NULL;
 
@@ -129,6 +131,7 @@ void	prelude(struct s_server *server, struct s_report *reporter)
 		return ;
 	}
 	update_umask(server);
+#ifdef DISCORD
 	if (server->log_discord)
 	{
 		if (!server->discord_channel)
@@ -170,4 +173,5 @@ void	prelude(struct s_server *server, struct s_report *reporter)
 			}
 		}
 	}
+#endif
 }

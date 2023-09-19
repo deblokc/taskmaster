@@ -6,7 +6,7 @@
 #    By: tnaton <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/06/16 11:17:59 by tnaton            #+#    #+#              #
-#    Updated: 2023/09/19 16:40:57 by tnaton           ###   ########.fr        #
+#    Updated: 2023/09/19 17:40:19 by tnaton           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -50,7 +50,7 @@ SCRYPT_H = inc/libscrypt.h
 
 CURL = ../../libs/libcurl.a
 
-CURL_H = 
+CURL_H = inc/curl.h
 
 INC = taskmaster.h
 
@@ -79,12 +79,10 @@ CC = gcc
 OBJS := $(patsubst %.c,$(OBJDIR)/%.o,$(SRCS))
 
 $(NAME) : $(SCRYPT) $(YAML) $(if $(DISCORD), $(CURL)) $(OBJS) $(INC)
-	test -d ../../libs/curl-8.2.1 || (cd ../../libs && tar -xvf curl-8.2.1.tar.gz)
-	test -f ../../libs/libcurl.so || ((test -f ../../libs/curl-8.2.1/lib/.libs/libcurl.so.4.8.0 || (cd ../../libs/curl-8.2.1; ./configure --with-openssl --disable-debug --enable-static --disable-ftp --disable-file --disable-ldap --disable-ldaps --disable-rtsp --disable-proxy --disable-dict --disable-telnet --disable-tftp --disable-pop3 --disable-imap --disable-smb --disable-smtp --disable-gopher --disable-mqtt --disable-ipv6 --disable-threaded-resolver --disable-pthreads --disable-sspi --disable-crypto-auth --disable-ntlm --disable-ntlm-wb --disable-tls-srp --disable-unix-sockets --disable-cookies --disable-socketpair --disable-http-auth --disable-doh --disable-dateparse --disable-netrc --disable-progress-meter --disable-dnsshuffle --disable-alt-svc --disable-hsts --disable-websockets --without-hyper --without-zlib --without-brotli --without-libidn2 --without-nghttp2 --without-nghttp3 --without-quiche --without-msh3; make;)) && rm -f ../../libs/libcurl.so; ln -s $(PWD)/libs/curl-8.2.1/lib/.libs/libcurl.so.4.8.0 ../../libs/libcurl.so)
 ifndef DISCORD
-	$(CC) $(CFLAGS) $(OBJS) $(SCRYPT) $(YAML) -pthread -L ../../libs -lcurl -o $@
+	$(CC) $(CFLAGS) $(OBJS) $(SCRYPT) $(YAML) -pthread -L ../../libs -o $@
 else
-	$(CC) -D DISCORD $(CFLAGS) $(OBJS) $(SCRYPT) $(YAML) -pthread -L ../../libs -lcurl -o $@
+	$(CC) -D DISCORD $(CFLAGS) $(OBJS) $(SCRYPT) $(YAML) $(CURL) -pthread -L ../../libs -lssl -lcrypto -o $@
 endif
 
 $(OBJS): $(INC) $(SCRYPT_H) $(YAML_H) $(if $(DISCORD), $(CURL_H))
@@ -116,6 +114,8 @@ $(CURL):
 	(test -f ../../libs/curl-8.2.1/lib/.libs/libcurl.a || (cd ../../libs/curl-8.2.1; ./configure --with-openssl --disable-debug --enable-static --disable-ftp --disable-file --disable-ldap --disable-ldaps --disable-rtsp --disable-proxy --disable-dict --disable-telnet --disable-tftp --disable-pop3 --disable-imap --disable-smb --disable-smtp --disable-gopher --disable-mqtt --disable-ipv6 --disable-threaded-resolver --disable-pthreads --disable-sspi --disable-crypto-auth --disable-ntlm --disable-ntlm-wb --disable-tls-srp --disable-unix-sockets --disable-cookies --disable-socketpair --disable-http-auth --disable-doh --disable-dateparse --disable-netrc --disable-progress-meter --disable-dnsshuffle --disable-alt-svc --disable-hsts --disable-websockets --without-hyper --without-zlib --without-brotli --without-libidn2 --without-nghttp2 --without-nghttp3 --without-quiche --without-msh3; make;)) && rm -f $@; ln -s $(PWD)/libs/curl-8.2.1/lib/.libs/libcurl.a $@
 
 $(CURL_H):
+	test -d ../../libs/curl-8.2.1 || (cd ../../libs && tar -xvf curl-8.2.1.tar.gz)
+	cp ../../libs/curl-8.2.1/include/curl/curl.h inc/curl.h
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.c
 	test -d ../../libs/curl-8.2.1 || (cd ../../libs && tar -xvf curl-8.2.1.tar.gz)

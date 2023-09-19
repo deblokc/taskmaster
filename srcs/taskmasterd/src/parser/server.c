@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 19:48:45 by bdetune           #+#    #+#             */
-/*   Updated: 2023/09/18 19:31:10 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/09/19 17:44:02 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,10 +24,12 @@ static struct s_server	*free_server(struct s_server *self)
 		free(self->logger.logfile);
 	if (self->logger.logfd >= 0)
 		close(self->logger.logfd);
+#ifdef DISCORD
 	if (self->discord_token)
 		free(self->discord_token);
 	if (self->discord_channel)
 		free(self->discord_channel);
+#endif
 	if (self->pidfile)
 		free(self->pidfile);
 	if (self->user)
@@ -53,8 +55,10 @@ void	init_server(struct s_server * server)
 	register_treefn_serv(server);
 	server->cleaner = free_server;
 	server->loglevel = WARN;
+#ifdef DISCORD
 	server->log_discord = false;
 	server->loglevel_discord = CRITICAL;
+#endif
 	server->umask = 022;
 	server->daemon = false;
 	server->log_pipe[0] = -1;
@@ -101,6 +105,7 @@ static void add_value(struct s_server *server, yaml_document_t *document, char* 
 		add_number(NULL, "logfile_maxbytes", &server->logger.logfile_maxbytes, value, 100, 1024*1024*1024, reporter);
 	else if (!strcmp("logfile_backups", key))
 		add_number(NULL, "logfile_backups", &server->logger.logfile_backups, value, 0, 100, reporter);
+#ifdef DISCORD
 	else if (!strcmp("log_discord", key))
 		add_bool(NULL, "log_discord", &server->log_discord, value, reporter);
 	else if (!strcmp("loglevel_discord", key))
@@ -109,6 +114,7 @@ static void add_value(struct s_server *server, yaml_document_t *document, char* 
 		add_char(NULL, "discord_token", &server->discord_token, value, reporter, 512);
 	else if (!strcmp("discord_channel", key))
 		add_char(NULL, "discord_channel", &server->discord_channel, value, reporter, 512);
+#endif
 	else if (!strcmp("pidfile", key))
 		add_char(NULL, "pidfile", &server->pidfile, value, reporter, PATH_SIZE);
 	else if (!strcmp("user", key))

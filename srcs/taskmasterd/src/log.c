@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/08/24 14:00:05 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/14 20:43:25 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/09/19 17:51:48 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -262,6 +262,7 @@ bool transfer_logs(int tmp_fd, char tmp_log_file[1024], struct s_server *server,
 	return (true);
 }
 
+#ifdef DISCORD
 static void curl_cleanup(struct curl_slist *slist, CURL *handle)
 {
 	curl_slist_free_all(slist);
@@ -430,26 +431,29 @@ void *discord_logger_thread(void *void_discord_logger)
 	}
 	return (NULL);
 }
+#endif
 
 void *main_logger(void *void_server)
 {
 	char buffer[PIPE_BUF + 1];
 	size_t current_index;
 	struct s_report reporter;
-	struct s_discord_logger discord_logger;
 	struct s_server *server;
-	pthread_t discord_thread;
 	int nb_events;
 	int epoll_fd;
 	ssize_t ret;
 	struct epoll_event event;
 	struct s_logging_client *list = NULL;
-
 	server = (struct s_server *)void_server;
-	bzero(&discord_logger, sizeof(discord_logger));
 	bzero(&reporter, sizeof(reporter));
 	bzero(buffer, PIPE_BUF + 1);
 	current_index = 0;
+
+#ifdef DISCORD
+	struct s_discord_logger discord_logger;
+	pthread_t discord_thread;
+
+	bzero(&discord_logger, sizeof(discord_logger));
 	discord_logger.logging = false;
 	discord_logger.running = false;
 	if (server->log_discord)
@@ -508,6 +512,7 @@ void *main_logger(void *void_server)
 			discord_logger.running = true;
 		}
 	}
+#endif
 	bzero(&event, sizeof(event));
 	epoll_fd = epoll_create(1);
 	if (epoll_fd == -1)
@@ -521,6 +526,7 @@ void *main_logger(void *void_server)
 			{
 			}
 		}
+#ifdef DISCORD
 		if (discord_logger.logging)
 			report(&reporter, false);
 		if (discord_logger.running)
@@ -532,6 +538,7 @@ void *main_logger(void *void_server)
 			close(discord_logger.com[0]);
 			close(discord_logger.com[1]);
 		}
+#endif
 		return (NULL);
 	}
 	event.data.fd = server->log_pipe[0];
@@ -547,6 +554,7 @@ void *main_logger(void *void_server)
 			{
 			}
 		}
+#ifdef DISCORD
 		if (discord_logger.logging)
 			report(&reporter, false);
 		if (discord_logger.running)
@@ -558,6 +566,7 @@ void *main_logger(void *void_server)
 			close(discord_logger.com[0]);
 			close(discord_logger.com[1]);
 		}
+#endif
 		close(epoll_fd);
 		return (NULL);
 	}
@@ -573,8 +582,10 @@ void *main_logger(void *void_server)
 			}
 		}
 	}
+#ifdef DISCORD
 	if (discord_logger.logging && should_log(discord_logger.loglevel, &reporter.buffer[22]))
 		report(&reporter, false);
+#endif
 	while (true)
 	{
 		if ((nb_events = epoll_wait(epoll_fd, &event, 1, 100000)) == -1)
@@ -590,6 +601,7 @@ void *main_logger(void *void_server)
 				{
 				}
 			}
+#ifdef DISCORD
 			if (discord_logger.logging)
 				report(&reporter, false);
 			if (discord_logger.running)
@@ -601,6 +613,7 @@ void *main_logger(void *void_server)
 				close(discord_logger.com[0]);
 				close(discord_logger.com[1]);
 			}
+#endif
 			event.data.fd = server->log_pipe[0];
 			event.events = EPOLLIN;
 			epoll_ctl(epoll_fd, EPOLL_CTL_DEL, server->log_pipe[0], &event);
@@ -636,6 +649,7 @@ void *main_logger(void *void_server)
 							free(head);
 							head = tmp;
 						}
+#ifdef DISCORD
 						if (discord_logger.running)
 						{
 							get_stamp(reporter.buffer);
@@ -724,6 +738,7 @@ void *main_logger(void *void_server)
 							close(discord_logger.com[0]);
 							close(discord_logger.com[1]);
 						}
+#endif
 						event.data.fd = server->log_pipe[0];
 						event.events = EPOLLIN;
 						epoll_ctl(epoll_fd, EPOLL_CTL_DEL, server->log_pipe[0], &event);
@@ -878,8 +893,10 @@ void *main_logger(void *void_server)
 								}
 							}
 						}
+#ifdef DISCORD
 						if (discord_logger.logging && should_log(discord_logger.loglevel, &reporter.buffer[22]))
 							report(&reporter, false);
+#endif
 					}
 				}
 			}
