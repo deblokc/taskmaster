@@ -6,7 +6,7 @@
 #    By: tnaton <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/06/16 11:17:59 by tnaton            #+#    #+#              #
-#    Updated: 2023/09/19 11:47:14 by tnaton           ###   ########.fr        #
+#    Updated: 2023/09/19 18:39:31 by tnaton           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -26,7 +26,7 @@ YAML = lib/libyaml.a
 
 INC = taskmasterctl.h
 
-YAML_INC = yaml.h
+YAML_H = yaml.h
 
 MOREFLAGS = -Wformat=2				\
 			-Wformat-overflow=2		\
@@ -53,11 +53,11 @@ OBJS := $(patsubst %.c,$(OBJDIR)/%.o,$(SRCS))
 $(NAME) : $(READLINE) $(YAML) $(OBJS) $(INC)
 	$(CC) $(CFLAGS) $(OBJS) $(READLINE) $(YAML) -L lib -o $@
 
-$(OBJS): $(INC) $(YAML_INC)
+$(OBJS): $(INC) $(YAML_H)
 
 $(OBJS) : | $(OBJDIR)
 
-$(YAML_INC):
+$(YAML_H):
 	test -d ../../libs/yaml-0.2.5 || (cd ../../libs && tar -xvf libyaml.tar.gz)
 	test -f inc/yaml.h || cp ../../libs/yaml-0.2.5/include/yaml.h inc/yaml.h
 
