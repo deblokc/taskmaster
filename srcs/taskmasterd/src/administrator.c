@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/15 19:42:21 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/09/19 15:31:22 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -198,6 +198,7 @@ int exec(struct s_process *process, int epollfd) {
 	if (gettimeofday(&process->start, NULL)) {
 		return 1;
 	}
+	process->sec_start = process->start.tv_sec;
 
 	// change to starting
 	process->status = STARTING;

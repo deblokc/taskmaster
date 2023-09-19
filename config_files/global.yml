@@ -32,5 +32,3 @@ server:
 socket:
   enable: true
   socketpath: /tmp/taskmaster.sock
-  user: tnaton
-  password: $s1$0e0810$1igSroA9XAAUA9w+W4opQQ==$eg6V2aKuSnxQtJLERaUBaX61miMrbl6ZA/mjPXbaWeI0cDXF8H4GIzbphYHxBXKTCh4TnHLOFuHY0OBegQvGEw==

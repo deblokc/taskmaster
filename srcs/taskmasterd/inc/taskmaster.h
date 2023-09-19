@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/18 20:24:51 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/09/19 15:31:33 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -182,6 +182,7 @@ struct s_process
 	struct s_logging_client*				list;
 	struct s_program*						program;
 	char*									name;
+	_Atomic long							sec_start;
 	int										stdin[2];
 	int										stdout[2];
 	int										stderr[2];

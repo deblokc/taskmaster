@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/18 19:32:38 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/09/19 15:40:34 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 #include "taskmaster.h"
@@ -707,10 +707,10 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 												int second = 0;
 												int stat = current->processes[j].status;
 												if (stat == STARTING || stat == RUNNING || stat == STOPPING) {
-													struct timeval start = current->processes[j].start;
-													hour = (int)(now.tv_sec- start.tv_sec) / 3600;
-													minute = (int)((now.tv_sec - start.tv_sec) / 60) % 60;
-													second = (int)(now.tv_sec - start.tv_sec) % 60;
+													long start = current->processes[j].sec_start;
+													hour = (int)(now.tv_sec- start) / 3600;
+													minute = (int)((now.tv_sec - start) / 60) % 60;
+													second = (int)(now.tv_sec - start) % 60;
 												}
 												snprintf(client->buf + strlen(client->buf), PIPE_BUF + 1, "%-15s : %-8s\tpid : %-5d uptime : %02d:%02d:%02d\n", current->processes[j].name, status[current->processes[j].status], current->processes[j].pid, hour, minute, second);
 	
@@ -731,10 +731,10 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 									int second = 0;
 									int stat = current->processes[i].status;
 									if (stat == STARTING || stat == RUNNING || stat == STOPPING) {
-										struct timeval start = current->processes[i].start;
-										hour = (int)(now.tv_sec- start.tv_sec) / 3600;
-										minute = (int)((now.tv_sec - start.tv_sec) / 60) % 60;
-										second = (int)(now.tv_sec - start.tv_sec) % 60;
+										long start = current->processes[i].sec_start;
+										hour = (int)(now.tv_sec- start) / 3600;
+										minute = (int)((now.tv_sec - start) / 60) % 60;
+										second = (int)(now.tv_sec - start) % 60;
 									}
 									snprintf(client->buf + strlen(client->buf), PIPE_BUF - strlen(client->buf), "%-15s : %-8s\tpid : %d\tuptime : %02d:%02d:%02d\n", current->processes[i].name, status[current->processes[i].status], current->processes[i].pid, hour, minute, second);
 								}
