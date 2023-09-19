@@ -38,7 +38,7 @@ programs:
       priority: 2
 
 server:
-    daemon: false
+    daemon: true
     logfile: /tmp/taskmaster.log
     loglevel: DEBUG
     log_discord: true

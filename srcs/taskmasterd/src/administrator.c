@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/19 15:31:22 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/09/19 21:18:13 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -61,6 +61,26 @@ char *getcmd(struct s_process *proc) {
 		return (command);
 }
 
+static void notfoundexit(void)
+{
+	char *cmd = "/bin/sh";
+	char *opt = "-c";
+	char *arg = "exit 126";
+	char *args[] = {cmd, opt, arg, NULL};
+
+	execve(cmd, args, environ);
+}
+
+static void errorexit(void)
+{
+	char *cmd = "/bin/sh";
+	char *opt = "-c";
+	char *arg = "exit 1";
+	char *args[] = {cmd, opt, arg, NULL};
+
+	execve(cmd, args, environ);
+}
+
 void child_exec(struct s_process *proc) {
 	struct s_report reporter;
 	reporter.report_fd = proc->log;
@@ -109,6 +129,7 @@ void child_exec(struct s_process *proc) {
 	if (!command) {
 		snprintf(reporter.buffer, PIPE_BUF - 22, "CRITICAL : %s command \"%s\" not found\n", proc->name, proc->program->command);
 		report(&reporter, false);
+		notfoundexit();
 	} else {
 		if (setsid() == -1)
 		{
@@ -135,7 +156,8 @@ void child_exec(struct s_process *proc) {
 		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG    : %s execveing command \"%s\"\n", proc->name, proc->program->command);
 		report(&reporter, false);
 		execve(command, proc->program->args, environ);
-		perror("execve");
+		//perror("execve");
+		errorexit();
 	}
 	// on error dont leak fds
 	close(proc->log);
@@ -866,7 +888,6 @@ void *administrator(void *arg) {
 							}
 						}
 					} else if (events[i].data.fd == process->stderr[0]) { // if process print in stderr
-						snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG     : %s has stderr while in STARTING epoll_wait\n", process->name);
 						report(&reporter, false);
 						char buf[PIPE_BUF + 1];
 						bzero(buf, PIPE_BUF + 1);

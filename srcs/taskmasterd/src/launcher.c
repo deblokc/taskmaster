@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/07 10:59:08 by tnaton            #+#    #+#             */
-/*   Updated: 2023/08/21 18:32:16 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/09/19 21:16:51 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -161,7 +161,7 @@ void create_process(struct s_program *lst, int log_fd)
 	{
 		if (lst->processes)
 			continue;
-		printf("creating processes for %s\n", lst->name);
+		//printf("creating processes for %s\n", lst->name);
 		lst->processes = (struct s_process *)calloc(sizeof(struct s_process), (size_t)lst->numprocs);
 		if (!lst->processes)
 		{

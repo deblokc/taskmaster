@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/19 19:03:58 by bdetune           #+#    #+#             */
-/*   Updated: 2023/09/18 19:37:17 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/09/19 21:18:46 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -556,7 +556,7 @@ static void add_program(struct s_server *server, yaml_document_t *document, yaml
 				{
 					if (parse_command(program, reporter))
 					{
-						snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : inserting valid program '%s' in tree\n", name->data.scalar.value);
+						snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Inserting valid program '%s' in tree\n", name->data.scalar.value);
 						report(reporter, false);
 						server->insert(server, program, reporter);
 					}
