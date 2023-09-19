@@ -1,8 +1,8 @@
 programs:
     exception:
         command: /bin/sh
-        numprocs: 33
-        retry: 3
+        numprocs: 1
+        startretries: 3
         exitcodes:
             - 0
             - 1
@@ -14,8 +14,8 @@ programs:
         stdout_logfile_backups: 30
     solo:
         command: /bin/bash -c "sleep 10"
-        numprocs: 34
-        retry: 3
+        numprocs: 1
+        startretries: 3
         umask: 022
         exitcodes:
             - 0
@@ -26,10 +26,16 @@ programs:
     printeur_fou:
         command: cat /dev/random
         startsecs: 0
-        numprocs: 33
+        numprocs: 1
         priority: 7
         stdout_logfile_maxbytes: 1024
         stdout_logfile_backups: 3
+    nullos:
+      command: This is not a valid command
+      numprocs: 1
+      startretries: 0
+      autostart: true
+      priority: 2
 
 server:
     daemon: false
