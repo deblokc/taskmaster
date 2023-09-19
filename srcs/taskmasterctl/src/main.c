@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 15:17:03 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/19 15:54:13 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/09/19 20:56:21 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -93,7 +93,6 @@ void help(char *full_arg)
 			printf("restart <name>\t\tRestart a process\n");
 			printf("restart <name> <name>\tRestart multiple processes or groups\n");
 			printf("restart all\t\tRestart all processes\n");
-			printf("Note: restart does not reread config files. For that, see reread and update.\n");
 		}
 		else if (!strcmp(arg, "start"))
 		{
