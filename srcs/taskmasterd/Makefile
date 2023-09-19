@@ -6,7 +6,7 @@
 #    By: tnaton <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/06/16 11:17:59 by tnaton            #+#    #+#              #
-#    Updated: 2023/09/19 17:56:08 by tnaton           ###   ########.fr        #
+#    Updated: 2023/09/19 18:01:40 by tnaton           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -119,7 +119,7 @@ $(CURL_H):
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.c
 ifndef DISCORD
-	$(CC) $(CFLAGS) -I inc -I ../../libs/curl-8.2.1/include/curl -o $@ -c $<
+	$(CC) $(CFLAGS) -I inc -o $@ -c $<
 else
 	test -d ../../libs/curl-8.2.1 || (cd ../../libs && tar -xvf curl-8.2.1.tar.gz)
 	$(CC) -DDISCORD $(CFLAGS) -I inc -I ../../libs/curl-8.2.1/include/curl -o $@ -c $<

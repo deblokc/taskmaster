@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/19 17:42:27 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/09/19 18:03:01 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,8 +26,11 @@
 #define PATH_SIZE 2048
 #define MAXNUMPROCS 100
 #include "yaml.h"
-#include "curl.h"
 #include "get_next_line.h"
+
+#ifdef DISCORD
+#include "curl.h"
+#endif
 
 /*
  * ENUM

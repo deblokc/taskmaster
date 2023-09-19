@@ -6,12 +6,11 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/08/24 14:00:05 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/19 17:51:48 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/09/19 18:03:37 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "taskmaster.h"
-#include "curl.h"
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -19,6 +18,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <sys/epoll.h>
+#include <sys/socket.h>
 #include <string.h>
 
 bool next_string(char *buffer, char *log, size_t *current_index, bool add_stamp)
