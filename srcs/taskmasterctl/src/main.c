@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 15:17:03 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/19 15:50:21 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/09/19 15:54:13 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -381,6 +381,9 @@ int remote_exec(char *cmd, int efd, struct epoll_event sock)
 	{
 		to_ret = 1;
 		perror("epoll_wait(EPOLLIN)");
+	}
+	if (!strcmp(cmd, "shutdown")) {
+		to_ret = 1;
 	}
 	return (to_ret);
 }
