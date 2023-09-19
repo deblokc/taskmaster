@@ -6,7 +6,7 @@
 #    By: tnaton <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/06/16 11:17:59 by tnaton            #+#    #+#              #
-#    Updated: 2023/09/19 17:40:19 by tnaton           ###   ########.fr        #
+#    Updated: 2023/09/19 17:56:08 by tnaton           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -82,7 +82,7 @@ $(NAME) : $(SCRYPT) $(YAML) $(if $(DISCORD), $(CURL)) $(OBJS) $(INC)
 ifndef DISCORD
 	$(CC) $(CFLAGS) $(OBJS) $(SCRYPT) $(YAML) -pthread -L ../../libs -o $@
 else
-	$(CC) -D DISCORD $(CFLAGS) $(OBJS) $(SCRYPT) $(YAML) $(CURL) -pthread -L ../../libs -lssl -lcrypto -o $@
+	$(CC) -DDISCORD $(CFLAGS) $(OBJS) $(SCRYPT) $(YAML) $(CURL) -pthread -L ../../libs -lssl -lcrypto -o $@
 endif
 
 $(OBJS): $(INC) $(SCRYPT_H) $(YAML_H) $(if $(DISCORD), $(CURL_H))
@@ -118,8 +118,12 @@ $(CURL_H):
 	cp ../../libs/curl-8.2.1/include/curl/curl.h inc/curl.h
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.c
-	test -d ../../libs/curl-8.2.1 || (cd ../../libs && tar -xvf curl-8.2.1.tar.gz)
+ifndef DISCORD
 	$(CC) $(CFLAGS) -I inc -I ../../libs/curl-8.2.1/include/curl -o $@ -c $<
+else
+	test -d ../../libs/curl-8.2.1 || (cd ../../libs && tar -xvf curl-8.2.1.tar.gz)
+	$(CC) -DDISCORD $(CFLAGS) -I inc -I ../../libs/curl-8.2.1/include/curl -o $@ -c $<
+endif
 
 $(OBJDIR) :
 	mkdir -p $(OBJDIR)/parser $(OBJDIR)/gnl
