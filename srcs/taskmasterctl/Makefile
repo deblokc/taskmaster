@@ -6,7 +6,7 @@
 #    By: tnaton <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/06/16 11:17:59 by tnaton            #+#    #+#              #
-#    Updated: 2023/09/18 11:35:42 by tnaton           ###   ########.fr        #
+#    Updated: 2023/09/19 11:47:14 by tnaton           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -22,7 +22,11 @@ SRCS = main.c parser.c file_history.c
 
 READLINE = lib/readline.a
 
+YAML = lib/libyaml.a
+
 INC = taskmasterctl.h
+
+YAML_INC = yaml.h
 
 MOREFLAGS = -Wformat=2				\
 			-Wformat-overflow=2		\
@@ -46,19 +50,18 @@ CC = gcc
 
 OBJS := $(patsubst %.c,$(OBJDIR)/%.o,$(SRCS))
 
-$(NAME) : $(READLINE) $(OBJS) $(INC)
-	test -d ../../libs/yaml-0.2.5 || (cd ../../libs && tar -xvf libyaml.tar.gz)
-	test -f ./lib/libyaml.so || ((test -f ../../libs/yaml-0.2.5/src/.libs/libyaml-0.so.2.0.9 || (cd ../../libs/yaml-0.2.5; ./configure; make;)) && rm -f ./lib/libyaml.so; ln -s $(PWD)/libs/yaml-0.2.5/src/.libs/libyaml-0.so.2.0.9 ./lib/libyaml.so)
-	test -f inc/yaml.h || cp ../../libs/yaml-0.2.5/include/yaml.h inc/yaml.h
-	$(CC) $(CFLAGS) $(OBJS) $(READLINE) -L lib -lyaml -o $@
+$(NAME) : $(READLINE) $(YAML) $(OBJS) $(INC)
+	$(CC) $(CFLAGS) $(OBJS) $(READLINE) $(YAML) -L lib -o $@
 
-$(OBJS): $(INC)
+$(OBJS): $(INC) $(YAML_INC)
 
 $(OBJS) : | $(OBJDIR)
 
-$(OBJDIR)/%.o: %.c
+$(YAML_INC):
 	test -d ../../libs/yaml-0.2.5 || (cd ../../libs && tar -xvf libyaml.tar.gz)
 	test -f inc/yaml.h || cp ../../libs/yaml-0.2.5/include/yaml.h inc/yaml.h
+
+$(OBJDIR)/%.o: %.c
 	$(CC) $(CFLAGS) -I inc -o $@ -c $<
 
 $(OBJDIR) :
@@ -66,6 +69,11 @@ $(OBJDIR) :
 
 $(READLINE) :
 	$(MAKE) -C lib
+
+$(YAML) :
+	test -d ../../libs/yaml-0.2.5 || (cd ../../libs && tar -xvf libyaml.tar.gz)
+	test -f inc/yaml.h || cp ../../libs/yaml-0.2.5/include/yaml.h inc/yaml.h
+	((test -f ../../libs/yaml-0.2.5/src/.libs/libyaml.a || (cd ../../libs/yaml-0.2.5; ./configure; make;)) && rm -rf ./lib/libyaml.a; ln -s $(PWD)/libs/yaml-0.2.5/src/.libs/libyaml.a ./lib/libyaml.a)
 
 .SECONDARY: $(OBJS)
 

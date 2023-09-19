@@ -6,7 +6,7 @@
 #    By: tnaton <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/06/16 11:17:59 by tnaton            #+#    #+#              #
-#    Updated: 2023/09/18 15:18:20 by tnaton           ###   ########.fr        #
+#    Updated: 2023/09/19 15:23:09 by tnaton           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -40,6 +40,18 @@ SRCS = main.c \
 	   launcher.c \
 	   update.c
 
+YAML = ../../libs/libyaml.a
+
+YAML_H = inc/yaml.h
+
+SCRYPT = ../../libs/libscrypt.a
+
+SCRYPT_H = inc/libscrypt.h
+
+CURL = ../../libs/libcurl.a
+
+CURL_H = 
+
 INC = taskmaster.h
 
 MOREFLAGS = -Wformat=2				\
@@ -66,27 +78,45 @@ CC = gcc
 
 OBJS := $(patsubst %.c,$(OBJDIR)/%.o,$(SRCS))
 
-$(NAME) : $(OBJS) $(INC)
-	test -d ../../libs/yaml-0.2.5 || (cd ../../libs && tar -xvf libyaml.tar.gz)
-	test -f inc/yaml.h || cp ../../libs/yaml-0.2.5/include/yaml.h inc/yaml.h
-	test -f ../../libs/libyaml.so || ((test -f ../../libs/yaml-0.2.5/src/.libs/libyaml-0.so.2.0.9 || (cd ../../libs/yaml-0.2.5; ./configure; make;)) && rm -f ../../libs/libyaml.so; ln -s $(PWD)/libs/yaml-0.2.5/src/.libs/libyaml-0.so.2.0.9 ../../libs/libyaml.so)
-	test -d ../../libs/curl-8.2.1 || (cd ../../libs && tar -xvf curl-8.2.1.tar.gz)
-	test -f ../../libs/libcurl.so || ((test -f ../../libs/curl-8.2.1/lib/.libs/libcurl.so.4.8.0 || (cd ../../libs/curl-8.2.1; ./configure --with-openssl; make;)) && rm -f ../../libs/libcurl.so; ln -s $(PWD)/libs/curl-8.2.1/lib/.libs/libcurl.so.4.8.0 ../../libs/libcurl.so)
-	test -d ../../libs/libscrypt-1.22 || (cd ../../libs && tar -xvf libscrypt-1.22.tar.gz)
-	test -f ../../libs/libscrypt.a || ((test -f ../../libs/libscrypt-1.22/libscrypt.a || (cd ../../libs/libscrypt-1.22; make;)) && rm -f ../../libs/libscrypt.a; ln -s $(PWD)/libs/libscrypt-1.22/libscrypt.a ../../libs/libscrypt.a)
+$(NAME) : $(SCRYPT) $(YAML) $(if $(DISCORD), $(CURL)) $(OBJS) $(INC)
+ifndef DISCORD
+	$(CC) $(CFLAGS) $(OBJS) $(SCRYPT) $(YAML) -pthread -L ../../libs -lcurl -o $@
+else
+	$(CC) -D DISCORD $(CFLAGS) $(OBJS) $(SCRYPT) $(YAML) -pthread -L ../../libs -lcurl -o $@
+endif
 
-	$(CC) $(CFLAGS) $(OBJS) ../../libs/libscrypt.a -pthread -L ../../libs -lyaml -lcurl -o $@
-
-$(OBJS): $(INC)
+$(OBJS): $(INC) $(SCRYPT_H) $(YAML_H) $(if $(DISCORD), $(CURL_H))
 
 $(OBJS) : | $(OBJDIR)
 
-$(OBJDIR)/%.o: $(SRCDIR)/%.c
-	test -d ../../libs/yaml-0.2.5 || (cd ../../libs && tar -xvf libyaml.tar.gz)
-	test -f inc/yaml.h || cp ../../libs/yaml-0.2.5/include/yaml.h inc/yaml.h
-	test -d ../../libs/curl-8.2.1 || (cd ../../libs && tar -xvf curl-8.2.1.tar.gz)
+#
+# CREATING LIBS AND LIBS HEADERS
+#
+
+$(SCRYPT):
 	test -d ../../libs/libscrypt-1.22 || (cd ../../libs && tar -xvf libscrypt-1.22.tar.gz)
-	test -f inc/libscrypt.h || cp ../../libs/libscrypt-1.22/libscrypt.h inc/libscrypt.h	
+	(test -f ../../libs/libscrypt-1.22/libscrypt.a || (cd ../../libs/libscrypt-1.22; make;)) && rm -f $@; ln -s $(PWD)/libs/libscrypt-1.22/libscrypt.a $@
+
+$(SCRYPT_H):
+	test -d ../../libs/libscrypt-1.22 || (cd ../../libs && tar -xvf libscrypt-1.22.tar.gz)
+	cp ../../libs/libscrypt-1.22/libscrypt.h inc/libscrypt.h	
+
+$(YAML):
+	test -d ../../libs/yaml-0.2.5 || (cd ../../libs && tar -xvf libyaml.tar.gz)
+	(test -f ../../libs/yaml-0.2.5/src/.libs/libyaml.a || (cd ../../libs/yaml-0.2.5; ./configure; make;)) && rm -f $@; ln -s $(PWD)/libs/yaml-0.2.5/src/.libs/libyaml.a $@
+
+$(YAML_H):
+	test -d ../../libs/yaml-0.2.5 || (cd ../../libs && tar -xvf libyaml.tar.gz)
+	cp ../../libs/yaml-0.2.5/include/yaml.h inc/yaml.h
+
+$(CURL):
+	test -d ../../libs/curl-8.2.1 || (cd ../../libs && tar -xvf curl-8.2.1.tar.gz)
+	(test -f ../../libs/curl-8.2.1/lib/.libs/libcurl.a || (cd ../../libs/curl-8.2.1; ./configure --with-openssl; make;)) && rm -f $@; ln -s $(PWD)/libs/curl-8.2.1/lib/.libs/libcurl.a $@
+
+$(CURL_H):
+
+$(OBJDIR)/%.o: $(SRCDIR)/%.c
+	test -d ../../libs/curl-8.2.1 || (cd ../../libs && tar -xvf curl-8.2.1.tar.gz)
 	$(CC) $(CFLAGS) -I inc -I ../../libs/curl-8.2.1/include/curl -o $@ -c $<
 
 $(OBJDIR) :
