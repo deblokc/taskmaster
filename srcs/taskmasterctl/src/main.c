@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 15:17:03 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/18 20:05:28 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/09/19 15:50:21 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -304,9 +304,10 @@ void foreground(int efd, struct epoll_event sock)
 	fflush(stdout);
 }
 
-void remote_exec(char *cmd, int efd, struct epoll_event sock)
+int remote_exec(char *cmd, int efd, struct epoll_event sock)
 {
 	struct epoll_event tmp;
+	int to_ret = 0;
 
 	/*
 	 *  THE LOGIC WITH WHICH IVE MADE THIS CTL IS THAT IT IS AN EMPTY SHELL.
@@ -316,7 +317,7 @@ void remote_exec(char *cmd, int efd, struct epoll_event sock)
 	if (strlen(cmd) > PIPE_BUF)
 	{
 		printf("line too long...\n");
-		return;
+		return 1;
 	}
 
 	sock.events = EPOLLOUT;
@@ -327,7 +328,9 @@ void remote_exec(char *cmd, int efd, struct epoll_event sock)
 	{
 		if (tmp.events & EPOLLOUT)
 		{ // SEND PHASE
-			send(tmp.data.fd, cmd, strlen(cmd), 0);
+			if (send(tmp.data.fd, cmd, strlen(cmd), 0) <= 0) {
+				to_ret = 1;
+			}
 		}
 	}
 	else if (ret == 0)
@@ -371,12 +374,15 @@ void remote_exec(char *cmd, int efd, struct epoll_event sock)
 	}
 	else if (ret == 0)
 	{
+		to_ret = 1;
 		printf("SOCKET TIMED OUT\n");
 	}
 	else
 	{
+		to_ret = 1;
 		perror("epoll_wait(EPOLLIN)");
 	}
+	return (to_ret);
 }
 
 void get_cmd(char *cmd, char *full_cmd)
@@ -414,12 +420,12 @@ int exec(char *full_cmd, int efd, struct epoll_event sock)
 		}
 		else
 		{
-			remote_exec(full_cmd, efd, sock);
+			ret = remote_exec(full_cmd, efd, sock);
 		}
 	}
 	else
 	{
-		remote_exec(full_cmd, efd, sock);
+		ret = remote_exec(full_cmd, efd, sock);
 	}
 	return (ret);
 }
@@ -626,5 +632,7 @@ int main(int ac, char **av)
 		fclose(file);
 	}
 	free(socket_path);
+	close(efd);
+	close(sock.data.fd);
 	return (0);
 }
