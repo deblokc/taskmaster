@@ -44,55 +44,55 @@ It can be run without, and it will try to connect at `/tmp/taskmaster.sock`.
 
 There are a few command available in taskmasterctl : 
 ```
-exit        |Exit the taskmaster shell.
+exit        Exit the taskmaster shell.
 
-maintail -f     |Continuous tail of taskmaster main log file (Ctrl-D to exit)
-maintail -100   |last 100 *bytes* of taskmaster main log file
-maintail        |last 1600 *bytes* of taskmaster main log file
+maintail -f     Continuous tail of taskmaster main log file (Ctrl-D to exit)
+maintail -100   last 100 *bytes* of taskmaster main log file
+maintail        last 1600 *bytes* of taskmaster main log file
 
-quit    |Exit the taskmaster shell.
+quit    Exit the taskmaster shell.
 
-signal \<signal name> \<name>           |Signal a process
-signal \<signal name> \<name> \<name>   |Signal multiple processes or groups
-signal \<signal name> all               |Signal all processes
+signal <signal name> <name>           Signal a process
+signal <signal name> <name> <name>   Signal multiple processes or groups
+signal <signal name> all               Signal all processes
 
-stop \<name>            |Stop a process
-stop \<name> \<name>    |Stop multiple processes or groups
-stop all                |Stop all processes
+stop <name>            Stop a process
+stop <name> <name>    Stop multiple processes or groups
+stop all                Stop all processes
 
-fg \<process>   |Connect to a process in foreground mode
+fg <process>   Connect to a process in foreground mode
        Ctrl-D to exit
 
-reload          |Restart the remote taskmasterd.
+reload          Restart the remote taskmasterd.
 
-restart \<name>             |Restart a process
-restart \<name> \<name>     |Restart multiple processes or groups
-restart all                 |Restart all processes
+restart <name>             Restart a process
+restart <name> <name>     Restart multiple processes or groups
+restart all                 Restart all processes
 
-start \<name>               |Start a process
-start \<name> \<name>       |Start multiple processes or groups
-start all                   |Start all processes
+start <name>               Start a process
+start <name> <name>       Start multiple processes or groups
+start all                   Start all processes
 
-tail [-f] \<name> [stdout|stderr]   (default stdout)
+tail [-f] <name> [stdoutstderr]   (default stdout)
 x:
-tail -f \<name>         |Continuous tail of named process stdout
+tail -f <name>         Continuous tail of named process stdout
         Ctrl-D to exit
-tail -100 \<name>       |last 100 *bytes* of process stdout
-tail \<name> stderr     |last 1600 *bytes* of process stderr
+tail -100 <name>       last 100 *bytes* of process stdout
+tail <name> stderr     last 1600 *bytes* of process stderr
 
-help                |Print a list of available commands
-help \<command>     |Print help for \<command>
+help                Print a list of available commands
+help <command>     Print help for <command>
 
-pid             |Get the PID of taskmasterd.
-pid \<name>     |Get the PID of a single child process by name.
-pid all         |Get the PID of every child process, one per line.
+pid             Get the PID of taskmasterd.
+pid <name>     Get the PID of a single child process by name.
+pid all         Get the PID of every child process, one per line.
 
-shutdown        |Shut the remote taskmasterd down.
+shutdown        Shut the remote taskmasterd down.
 
-status \<name>          |Get status for a single process
-status \<name> \<name>  |Get status for multiple named processes
-status                  |Get all process status info
+status <name>          Get status for a single process
+status <name> <name>  Get status for multiple named processes
+status                  Get all process status info
 
-update          |Reload config and add/remove as necessary, and will restart affected programs
-update all      |Reload config and add/remove as necessary, and will restart affected programs
+update          Reload config and add/remove as necessary, and will restart affected programs
+update all      Reload config and add/remove as necessary, and will restart affected programs
 ```
