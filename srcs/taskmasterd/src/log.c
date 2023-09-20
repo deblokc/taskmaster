@@ -342,7 +342,6 @@ void log_discord(struct s_discord_logger *discord_logger, char *data)
 		}
 		if (has_error)
 		{
-            printf("#################### PAYLOAD: %s #######################\n", payload);
 			++failed_attempts;
 			strcpy(discord_logger->reporter.buffer, "CRITICAL : Could not log to discord, message will be discarded\n");
 			report(&discord_logger->reporter, false);

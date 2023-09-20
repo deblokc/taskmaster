@@ -384,14 +384,14 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 					memcpy(client->buf, reporter->buffer, strlen(reporter->buffer));
 					report(reporter, false);
 				} else {
-					snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG    : client with socket fd %d sent command '%s", client->poll.data.fd, cmd->cmd);
+					snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG    : client with socket fd %d sent command \"%s", client->poll.data.fd, cmd->cmd);
 					if (cmd->arg) {
 						for (int i = 0; cmd->arg[i]; i++) {
-							snprintf(reporter->buffer + strlen(reporter->buffer), PIPE_BUF - 22, "' '%s", cmd->arg[i]);
+							snprintf(reporter->buffer + strlen(reporter->buffer), PIPE_BUF - 22, "\" \"%s", cmd->arg[i]);
 						}
-						snprintf(reporter->buffer + strlen(reporter->buffer), PIPE_BUF - 22, "'\n");
+						snprintf(reporter->buffer + strlen(reporter->buffer), PIPE_BUF - 22, "\"\n");
 					} else {
-						snprintf(reporter->buffer + strlen(reporter->buffer), PIPE_BUF - 22, "'\n");
+						snprintf(reporter->buffer + strlen(reporter->buffer), PIPE_BUF - 22, "\"\n");
 					}
 					report(reporter, false);
 					if (!strcmp(cmd->cmd, "maintail")) {      //send via logging thread
