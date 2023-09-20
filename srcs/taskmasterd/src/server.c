@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/19 15:40:34 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/09/20 16:18:39 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 #include "taskmaster.h"
@@ -570,7 +570,8 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 						snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG    : controller has sent tail command\n");
 						report(reporter, false);
 						if (cmd->arg) {
-							bzero(buf, PIPE_BUF + 1);
+							char newbuf[PIPE_BUF + 1];
+							bzero(newbuf, PIPE_BUF + 1);
 							char *name = NULL;
 							if (cmd->arg[0][0] == '-') { // if specified size
 								if (!strcmp(cmd->arg[0], "-f")) {
@@ -580,14 +581,14 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 										if (cmd->arg[2]) { // if specified output
 											if (!strcmp(cmd->arg[2], "stdout")) {
 												// send to cmd->arg[1] infinite bytes of stdout
-												snprintf(buf, PIPE_BUF + 1, "tail f 1 %d", client->poll.data.fd);
+												snprintf(newbuf, PIPE_BUF + 1, "tail f 1 %d", client->poll.data.fd);
 											} else if (!strcmp(cmd->arg[2], "stderr")) {
 												// send to cmd->arg[1] infinite bytes of stderr
-												snprintf(buf, PIPE_BUF + 1, "tail f 2 %d", client->poll.data.fd);
+												snprintf(newbuf, PIPE_BUF + 1, "tail f 2 %d", client->poll.data.fd);
 											}
 										} else { // default output is stdout
 											//send to cmd->arg[1] infinite bytes of stdout
-											snprintf(buf, PIPE_BUF + 1, "tail f 1 %d", client->poll.data.fd);
+											snprintf(newbuf, PIPE_BUF + 1, "tail f 1 %d", client->poll.data.fd);
 										}
 									} else {
 										// no program to send to, not doing it
@@ -601,14 +602,14 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 											if (cmd->arg[2]) { // if specified output
 												if (!strcmp(cmd->arg[2], "stdout")) {
 													// send to cmd->arg[1] n bytes of stdout
-													snprintf(buf, PIPE_BUF + 1, "tail %s 1 %d", cmd->arg[0] + 1, client->poll.data.fd);
+													snprintf(newbuf, PIPE_BUF + 1, "tail %s 1 %d", cmd->arg[0] + 1, client->poll.data.fd);
 												} else if (!strcmp(cmd->arg[2], "stderr")) {
 													// send to cmd->arg[1] n bytes of stderr
-													snprintf(buf, PIPE_BUF + 1, "tail %s 2 %d", cmd->arg[0] + 1, client->poll.data.fd);
+													snprintf(newbuf, PIPE_BUF + 1, "tail %s 2 %d", cmd->arg[0] + 1, client->poll.data.fd);
 												}
 											} else { // default output is stdout
 												//send to cmd->arg[1] n bytes of stdout
-												snprintf(buf, PIPE_BUF + 1, "tail %s 1 %d", cmd->arg[0] + 1, client->poll.data.fd);
+												snprintf(newbuf, PIPE_BUF + 1, "tail %s 1 %d", cmd->arg[0] + 1, client->poll.data.fd);
 											}
 										} else {
 											// no program to send to, not doing it
@@ -620,30 +621,25 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 								if (cmd->arg[1]) {
 									if (!strcmp(cmd->arg[1], "stdout")) {
 										// send to cmd->arg[0] 1600 bytes of stdout
-										snprintf(buf, PIPE_BUF + 1, "tail 1600 1 %d", client->poll.data.fd);
+										snprintf(newbuf, PIPE_BUF + 1, "tail 1600 1 %d", client->poll.data.fd);
 									} else if (!strcmp(cmd->arg[1], "stderr")) {
 										// send to cmd->arg[0] 1600 bytes of stderr
-										snprintf(buf, PIPE_BUF + 1, "tail 1600 2 %d", client->poll.data.fd);
+										snprintf(newbuf, PIPE_BUF + 1, "tail 1600 2 %d", client->poll.data.fd);
 									}
 								} else { // default output is stdout
 									// send to cmd->arg[0] 1600 bytes of stdout
-									snprintf(buf, PIPE_BUF + 1, "tail 1600 1 %d", client->poll.data.fd);
+									snprintf(newbuf, PIPE_BUF + 1, "tail 1600 1 %d", client->poll.data.fd);
 								}
 							}
 							if (!name)
 								return ;
-							char trunc[PIPE_BUF / 2];
-							bzero(trunc, PIPE_BUF / 2);
-							memcpy(trunc, buf, PIPE_BUF / 2);
-							snprintf(reporter->buffer, PIPE_BUF - 22, "DEBUG    : sending tail command >%s< to %s\n", trunc, name);
-							report(reporter, false);
 							for (struct s_program *current = server->begin(server); current; current = current->itnext(current)) {
 								if (!strncmp(current->name, name, strlen(current->name))) {
 									if (!current->processes)
 										continue ;
 									for (int i = 0; i < current->numprocs; i++) {
 										if (!strcmp(current->processes[i].name, name)) {
-											if (write(current->processes[i].com[1], buf, strlen(buf))) {}
+											if (write(current->processes[i].com[1], newbuf, strlen(newbuf))) {}
 
 											epoll_ctl(efd, EPOLL_CTL_DEL, client->poll.data.fd, &client->poll);
 											break ;

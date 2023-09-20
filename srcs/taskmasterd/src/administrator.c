@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/19 21:18:13 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/09/20 16:20:01 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -131,6 +131,12 @@ void child_exec(struct s_process *proc) {
 		report(&reporter, false);
 		notfoundexit();
 	} else {
+		if (proc->program->workingdir && chdir(proc->program->workingdir))
+		{
+			snprintf(reporter.buffer, PIPE_BUF - 22, "CRITICAL : %s working directory %s could not be acces : %s\n", proc->name, proc->program->workingdir, strerror(errno));
+			report(&reporter, false);
+			notfoundexit();
+		}
 		if (setsid() == -1)
 		{
 			snprintf(reporter.buffer, PIPE_BUF - 22, "CRITICAL : %s could not become a session leader\n", proc->name);
@@ -578,17 +584,6 @@ int handle_command(struct s_process *process, char *buf, int epollfd) {
 			}
 			client->poll.events = EPOLLOUT;
 			epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &client->poll);
-			if (strlen(client->log)) {
-				size_t trunc_size = PIPE_BUF - 100;
-				char trunc[PIPE_BUF - 100];
-				bzero(trunc, PIPE_BUF - 100);
-				if (strlen(client->log) < PIPE_BUF - 100) {
-					trunc_size = strlen(client->log);
-				}
-				memcpy(trunc, client->log, trunc_size);
-				snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG    : %s tail response : >%s<  >%ld< bytes long\n", process->name, trunc, strlen(client->log));
-				report(&reporter, false);
-			}
 		}
 	}
 	return (0);
@@ -612,12 +607,12 @@ void handle_logging_client(struct s_process *process, struct epoll_event event, 
 			bzero(client->buf, PIPE_BUF + 1);
 		}
 		if (client->log) {
-			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: senind %ld bytes client %d\n", strlen(client->log), client->poll.data.fd);
+			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG    : sending %ld bytes client %d\n", strlen(client->log), client->poll.data.fd);
 			report(&reporter, false);
 			ssize_t ret = send(event.data.fd, client->log, strlen(client->log), 0);
 			free(client->log);
 			client->log = NULL;
-			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG: sent %ld bytes client %d\n", ret, client->poll.data.fd);
+			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG    : sent %ld bytes client %d\n", ret, client->poll.data.fd);
 			report(&reporter, false);
 		}
 		client->poll.events = EPOLLIN;
@@ -842,8 +837,6 @@ void *administrator(void *arg) {
 				tmp_micro = ((long long)process->program->startsecs * 1000);
 				start_micro = 0;
 			}
-			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG    : %s starting epoll time to wait : %lld\n", process->name, ((long long)process->program->startsecs * 1000) - (tmp_micro - start_micro));
-			report(&reporter, false);
 			if (((long long)process->program->startsecs * 1000) - (tmp_micro - start_micro) > INT_MAX) { // if time to wait is bigger than an int, we wait as much as possible and come again if we got no event
 				nfds = epoll_wait(epollfd, events, 10, INT_MAX);
 			} else {
@@ -856,8 +849,6 @@ void *administrator(void *arg) {
 						handle_logging_client(process, events[0], epollfd);
 					}
 					if (events[i].data.fd == process->stdout[0]) { // if process print in stdout
-						snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG     : %s has stdout while in STARTING epoll_wait\n", process->name);
-						report(&reporter, false);
 						char buf[PIPE_BUF + 1];
 						bzero(buf, PIPE_BUF + 1);
 						if (read(process->stdout[0], buf, PIPE_BUF) > 0) {
@@ -1087,8 +1078,6 @@ void *administrator(void *arg) {
 				tmp_micro = (process->program->stopwaitsecs * 1000);
 				stop_micro = 0;
 			}
-			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG    : %s stopping epoll time to wait : %lld\n", process->name, ((long long)process->program->stopwaitsecs * 1000) - (tmp_micro - stop_micro));
-			report(&reporter, false);
 			nfds = epoll_wait(epollfd, events, 10, (int)((process->program->stopwaitsecs * 1000) - (tmp_micro - stop_micro)));
 			if (nfds) { // if not timeout
 				for (int i = 0; i < nfds; i++) {

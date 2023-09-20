@@ -1,0 +1,59 @@
+programs:
+  shell:
+    command: /bin/bash
+    env:
+      TEST: true
+    autorestart: always
+
+  should_exit:
+    command: /bin/bash -c "sleep 10"
+
+  should_fatal:
+    command: /bin/bash -c "echo stdout; echo stderr 1>&2; sleep 5"
+    numprocs: 1
+    startretries: 0
+    startsecs: 10
+
+  exit_w_code:
+    command: /bin/bash -c "sleep 5; exit 42"
+    autorestart: onerror
+    exitcodes:
+      - 42
+
+  keep_restarting:
+    command: /bin/bash -c "sleep 5m"
+    startsecs: 0
+    autorestart: always
+
+  create_file_in_tmp:
+    command: /bin/bash -c "echo JE SUIS DANS $PWD ! > in_tmp.tmp"
+    startsecs: 0
+    workingdir: /tmp
+
+  log_number:
+    command: /bin/bash -c "for ((i=1;i>0;i+=1));do if ! (($i%2)); then echo $i; else echo $i 1>&2; fi; done"
+    numprocs: 1
+    startsecs: 1
+    stdoutlog: True
+    stdout_logfile: /tmp/even
+    stdout_logfile_maxbytes: 65536
+    stdout_logfile_backups: 0
+    stderrlog: True
+    stderr_logfile: /tmp/odd
+    stderr_logfile_maxbytes: 65536
+    stderr_logfile_backups: 0
+
+  no_autostart:
+    command: bash -c "echo $test and $exist $test"
+    autostart: false
+    startsecs: 0
+    env:
+      test: yes
+      exist: also
+
+server:
+  loglevel: DEBUG
+
+socket:
+  enable: true
+  socketpath: /tmp/taskmaster.sock

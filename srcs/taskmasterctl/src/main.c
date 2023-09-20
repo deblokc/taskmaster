@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 15:17:03 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/20 13:43:58 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/09/20 15:47:42 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -162,7 +162,7 @@ void *thread_log(void *arg)
 				bzero(buf, PIPE_BUF + 1);
 				if (recv(event.data.fd, buf, PIPE_BUF, 0) > 0)
 				{
-					printf("%s", buf);
+					printf("%s\n", buf);
 					fflush(stdout);
 				}
 			}
@@ -351,7 +351,7 @@ int remote_exec(char *cmd, int efd, struct epoll_event sock)
 		{ // RECV PHASE
 			char buf[PIPE_BUF + 1];
 			bzero(buf, PIPE_BUF + 1);
-			recv(tmp.data.fd, buf, PIPE_BUF, 0);
+			int recv_ret = recv(tmp.data.fd, buf, PIPE_BUF, 0);
 			if (!strncmp(buf, "fg", 2))
 			{
 				printf("%s", buf + 2);
@@ -368,6 +368,12 @@ int remote_exec(char *cmd, int efd, struct epoll_event sock)
 			{
 				printf("%s", buf); // DUMBLY PRINT RESPONSE
 				fflush(stdout);
+			}
+			if (recv_ret == PIPE_BUF) {
+				while ((recv_ret = recv(tmp.data.fd, buf, PIPE_BUF, 0)) == PIPE_BUF) {
+					printf("%s", buf);
+					fflush(stdout);
+				}
 			}
 		}
 	}

@@ -25,7 +25,6 @@ programs:
         priority: 1
     printeur_fou:
         command: cat /dev/random
-        startsecs: 0
         numprocs: 1
         priority: 7
         stdout_logfile_maxbytes: 1024
@@ -38,7 +37,7 @@ programs:
       priority: 2
 
 server:
-    daemon: true
+    daemon: false
     logfile: /tmp/taskmaster.log
     loglevel: DEBUG
     log_discord: true
