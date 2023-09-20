@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/20 17:29:10 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/09/20 20:06:07 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -178,6 +178,8 @@ void child_exec(struct s_process *proc) {
 int exec(struct s_process *process, int epollfd) {
 
 	struct epoll_event out, err;
+	bzero(&out, sizeof(out));
+	bzero(&err, sizeof(err));
 
 	if (pipe2(process->stdin, O_CLOEXEC)) {
 		return 1;
@@ -779,6 +781,7 @@ void *administrator(void *arg) {
 
 	in.events = EPOLLIN;
 	in.data.fd = process->com[0];
+	bzero(&in, sizeof(in));
 	epoll_ctl(epollfd, EPOLL_CTL_ADD, in.data.fd, &in); // listen for main communication
 
 	while (1) {
