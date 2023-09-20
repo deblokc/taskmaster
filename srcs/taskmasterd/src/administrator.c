@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/20 16:57:57 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/09/20 17:29:10 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -382,7 +382,7 @@ int handle_command(struct s_process *process, char *buf, int epollfd) {
 		process->bool_start = true;
 	} else if (!strncmp(buf, "sig", 3)) {
 		// sig command
-		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG    : %s has received order to send sig %d to process", process->name, (int)buf[3]);
+		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG    : %s has received order to send sig %d to its process\n", process->name, (int)buf[3]);
 		report(&reporter, false);
 		killpg(process->pid, (int)buf[3]);
 	} else if (!strncmp(buf, "fg", 2)) {
@@ -1187,7 +1187,10 @@ void *administrator(void *arg) {
 					}
 				}
 			} else { // if timeout
+				snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING  : %s did not stop before %ds, sending SIGKILL\n", process->name, process->program->stopwaitsecs);
+				report(&reporter, false);
 				process->status = STOPPED;
+				killpg(process->pid, SIGKILL);
 				snprintf(reporter.buffer, PIPE_BUF - 22, "INFO     : %s is now STOPPED\n", process->name);
 				report(&reporter, false);
 				process->stop.tv_sec = 0;

@@ -51,6 +51,14 @@ programs:
       test: yes
       exist: also
 
+  sig_stop:
+    command: bash -c "trap ls SIGTERM; trap exit SIGUSR1; while [ 1 ]; do sleep 1 ; done"
+    stopsignal: USR1
+
+  sig_dont_stop:
+    command: bash -c "trap ls SIGTERM; trap exit SIGUSR1; while [ 1 ]; do sleep 1 ; done"
+    stopsignal: TERM
+
 server:
   loglevel: DEBUG
 
