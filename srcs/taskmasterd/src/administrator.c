@@ -127,7 +127,7 @@ void child_exec(struct s_process *proc) {
 	char *command = getcmd(proc);
 
 	if (!command) {
-		snprintf(reporter.buffer, PIPE_BUF - 22, "CRITICAL : %s command \"%s\" not found\n", proc->name, proc->program->command);
+		snprintf(reporter.buffer, PIPE_BUF - 22, "CRITICAL : %s command '%s' not found\n", proc->name, proc->program->command);
 		report(&reporter, false);
 		notfoundexit();
 	} else {
@@ -159,7 +159,7 @@ void child_exec(struct s_process *proc) {
 			free(proc->name);
 			exit(1);
 		}
-		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG    : %s execveing command \"%s\"\n", proc->name, proc->program->command);
+		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG    : %s execveing command '%s'\n", proc->name, proc->program->command);
 		report(&reporter, false);
 		execve(command, proc->program->args, environ);
 		//perror("execve");
@@ -1038,7 +1038,7 @@ void *administrator(void *arg) {
 					}
 				}
 			} else {
-				snprintf(reporter.buffer, PIPE_BUF - 22, "ERROR    : %s epoll_wait encountered an issue : \"%d\"", process->name, errno);
+				snprintf(reporter.buffer, PIPE_BUF - 22, "ERROR    : %s epoll_wait encountered an issue : '%d'", process->name, errno);
 				report(&reporter, false);
 			}
 		} else if (process->status == STOPPING) {

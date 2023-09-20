@@ -39,11 +39,14 @@ programs:
 server:
     daemon: false
     logfile: /tmp/taskmaster.log
+    workingdir: /tmp
     loglevel: DEBUG
     log_discord: true
     loglevel_discord: INFO
     logfile_maxbytes: 4096
     logfile_backups: 3
+    user: root
+    umask: 0266
 
 socket:
     enable: true
