@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/08/24 14:00:05 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/19 18:03:37 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/09/20 19:34:28 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -279,7 +279,7 @@ static size_t write_callback(char *ptr, size_t size, size_t nmemb, void *userdat
 
 static bool register_curl_opt(CURL *handle, char *channel, struct curl_slist *slist, char *data)
 {
-	return (curl_easy_setopt(handle, CURLOPT_URL, channel) == CURLE_OK && curl_easy_setopt(handle, CURLOPT_POST, 1) == CURLE_OK && curl_easy_setopt(handle, CURLOPT_FAILONERROR, 1L) == CURLE_OK && curl_easy_setopt(handle, CURLOPT_TIMEOUT, 5L) == CURLE_OK && curl_easy_setopt(handle, CURLOPT_POSTFIELDS, data) == CURLE_OK && curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, write_callback) == CURLE_OK && curl_easy_setopt(handle, CURLOPT_HTTPHEADER, slist) == CURLE_OK);
+	return (curl_easy_setopt(handle, CURLOPT_URL, channel) == CURLE_OK && curl_easy_setopt(handle, CURLOPT_POST, 1) == CURLE_OK && curl_easy_setopt(handle, CURLOPT_FAILONERROR, 1L) == CURLE_OK && curl_easy_setopt(handle, CURLOPT_TIMEOUT, 10L) == CURLE_OK && curl_easy_setopt(handle, CURLOPT_POSTFIELDS, data) == CURLE_OK && curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, write_callback) == CURLE_OK && curl_easy_setopt(handle, CURLOPT_HTTPHEADER, slist) == CURLE_OK);
 }
 
 static CURL *init_curl(struct curl_slist **slist, char *token)
