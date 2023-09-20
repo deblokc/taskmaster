@@ -12,6 +12,7 @@
 
 #ifndef READLINE_H
 # define READLINE_H
+# include <stdbool.h>
 
 char	*readline(char *prompt);
 void	add_history(char *line);

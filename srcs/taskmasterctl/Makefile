@@ -51,7 +51,7 @@ CC = gcc
 OBJS := $(patsubst %.c,$(OBJDIR)/%.o,$(SRCS))
 
 $(NAME) : $(READLINE) $(YAML) $(OBJS) $(INC)
-	$(CC) $(CFLAGS) $(OBJS) $(READLINE) $(YAML) -L lib -o $@
+	$(CC) $(CFLAGS) $(OBJS) $(READLINE) $(YAML) -pthread -L lib -o $@
 
 $(OBJS): $(INC) $(YAML_H)
 
