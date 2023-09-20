@@ -20,9 +20,8 @@ To install the project, you need to first clone the project.
 Then you can run.
 ```make```
 (or if you want supervisord to log on discord).
-```make DISCORD=yes```
+```make DISCORD=yes```<br>
 To switch between these option if the executable was already build, add ```re```<br>
-like :
 ```make re``` or ```make re DISCORD=yes```
 
 ## Running taskmaster
