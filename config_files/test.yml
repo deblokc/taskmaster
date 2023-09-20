@@ -1,10 +1,2 @@
-programs:
-  test:
-    command: cacat
-    numprocs: 1
-    startretries: 0
-    autorestart: onerror
-    priority: 1
-
 server:
   loglevel: INFO

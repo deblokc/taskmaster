@@ -99,7 +99,7 @@ update all      Reload config and add/remove as necessary, and will restart affe
 
 ## Configuration files
 
-The configuration file is in YAML, and has 3 main fields
+The configuration file is in YAML, and has 3 main fields (all optional). Any unknown field will be ignored. Keep in mind that the Discord field requires that you've build the executables using `make DISCORD=true`, else it will simply ignore it.
 
 #### programs:
 ```yaml
