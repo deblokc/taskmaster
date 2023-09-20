@@ -44,7 +44,7 @@ It can be run without, and it will try to connect at `/tmp/taskmaster.sock`.
 
 There are a few command available in taskmasterctl : 
 
-exit        |Exit the taskmaster shell.
+>exit        |Exit the taskmaster shell.
 
 maintail -f     |Continuous tail of taskmaster main log file (Ctrl-D to exit)
 maintail -100   |last 100 *bytes* of taskmaster main log file
