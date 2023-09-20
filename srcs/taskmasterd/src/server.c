@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/20 16:18:39 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/09/20 20:56:56 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 #include "taskmaster.h"
@@ -66,7 +66,7 @@ void	create_socket(struct s_server *server, struct s_report *reporter) {
 	
 	if (!server->socket.socketpath)
 	{
-		server->socket.socketpath = strdup("/tmp/taskmasterd.sock");
+		server->socket.socketpath = strdup(SOCK_PATH);
 		if (!server->socket.socketpath)
 		{
 			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not allocate string for socketpath, exiting process\n");
