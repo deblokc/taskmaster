@@ -96,3 +96,71 @@ status                  Get all process status info
 update          Reload config and add/remove as necessary, and will restart affected programs
 update all      Reload config and add/remove as necessary, and will restart affected programs
 ```
+
+## Configuration files
+
+The configuration file is in YAML, and has 3 main fields
+
+#### programs:
+```yaml
+programs:                                       # Block of programs which will be managed by taskmasterd. If a program name is defined twice or more, only its last definition will remain
+    programname:                                # [MANDATORY] Name of the program
+        command: /bin/sh                        # [MANDATORY] Command to run. Note that it does not support environement variable expansions and escape sequences are limited to double quotes and single quotes according to bash POSIX behavior.
+        numprocs: 1                             # Number of processes to run for this program. Note that a hard limit of 100 total processes is imposed. Accepted values range from 1 to 100. Default value: 1
+        priority: 50                            # Priority is used to determine the order in which programs will be started and stopped. Lower starts first and terminates last. Accepted values range from 0 to 999. Default value: 999
+        autostart: true                         # Determines whether the program should be started when taskmasterd starts. If false the program can be started via taskmasterctl. Accepted values are true, True, on, yes, false, False, off, no. Default value: true
+        startsecs: 10                           # Number of seconds to wait until the program is considered as successfully started (when it moves from STARTING to RUNNING state). Accepted values range from 0 to 300. Default value: 3
+        startretries: 3                         # Number of times taskmasterd should try to start the program if it fails to move from STARTING to RUNNING state. Accepted values range from 1 to 10. Default value: 3
+        autorestart: onerror                    # Determines when taskmasterd should automatically try to restart a program in RUNNING state which exits. Accepted values are never, onerror, always. Default value: onerror
+        exitcodes:                              # List of exit codes which are considered normal exit codes (i.e.: No error happened). This value is used for the autorestart property if it is set as onerror. Accepted values range from 0 to INT_MAX. Default value: 0 
+            - 0                                  
+            - 1
+        stopsignal: TERM                        # Signal to be sent to the process to stop it. Accepted values are TERM, HUP, INT, QUIT, KILL, USR1, USR2. Default value: TERM
+        stopwaitsecs: 10                        # Number of seconds taskmasterd should leave the process to terminate when it sends a stopsignal before forcingly killing it. Accepted values range from 0 to 300. Default value: 5
+        stdoutlog: True                         # Whether taskmasterd should log the stdout of the process. Accepted values are true, True, on, yes, false, False, off, no. Default value: true
+        stdout_logfile: /tmp/programname-out    # Path to the stdout logfile for the process if logging is enabled.
+        stdout_logfile_maxbytes: 100            # Maximum number of bytes for each stdout logfile. Accepted values range from 100 to 1073741824 (1Go). Default value: 5242880 (5Mo)
+        stdout_logfile_backups: 30              # Number of backups to keep for the stdout logfiles. Numbers will be added at the end of the chosen filename starting from 1 to the number of backups chosen. Accepted values range from 0 to 100. Default value: 10
+        stderrlog: True                         # Whether taskmasterd should log the stderr of the process. Accepted values are true, True, on, yes, false, False, off, no. Default value: true
+        stderr_logfile: /tmp/programname-out    # Path to the stderr logfile for the process if logging is enabled.
+        stderr_logfile_maxbytes: 100            # Maximum number of bytes for each stderr logfile. Accepted values range from 100 to 1073741824 (1Go). Default value: 5242880 (5Mo)
+        stderr_logfile_backups: 30              # Number of backups to keep for the stderr logfiles. Numbers will be added at the end of the chosen filename starting from 1 to the number of backups chosen. Accepted values range from 0 to 100. Default value: 10
+        workingdir: /home/username              # Working directory for the process.
+        umask: 022                              # Umask to be applied to the process in octal. Accepted values range from 0 to 0777 (in octal). Default value: 022 (in octal)
+        env:                                    # Environment variables for the process.
+            username: john
+        user: johnny                            # User which should be running the process (user will be set with setuid)
+```
+
+#### server:
+```yaml
+server:                                         # Taskmasterd general server configuration
+    logfile: /tmp/taskmasterd.log               # Path to taskmasterd logfile
+    logfile_maxbytes: 100                       # Maximum number of bytes for each stdout logfile. Accepted values range from 100 to 1073741824 (1Go). Default value: 5242880 (5Mo)
+    logfile_backups: 30                         # Number of backups to keep for the stdout logfiles. Numbers will be added at the end of the chosen filename starting from 1 to the number of backups chosen. Accepted values range from 0 to 100. Default value: 10
+    log_discord: true                           # Whether logging to Discord should be enabled. Accepted values are true, True, on, yes, false, False, off, no. Default value: false
+    loglevel_discord: WARN                      # The log level which should be applied for Discord. Accepted values are DEBUG, INFO, WARN, ERROR, CRITICAL. It is not recommended to enable DEBUG logging to Discord for performance reasons.
+    discord_token: <TOKEN>                      # The Discord token to use the API. The token can also be exported as en environment variable named DISCORD_TOKEN before starting taskmasterd, which improves privacy. Mandatory if logging to Discord is enabled.
+    discord_channel: <CHANNEL>                  # The Discord channel to which the messages should be sent. The channel can also be exported as en environment variable named DISCORD_CHANNEL before starting taskmasterd, which improves privacy. Mandatory if logging to Discord is enabled.
+    pidfile: /tmp/.taskmasterd.pid              # The path to the PID file for taskmasterd
+    user: john                                  # User which should be running taskmasterd (user will be set with setuid)
+    workingdir: /home/username                  # Working directory for taskmasterd.
+    umask: 022                                  # Umask to be applied to the process in octal. Accepted values range from 0 to 0777 (in octal). Default value: 022 (in octal)
+    daemon: false                               # Whether taskmasterd should be started as a daemon or not. If taskmasterd is not running as a daemon, logs will be displayed in the shell according to the loglevel chosen in addition to being written in the logfile. Accepted values are true, True, on, yes, false, False, off, no. Default value: false
+    loglevel: INFO                              # The log level which should be applied for log messages. Accepted values are DEBUG, INFO, WARN, ERROR, CRITICAL. It is not recommended to enable DEBUG for performance reasons.
+    env:                                        # Environment variables for taskmasterd. Processes will inherit them.
+        username: john
+```
+
+#### socket:
+
+```yaml
+socket:                                         # UNIX socket configuration used to communicate between taskmasterd and taskmasterctl
+    enable: true                                # Determines whether a socket should be created. Accepted values are true, True, on, yes, false, False, off, no. Default value: false
+    socketpath: /tmp/taskmaster.sock            # The path to the UNIX socket. This path will also be used for taskmasterctl. It is recommended to use absolute paths.
+    umask: 022                                  # Umask used for the creation of the socket in octal. This will determine who has the rights to communicate with taskmasterd. Accepted values range from 0 to 0777 (in octal). Default value: 022 (in octal)
+    uid: john                                   # User who will own the UNIX socket
+    gid: adm                                    # Group which will own the UNIX socket
+    username: user                              # Username for authentication
+    password: <HASH>                            # Hash of password, get it by using ./taskmasterd -x <PASSWORD>
+```

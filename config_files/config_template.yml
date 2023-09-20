@@ -49,3 +49,5 @@ socket:                                         # UNIX socket configuration used
     umask: 022                                  # Umask used for the creation of the socket in octal. This will determine who has the rights to communicate with taskmasterd. Accepted values range from 0 to 0777 (in octal). Default value: 022 (in octal)
     uid: john                                   # User who will own the UNIX socket
     gid: adm                                    # Group which will own the UNIX socket
+    username: user                              # Username for authentication
+    password: <HASH>                            # Hash of password, get it by using ./taskmasterd -x <PASSWORD>
