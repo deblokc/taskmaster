@@ -21,7 +21,7 @@ Then you can run.
 ```make```
 (or if you want supervisord to log on discord).
 ```make DISCORD=yes```
-To switch between these option if the executable was already build, add `re`
+To switch between these option if the executable was already build, add ```re```
 like :
 ```make re``` or ```make re DISCORD=yes```
 
