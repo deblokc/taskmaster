@@ -74,7 +74,7 @@ void	prelude(struct s_server *server, struct s_report *reporter)
 		{
 			if (errno == 0 || errno == ENOENT || errno == ESRCH || errno == EBADF || errno == EPERM)
 			{
-				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Unkown user %s\n", server->user);
+				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Unkown usen (main.c:535)r %s\n", server->user);
 				report(reporter, true);
 			}
 			else
@@ -84,7 +84,7 @@ void	prelude(struct s_server *server, struct s_report *reporter)
 			}
 			return ;
 		}
-		if (setuid(ret->pw_uid) == -1 || setgid(ret->pw_gid) == -1)
+		if (setgid(ret->pw_gid) == -1 || setuid(ret->pw_uid) == -1)
 		{
 			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not change user to %s\n", server->user);
 			report(reporter, true);
