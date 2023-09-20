@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/20 16:20:01 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/09/20 16:57:57 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -788,7 +788,7 @@ void *administrator(void *arg) {
 				snprintf(reporter.buffer, PIPE_BUF - 22, "INFO     : %s is now STARTING\n", process->name);
 				report(&reporter, false);
 				snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG    : %s has raw cmd %s\n", process->name, process->program->command);
-				report(&reporter, false);
+				bzero(reporter.buffer, PIPE_BUF - 22);
 				if (exec(process, epollfd)) {
 					snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING  : %s got a fatal error in exec\n", process->name);
 					report(&reporter, false);
@@ -879,7 +879,6 @@ void *administrator(void *arg) {
 							}
 						}
 					} else if (events[i].data.fd == process->stderr[0]) { // if process print in stderr
-						report(&reporter, false);
 						char buf[PIPE_BUF + 1];
 						bzero(buf, PIPE_BUF + 1);
 						if (read(process->stderr[0], buf, PIPE_BUF) > 0) {
