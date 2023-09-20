@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/22 15:17:03 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/19 20:56:21 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/09/20 13:43:58 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -501,7 +501,7 @@ int check_auth(int efd, struct epoll_event *sock)
 	char buf[5];
 	bzero(buf, 5);
 
-	if (epoll_wait(efd, &event, 1, 1 * 1000) <= 0) {
+	if (epoll_wait(efd, &event, 1, 30 * 1000) <= 0) {
 		printf("TIMEOUT EPOLL_WAIT\n");
 		return (1);
 	}
@@ -523,7 +523,7 @@ int check_auth(int efd, struct epoll_event *sock)
 	if (!tosend) {
 		return (1);
 	}
-	if (epoll_wait(efd, &event, 1, 1 * 1000) <= 0) {
+	if (epoll_wait(efd, &event, 1, 30 * 1000) <= 0) {
 		printf("TIMEOUT EPOLL_WAIT\n");
 		return (1);
 	}
@@ -531,7 +531,7 @@ int check_auth(int efd, struct epoll_event *sock)
 	}
 	sock->events = EPOLLIN;
 	epoll_ctl(efd, EPOLL_CTL_MOD, sock->data.fd, sock);
-	if (epoll_wait(efd, &event, 1, 1 * 1000) <= 0) {
+	if (epoll_wait(efd, &event, 1, 30 * 1000) <= 0) {
 		printf("TIMEOUT EPOLL_WAIT\n");
 		return (1);
 	}
