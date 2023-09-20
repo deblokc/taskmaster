@@ -44,6 +44,7 @@ server:
     loglevel_discord: INFO
     logfile_maxbytes: 4096
     logfile_backups: 3
+    user: parrot
 
 socket:
     enable: true
