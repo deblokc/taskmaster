@@ -170,4 +170,4 @@ socket:                                         # UNIX socket configuration used
 ```
 ## Extra info
 
-For the switching of users, if getpwnam fails to find the user and your `/etc/nsswitch.conf` has `concat systemd` instead of `files` the function will leak.
+For the switching of users, if getpwnam fails to find the user and your `/etc/nsswitch.conf` has `concat systemd` instead of `files` the function will leak. *(See [this](https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=273051) bug report)*
