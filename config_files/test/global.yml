@@ -22,7 +22,7 @@ programs:
 
   keep_restarting:
     command: /bin/bash -c "sleep 5m"
-    startsecs: 0
+    startsecs: 10
     autorestart: always
 
   create_file_in_tmp:
@@ -58,6 +58,11 @@ programs:
   sig_dont_stop:
     command: bash -c "trap ls SIGTERM; trap exit SIGUSR1; while [ 1 ]; do sleep 1 ; done"
     stopsignal: TERM
+
+  user:
+    command: whoami
+    startsecs: 0
+    user: tnaton
 
 server:
   loglevel: DEBUG

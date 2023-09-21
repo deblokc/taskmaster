@@ -138,32 +138,35 @@ void child_exec(struct s_process *proc) {
 			report(&reporter, false);
 			notfoundexit();
 		}
-		char			buf[PIPE_BUF];
-		struct passwd	passwd;
-		struct passwd	*ret = NULL;
+		if (proc->program->user)
+		{
+			char			buf[PIPE_BUF];
+			struct passwd	passwd;
+			struct passwd	*ret = NULL;
 
-		bzero(&buf, PIPE_BUF);
-		bzero(&passwd, sizeof(passwd));
-		getpwnam_r(proc->program->user, &passwd, buf, PIPE_BUF, &ret);
-		if (!ret)
-		{
-			if (errno == 0 || errno == ENOENT || errno == ESRCH || errno == EBADF || errno == EPERM)
+			bzero(&buf, PIPE_BUF);
+			bzero(&passwd, sizeof(passwd));
+			getpwnam_r(proc->program->user, &passwd, buf, PIPE_BUF, &ret);
+			if (!ret)
 			{
-				snprintf(reporter.buffer, PIPE_BUF - 22, "CRITICAL : Unknown user %s\n", proc->program->user);
-				report(&reporter, false);
+				if (errno == 0 || errno == ENOENT || errno == ESRCH || errno == EBADF || errno == EPERM)
+				{
+					snprintf(reporter.buffer, PIPE_BUF - 22, "CRITICAL : Unknown user %s\n", proc->program->user);
+					report(&reporter, false);
+				}
+				else
+				{
+					snprintf(reporter.buffer, PIPE_BUF - 22, "CRITICAL : Could not get information on user %s\n", proc->program->user);
+					report(&reporter, false);
+				}
+				errorexit();
 			}
-			else
+			if (setgid(ret->pw_gid) == -1 || setuid(ret->pw_uid) == -1)
 			{
-				snprintf(reporter.buffer, PIPE_BUF - 22, "CRITICAL : Could not get information on user %s\n", proc->program->user);
+				snprintf(reporter.buffer, PIPE_BUF - 22, "CRITICAL : Could not change user to %s\n", proc->program->user);
 				report(&reporter, false);
+				errorexit();
 			}
-			errorexit();
-		}
-		if (setgid(ret->pw_gid) == -1 || setuid(ret->pw_uid) == -1)
-		{
-			snprintf(reporter.buffer, PIPE_BUF - 22, "CRITICAL : Could not change user to %s\n", proc->program->user);
-			report(&reporter, false);
-			errorexit();
 		}
 		if (setsid() == -1)
 		{

@@ -45,6 +45,7 @@ server:
     logfile_maxbytes: 4096
     logfile_backups: 3
     user: parrot
+    workingdir: /home/parrot
 
 socket:
     enable: true
