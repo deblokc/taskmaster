@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/25 18:58:58 by bdetune           #+#    #+#             */
-/*   Updated: 2023/09/21 14:01:06 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/09/21 14:08:48 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -63,18 +63,22 @@ void	prelude(struct s_server *server, struct s_report *reporter)
 	char*			discord_channel = NULL;
 	char*			discord_token = NULL;
 #endif
+	char			buf[PIPE_BUF];
+	struct passwd	passwd;
 	struct passwd	*ret = NULL;
 	struct s_env	*current = NULL;
 
 	if (server->user)
 	{
+		bzero(&buf, PIPE_BUF);
+		bzero(&passwd, sizeof(passwd));
 		errno = 0;
-		ret = getpwnam(server->user);
+		getpwnam_r(server->user, &passwd, buf, PIPE_BUF, &ret);
 		if (!ret)
 		{
 			if (errno == 0 || errno == ENOENT || errno == ESRCH || errno == EBADF || errno == EPERM)
 			{
-				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Unkown usen (main.c:535)r %s\n", server->user);
+				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Unkown user %s\n", server->user);
 				report(reporter, true);
 			}
 			else
