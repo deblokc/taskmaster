@@ -86,6 +86,8 @@ void	create_socket(struct s_server *server, struct s_report *reporter) {
 	if (bind(server->socket.sockfd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
 		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not create socket, exiting process\n");
 		report(reporter, true);
+		close(server->socket.sockfd);
+		server->socket.sockfd = -1;
 		return ;
 	}
 	if (chmod(server->socket.socketpath, 0666 & ~server->socket.umask) == -1)
