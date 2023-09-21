@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/25 18:58:58 by bdetune           #+#    #+#             */
-/*   Updated: 2023/09/20 20:38:44 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/09/21 14:01:06 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -88,7 +88,6 @@ void	prelude(struct s_server *server, struct s_report *reporter)
 		{
 			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not change user to %s\n", server->user);
 			report(reporter, true);
-			free(ret);
 			return ;
 		}
 		ret = NULL;
