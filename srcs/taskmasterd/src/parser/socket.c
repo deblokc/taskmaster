@@ -15,7 +15,7 @@
 
 static void	destructor(struct s_socket *self)
 {
-	if (self->sockfd >= 0)
+	if (self->sockfd > 0)
 	{
 		close(self->sockfd);
 		if (self->socketpath)
