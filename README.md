@@ -17,6 +17,8 @@ The client connect to the server using UNIX socket and can require an authentica
 To install the project, you need to first clone the project.
 ```git clone https://github.com/deblokc/taskmaster.git```
 
+You will also need [gcc](https://gcc.gnu.org/) installed.
+
 Then you can run.
 ```make```
 (or if you want supervisord to log on discord).
@@ -31,7 +33,7 @@ taskmasterd take a configuration file as argument.
 `./taskmasterd config_files/config.yml`
 
 For the socket authentication, it can also generate a hash to be put in the configuration file.
-`./taskmasterd -x <Password>`
+`./taskmasterd -x <Password>`<br>
 `<Hash>`
 
 Once supervisord is running, it can be stopped by `ctrl + c` if it is in foreground.
@@ -166,3 +168,6 @@ socket:                                         # UNIX socket configuration used
     username: user                              # Username for authentication
     password: <HASH>                            # Hash of password, get it by using ./taskmasterd -x <PASSWORD>
 ```
+## Extra info
+
+For the switching of users, if getpwnam fails to find the user and your `/etc/nsswitch.conf` has `concat systemd` instead of `files` the function will leak.
