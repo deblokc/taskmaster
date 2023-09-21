@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/20 20:06:07 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/09/21 18:15:57 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,6 +14,7 @@
 #include "taskmaster.h"
 #include <fcntl.h>
 #include <pthread.h>
+#include <pwd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -137,6 +138,33 @@ void child_exec(struct s_process *proc) {
 			report(&reporter, false);
 			notfoundexit();
 		}
+		char			buf[PIPE_BUF];
+		struct passwd	passwd;
+		struct passwd	*ret = NULL;
+
+		bzero(&buf, PIPE_BUF);
+		bzero(&passwd, sizeof(passwd));
+		getpwnam_r(proc->program->user, &passwd, buf, PIPE_BUF, &ret);
+		if (!ret)
+		{
+			if (errno == 0 || errno == ENOENT || errno == ESRCH || errno == EBADF || errno == EPERM)
+			{
+				snprintf(reporter.buffer, PIPE_BUF - 22, "CRITICAL : Unknown user %s\n", proc->program->user);
+				report(&reporter, false);
+			}
+			else
+			{
+				snprintf(reporter.buffer, PIPE_BUF - 22, "CRITICAL : Could not get information on user %s\n", proc->program->user);
+				report(&reporter, false);
+			}
+			errorexit();
+		}
+		if (setgid(ret->pw_gid) == -1 || setuid(ret->pw_uid) == -1)
+		{
+			snprintf(reporter.buffer, PIPE_BUF - 22, "CRITICAL : Could not change user to %s\n", proc->program->user);
+			report(&reporter, false);
+			errorexit();
+		}
 		if (setsid() == -1)
 		{
 			snprintf(reporter.buffer, PIPE_BUF - 22, "CRITICAL : %s could not become a session leader\n", proc->name);
@@ -147,7 +175,7 @@ void child_exec(struct s_process *proc) {
 			close(proc->stderr[1]);
 			free(command);
 			free(proc->name);
-			exit(1);
+			errorexit();
 		}
 		if (!unblock_signals_thread(&reporter))
 		{
@@ -157,7 +185,7 @@ void child_exec(struct s_process *proc) {
 			close(proc->stderr[1]);
 			free(command);
 			free(proc->name);
-			exit(1);
+			errorexit();
 		}
 		snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG    : %s execveing command '%s'\n", proc->name, proc->program->command);
 		report(&reporter, false);
