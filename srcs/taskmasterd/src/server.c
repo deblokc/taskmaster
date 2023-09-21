@@ -74,7 +74,7 @@ void	create_socket(struct s_server *server, struct s_report *reporter) {
 			return ;
 		}
 	}
-	server->socket.sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
+	server->socket.sockfd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC , 0);
 	if (server->socket.sockfd < 0) {
 		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not open socket, exiting process\n");
 		report(reporter, true);
