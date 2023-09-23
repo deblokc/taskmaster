@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/23 13:20:55 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/09/23 13:35:32 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -178,6 +178,7 @@ static void flush_old_env(struct s_server *server)
 
 static bool reload_configuration(struct s_server **server, struct s_report *reporter)
 {
+	bool was_daemon = false;
 	char tmp_log_file[1024];
 	void *thread_ret;
 	int reporter_pipe[4];
@@ -270,6 +271,7 @@ static bool reload_configuration(struct s_server **server, struct s_report *repo
 		{
 		}
 	}
+	was_daemon = (*server)->daemon;
 	(*server)->cleaner(*server);
 	*server = new_server;
 	reporter->critical = false;
@@ -294,7 +296,7 @@ static bool reload_configuration(struct s_server **server, struct s_report *repo
 		*server = (*server)->cleaner(*server);
 		return (false);
 	}
-	if ((*server)->daemon)
+	if (!was_daemon && (*server)->daemon)
 	{
 		ret = daemonize(*server);
 		if (ret != -1)
