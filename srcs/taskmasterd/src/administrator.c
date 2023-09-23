@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/23 15:35:34 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/09/23 15:49:10 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -132,6 +132,10 @@ void child_exec(struct s_process *proc) {
 		report(&reporter, false);
 		notfoundexit();
 	} else {
+		if (proc->program->umask != 022)
+		{
+			umask((mode_t)proc->program->umask);
+		}
 		if (proc->program->workingdir && chdir(proc->program->workingdir))
 		{
 			snprintf(reporter.buffer, PIPE_BUF - 22, "CRITICAL : %s working directory %s could not be acces : %s\n", proc->name, proc->program->workingdir, strerror(errno));
