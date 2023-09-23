@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/21 18:15:57 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/09/23 15:35:34 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -267,12 +267,28 @@ int exec(struct s_process *process, int epollfd) {
 	return 0;
 }
 
-static bool should_start(struct s_process *process) {
+static bool should_start(struct s_process *process, int *wstatus) {
 	if (process->status == EXITED) {
 		if (process->program->autorestart == ALWAYS) {
 			return true;
 		} else if (process->program->autorestart == ONERROR) {
-			// check if exit status is expected or not
+			if (WIFEXITED(*wstatus)) {
+				int code = WEXITSTATUS(*wstatus);
+				if (process->program->exitcodes) {
+					int i = 0;
+					while (process->program->exitcodes[i] != -1) {
+						if (process->program->exitcodes[i] == code) {
+							return (false);
+						} 
+						i++;
+					}
+					return (true);
+				} else if (code == 0) {
+					return false;
+				} else {
+					return true;
+				}
+			}
 		} else {
 			return false;
 		}
@@ -294,7 +310,7 @@ static bool should_start(struct s_process *process) {
 	return false;
 }
 
-void closeall(struct s_process *process, int epollfd) {
+void closeall(struct s_process *process, int epollfd, int *wstatus) {
 	struct s_report reporter;
 	reporter.report_fd = process->log;
 	snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG    : %s exited\n", process->name);
@@ -310,7 +326,7 @@ void closeall(struct s_process *process, int epollfd) {
 	if (process->stderr[0] >= 0) {
 		close(process->stderr[0]);
 	}
-	waitpid(process->pid, NULL, 0);
+	waitpid(process->pid, wstatus, 0);
 	process->pid = 0;
 	snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG    : %s pid is now %d\n", process->name, process->pid);
 	report(&reporter, false);
@@ -778,7 +794,8 @@ static void kick_clients(struct s_logging_client **list) {
 }
 
 void *administrator(void *arg) {
-	struct s_process *process = (struct s_process *)arg;
+	int					wstatus = 0;
+	struct s_process	*process = (struct s_process *)arg;
 	process->list = NULL;
 	struct s_report reporter;
 	reporter.report_fd = process->log;
@@ -819,7 +836,7 @@ void *administrator(void *arg) {
 
 	while (1) {
 		if (process->status == EXITED || process->status == BACKOFF || (process->status != STOPPING && process->bool_start)) {
-			if (should_start(process) || process->bool_start) {
+			if (should_start(process, &wstatus) || process->bool_start) {
 				process->bool_start = false;
 				snprintf(reporter.buffer, PIPE_BUF - 22, "INFO     : %s is now STARTING\n", process->name);
 				report(&reporter, false);
@@ -828,7 +845,7 @@ void *administrator(void *arg) {
 				if (exec(process, epollfd)) {
 					snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING  : %s got a fatal error in exec\n", process->name);
 					report(&reporter, false);
-					closeall(process, epollfd);
+					closeall(process, epollfd, &wstatus);
 					close(epollfd);
 					if (process->stdout_logger.logfd > 0) {
 						close(process->stdout_logger.logfd);
@@ -850,7 +867,7 @@ void *administrator(void *arg) {
 				snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING  : %s got a fatal error in gettimeofday\n", process->name);
 				report(&reporter, false);
 				killpg(process->pid, SIGKILL);
-				closeall(process, epollfd);
+				closeall(process, epollfd, &wstatus);
 				close(epollfd);
 				if (process->stdout_logger.logfd > 0) {
 					close(process->stdout_logger.logfd);
@@ -896,7 +913,7 @@ void *administrator(void *arg) {
 							if (process->bool_exit) {
 								snprintf(reporter.buffer, PIPE_BUF - 22, "INFO     : %s has STOPPED\n", process->name);
 								report(&reporter, false);
-								closeall(process, epollfd);
+								closeall(process, epollfd, &wstatus);
 								close(epollfd);
 								if (process->stdout_logger.logfd > 0) {
 									close(process->stdout_logger.logfd);
@@ -909,7 +926,7 @@ void *administrator(void *arg) {
 							} else {
 								snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING  : %s is now in BACKOFF\n", process->name);
 								report(&reporter, false);
-								closeall(process, epollfd);
+								closeall(process, epollfd, &wstatus);
 								process->status = BACKOFF;
 								break ;
 							}
@@ -926,7 +943,7 @@ void *administrator(void *arg) {
 							if (process->bool_exit) {
 								snprintf(reporter.buffer, PIPE_BUF - 22, "INFO     : %s has STOPPED\n", process->name);
 								report(&reporter, false);
-								closeall(process, epollfd);
+								closeall(process, epollfd, &wstatus);
 								close(epollfd);
 								if (process->stdout_logger.logfd > 0) {
 									close(process->stdout_logger.logfd);
@@ -939,7 +956,7 @@ void *administrator(void *arg) {
 							} else {
 								snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING  : %s is now in BACKOFF\n", process->name);
 								report(&reporter, false);
-								closeall(process, epollfd);
+								closeall(process, epollfd, &wstatus);
 								process->status = BACKOFF;
 								break ;
 							}
@@ -952,7 +969,7 @@ void *administrator(void *arg) {
 							report(&reporter, false);
 							if (handle_command(process, buf, epollfd)) {
 								killpg(process->pid, SIGKILL);
-								closeall(process, epollfd);
+								closeall(process, epollfd, &wstatus);
 								close(epollfd);
 								if (process->stdout_logger.logfd > 0) {
 									close(process->stdout_logger.logfd);
@@ -971,7 +988,7 @@ void *administrator(void *arg) {
 								snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING  : %s got a fatal error in gettimeofday\n", process->name);
 								report(&reporter, false);
 								killpg(process->pid, SIGKILL);
-								closeall(process, epollfd);
+								closeall(process, epollfd, &wstatus);
 								close(epollfd);
 								if (process->stdout_logger.logfd > 0) {
 									close(process->stdout_logger.logfd);
@@ -1012,7 +1029,7 @@ void *administrator(void *arg) {
 							}
 							send_clients(process, epollfd, buf);
 						} else {
-							closeall(process, epollfd);
+							closeall(process, epollfd, &wstatus);
 							process->status = EXITED;
 							snprintf(reporter.buffer, PIPE_BUF - 22, "INFO     : %s is now EXITED\n", process->name);
 							report(&reporter, false);
@@ -1026,7 +1043,7 @@ void *administrator(void *arg) {
 							}
 							send_clients(process, epollfd, buf);
 						} else {
-							closeall(process, epollfd);
+							closeall(process, epollfd, &wstatus);
 							process->status = EXITED;
 							snprintf(reporter.buffer, PIPE_BUF - 22, "INFO     : %s is now EXITED\n", process->name);
 							report(&reporter, false);
@@ -1039,7 +1056,7 @@ void *administrator(void *arg) {
 							report(&reporter, false);
 							if (handle_command(process, buf, epollfd)) {
 								killpg(process->pid, SIGKILL);
-								closeall(process, epollfd);
+								closeall(process, epollfd, &wstatus);
 								close(epollfd);
 								if (process->stdout_logger.logfd > 0) {
 									close(process->stdout_logger.logfd);
@@ -1058,7 +1075,7 @@ void *administrator(void *arg) {
 								snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING  : %s got a fatal error in gettimeofday\n", process->name);
 								report(&reporter, false);
 								killpg(process->pid, SIGKILL);
-								closeall(process, epollfd);
+								closeall(process, epollfd, &wstatus);
 								close(epollfd);
 								if (process->stdout_logger.logfd > 0) {
 									close(process->stdout_logger.logfd);
@@ -1083,7 +1100,7 @@ void *administrator(void *arg) {
 				snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING  : %s got a fatal error in gettimeofday\n", process->name);
 				report(&reporter, false);
 				killpg(process->pid, SIGKILL);
-				closeall(process, epollfd);
+				closeall(process, epollfd, &wstatus);
 				close(epollfd);
 				if (process->stdout_logger.logfd > 0) {
 					close(process->stdout_logger.logfd);
@@ -1129,7 +1146,7 @@ void *administrator(void *arg) {
 							}
 							send_clients(process, epollfd, buf);
 						} else {
-							closeall(process, epollfd);
+							closeall(process, epollfd, &wstatus);
 							process->status = STOPPED;
 							snprintf(reporter.buffer, PIPE_BUF - 22, "INFO     : %s is now STOPPED\n", process->name);
 							report(&reporter, false);
@@ -1159,7 +1176,7 @@ void *administrator(void *arg) {
 							}
 							send_clients(process, epollfd, buf);
 						} else {
-							closeall(process, epollfd);
+							closeall(process, epollfd, &wstatus);
 							process->status = STOPPED;
 							snprintf(reporter.buffer, PIPE_BUF - 22, "INFO     : %s is now STOPPED\n", process->name);
 							report(&reporter, false);
@@ -1188,7 +1205,7 @@ void *administrator(void *arg) {
 							report(&reporter, false);
 							if (handle_command(process, buf, epollfd)) {
 								killpg(process->pid, SIGKILL);
-								closeall(process, epollfd);
+								closeall(process, epollfd, &wstatus);
 								close(epollfd);
 								if (process->stdout_logger.logfd > 0) {
 									close(process->stdout_logger.logfd);
@@ -1207,7 +1224,7 @@ void *administrator(void *arg) {
 								snprintf(reporter.buffer, PIPE_BUF - 22, "WARNING  : %s got a fatal error in gettimeofday\n", process->name);
 								report(&reporter, false);
 								killpg(process->pid, SIGKILL);
-								closeall(process, epollfd);
+								closeall(process, epollfd, &wstatus);
 								close(epollfd);
 								if (process->stdout_logger.logfd > 0) {
 									close(process->stdout_logger.logfd);
@@ -1231,7 +1248,7 @@ void *administrator(void *arg) {
 				report(&reporter, false);
 				process->stop.tv_sec = 0;
 				process->stop.tv_usec = 0;
-				closeall(process, epollfd);
+				closeall(process, epollfd, &wstatus);
 				if (process->bool_exit) { // if need to exit administrator
 					snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG    : %s's administrator exited\n", process->name);
 					report(&reporter, false);
