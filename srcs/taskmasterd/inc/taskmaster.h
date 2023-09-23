@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:24:42 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/19 18:03:01 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/09/23 13:21:12 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -283,6 +283,7 @@ bool init_epoll(struct s_server *server, struct s_report *reporter);
 
 void exit_admins(struct s_priority *priorities);
 void create_socket(struct s_server *server, struct s_report *reporter);
+void transfer_socket(struct s_server *old_server, struct s_server *server, struct s_report *reporter);
 void handle(int sig);
 void check_server(struct s_server *server, struct epoll_event *events, int nb_events, struct s_client **clients_lst, struct s_report *reporter);
 void delete_clients(struct s_client **clients_lst, struct s_report *reporter);

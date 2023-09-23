@@ -37,17 +37,15 @@ programs:
       priority: 2
 
 server:
-    daemon: false
+    daemon: true
     logfile: /tmp/taskmaster.log
     loglevel: DEBUG
-    log_discord: true
+    log_discord: false
     loglevel_discord: INFO
     logfile_maxbytes: 4096
     logfile_backups: 3
-    user: parrot
-    workingdir: /home/parrot
 
 socket:
     enable: true
-    socketpath: /tmp/taskmaster.sock
+    socketpath: /mnt/nfs/homes/bdetune/42Cursus/42Unix/taskmaster/taskmasterd.sock
     umask: 077

@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/18 20:27:12 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/09/23 13:20:55 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -148,8 +148,6 @@ static void soft_cleanup(struct s_server *server)
 	if (efd > 0)
 		close(efd);
 	efd = 0;
-	if (server->socket.enable && server->socket.socketpath)
-		unlink(server->socket.socketpath);
 }
 
 static bool reload_error(struct s_server *server, struct s_report *reporter)
@@ -223,7 +221,7 @@ static bool reload_configuration(struct s_server **server, struct s_report *repo
 	}
 	if (new_server->socket.enable)
 	{
-		create_socket(new_server, &tmp_reporter);
+		transfer_socket(*server, new_server, &tmp_reporter);
 		if (tmp_reporter.critical)
 		{
 			if (end_initial_log(&tmp_reporter, &thread_ret, initial_logger) && *(int *)thread_ret != 1)

@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/08/08 13:29:40 by bdetune           #+#    #+#             */
-/*   Updated: 2023/08/09 15:58:57 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/09/23 12:36:28 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -73,6 +73,11 @@ int	daemonize(struct s_server *server)
 		}
 		if (pid)
 		{
+			if (server->socket.sockfd > 0)
+			{
+				close(server->socket.sockfd);
+				server->socket.sockfd = -1;
+			}
 			if (server->loglevel == DEBUG)
 			{
 				get_stamp(reporter.buffer);
@@ -122,6 +127,11 @@ int	daemonize(struct s_server *server)
 		ssize_t				ret;
 		struct epoll_event	event;
 
+		if (server->socket.sockfd > 0)
+		{
+			close(server->socket.sockfd);
+			server->socket.sockfd = -1;
+		}
 		bzero(&event, sizeof(event));
 		epoll_fd = epoll_create(1);
 		if (epoll_fd == -1)

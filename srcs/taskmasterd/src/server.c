@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/20 20:56:56 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/09/23 13:21:32 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 #include "taskmaster.h"
@@ -56,6 +56,91 @@ bool	init_epoll(struct s_server *server, struct s_report *reporter)
 	}
 	return (true);
 }
+
+
+void	transfer_socket(struct s_server *old_server, struct s_server *server, struct s_report *reporter) {
+	uid_t				user;
+	gid_t				group;
+	struct group		*gid = NULL;
+	struct passwd		*uid = NULL;
+	
+	if (!server->socket.socketpath)
+	{
+		server->socket.socketpath = strdup(SOCK_PATH);
+		if (!server->socket.socketpath)
+		{
+			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not allocate string for socketpath, exiting process\n");
+			report(reporter, true);
+			return ;
+		}
+	}
+	if (!old_server->socket.enable || strcmp(old_server->socket.socketpath, server->socket.socketpath))
+	{
+		create_socket(server, reporter);
+		return ;
+	}
+	server->socket.sockfd = old_server->socket.sockfd;
+	old_server->socket.sockfd = -1;
+	if (old_server->socket.umask != server->socket.umask && chmod(server->socket.socketpath, 0666 & ~server->socket.umask) == -1)
+	{
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not change rights of socket, exiting process\n");
+		report(reporter, true);
+		return ;
+	}
+	if (old_server->socket.uid && server->socket.uid && strcmp(old_server->socket.uid, server->socket.uid))
+	{
+		errno = 0;
+		uid = getpwnam(server->socket.uid);
+		if (!uid)
+		{
+			if (errno == 0 || errno == ENOENT || errno == ESRCH || errno == EBADF || errno == EPERM)
+			{
+				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Unkown user %s, cannot change ownership of socket, exiting process\n", server->socket.uid);
+				report(reporter, true);
+			}
+			else
+			{
+				snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not get information on user %s, cannot change ownership of socket, exiting process\n", server->socket.uid);
+				report(reporter, true);
+			}
+			unlink(server->socket.socketpath);
+			return ;
+		}
+		user = uid->pw_uid;
+		group = uid->pw_gid;
+		if (server->socket.gid)
+		{
+			gid = getgrnam(server->socket.gid);
+			if (!gid)
+			{
+				if (errno == 0 || errno == ENOENT || errno == ESRCH || errno == EBADF || errno == EPERM)
+				{
+					snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Unkown group %s, cannot change ownership of socket, exiting process\n", server->socket.gid);
+					report(reporter, true);
+				}
+				else
+				{
+					snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not get information on group %s, cannot change ownership of socket, exiting process\n", server->socket.gid);
+					report(reporter, true);
+				}
+				unlink(server->socket.socketpath);
+				return ;
+			}
+			group = gid->gr_gid;
+		}
+		if (chown(server->socket.socketpath, user, group) == -1)
+		{
+			snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Could not change ownership of socket to %s:%s, exiting process\n", server->socket.uid, server->socket.gid);
+			report(reporter, true);
+			unlink(server->socket.socketpath);
+			return ;
+		}
+		snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Successfully changed ownership of socket to %s:%s\n", server->socket.uid, server->socket.gid);
+		report(reporter, false);
+
+	}
+}
+
 
 void	create_socket(struct s_server *server, struct s_report *reporter) {
 	uid_t				user;
