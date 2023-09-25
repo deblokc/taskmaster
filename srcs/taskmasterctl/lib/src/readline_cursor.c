@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/07/12 16:00:16 by tnaton            #+#    #+#             */
-/*   Updated: 2023/07/18 15:14:49 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/09/25 14:07:03 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,7 +18,9 @@ void cursor_right(struct s_readline *global) {
 	if (global->cursor == strlen(global->current->line)) {
 		return ;
 	}
-	if (write(1, "\33[C", 3)) {}
+	if (!global->shadow) {
+		if (write(1, "\33[C", 3)) {}
+	}
 	global->cursor++;
 }
 
@@ -26,7 +28,9 @@ void cursor_left(struct s_readline *global) {
 	if (global->cursor == 0) {
 		return ;
 	}
-	if (write(1, "\33[D", 3)) {}
+	if (!global->shadow) {
+		if (write(1, "\33[D", 3)) {}
+	}
 	global->cursor--;
 }
 

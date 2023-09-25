@@ -69,4 +69,4 @@ server:
 
 socket:
   enable: true
-  socketpath: /tmp/taskmaster.sock
+  socketpath: /tmp/taskmaster2.sock

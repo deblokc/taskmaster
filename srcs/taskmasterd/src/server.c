@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/23 13:21:32 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/09/25 14:08:11 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 #include "taskmaster.h"
@@ -453,8 +453,6 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 					char trunc[PIPE_BUF / 4];
 					bzero(trunc, PIPE_BUF / 4);
 					memcpy(trunc, buf, strlen(buf));
-					snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Client %d wants to authentificate with >%s<\n", client->poll.data.fd, trunc);
-					report(reporter, false);
 					if (auth(client, buf, server, reporter)) {
 						snprintf(reporter->buffer, PIPE_BUF, "DEBUG    : Client %d was denied access\n", client->poll.data.fd);
 						report(reporter, false);
