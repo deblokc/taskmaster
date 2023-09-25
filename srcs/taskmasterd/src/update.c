@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/08/21 18:53:01 by bdetune           #+#    #+#             */
-/*   Updated: 2023/08/25 16:31:18 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/09/25 20:02:30 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -204,65 +204,81 @@ static void	find_to_stop(struct s_server *server, struct s_priority **to_stop)
 		return ;
 	old_current = *to_stop;
 	new_current = server->priorities;
-	while (old_current)
+	while (old_current && new_current)
 	{
-		while (new_current && new_current->priority < old_current->priority)
-			new_current = new_current->next;
-		if (new_current && new_current->priority == old_current->priority)
+		if (new_current->priority < old_current->priority)
 		{
-			old_runner = old_current->begin;
-			new_runner = new_current->begin;
-			previous_old = NULL;
-			previous_new = NULL;
-			while (old_runner)
+			new_current = new_current->next;
+			continue ;
+		}
+		else if (new_current->priority > old_current->priority)
+		{
+			old_current = old_current->next;
+			continue ;
+		}
+		old_runner = old_current->begin;
+		new_runner = new_current->begin;
+		previous_old = NULL;
+		previous_new = NULL;
+		while (old_runner && new_runner)
+		{
+			if (strcmp(new_runner->name, old_runner->name) < 0)
 			{
-				while (new_runner && strcmp(new_runner->name, old_runner->name) < 0)
-				{
-					previous_new = new_runner;
-					new_runner = new_runner->next;
-				}
-				if (new_runner && !strcmp(new_runner->name, old_runner->name) && program_issame(new_runner, old_runner))
-				{
-					if (!previous_old)
-						old_current->begin = old_runner->next;
-					else
-						previous_old->next = old_runner->next;
-					if (!previous_new)
-						new_current->begin = old_runner;
-					else
-						previous_new->next = old_runner;
-					next_old = old_runner->next;
-					next_new = new_runner->next;
-					if (server->program_tree == new_runner)
-						server->program_tree = old_runner;
-					old_runner->next = new_runner->next;
-					old_runner->left = new_runner->left;
-					old_runner->right = new_runner->right;
-					old_runner->parent = new_runner->parent;
-					if (old_runner->parent)
-					{
-						if (old_runner->parent->left == new_runner)
-							old_runner->parent->left = old_runner;
-						else
-							old_runner->parent->right = old_runner;
-
-					}
-					if (old_runner->left)
-						old_runner->left->parent = old_runner;
-					if (old_runner->right)
-						old_runner->right->parent = old_runner;
-					new_runner->cleaner(new_runner);
-					new_runner = next_new;
-					old_runner = next_old;
-				}
+				previous_new = new_runner;
+				new_runner = new_runner->next;
+				continue ;
+			}
+			else if (strcmp(new_runner->name, old_runner->name) > 0)
+			{
+				previous_old = old_runner;
+				old_runner = old_runner->next;
+				continue ;
+			}
+			if (program_issame(new_runner, old_runner))
+			{
+				if (!previous_old)
+					old_current->begin = old_runner->next;
 				else
+					previous_old->next = old_runner->next;
+				if (!previous_new)
+					new_current->begin = old_runner;
+				else
+					previous_new->next = old_runner;
+				next_old = old_runner->next;
+				next_new = new_runner->next;
+				if (server->program_tree == new_runner)
+					server->program_tree = old_runner;
+				old_runner->next = new_runner->next;
+				old_runner->left = new_runner->left;
+				old_runner->right = new_runner->right;
+				old_runner->parent = new_runner->parent;
+				if (old_runner->parent)
 				{
-					previous_old = old_runner;
-					old_runner = old_runner->next;
+					if (old_runner->parent->left == new_runner)
+						old_runner->parent->left = old_runner;
+					else
+						old_runner->parent->right = old_runner;
+
 				}
+				if (old_runner->left)
+					old_runner->left->parent = old_runner;
+				if (old_runner->right)
+					old_runner->right->parent = old_runner;
+				new_runner->cleaner(new_runner);
+				previous_new = old_runner;
+				new_runner = next_new;
+				old_runner = next_old;
+			}
+			else
+			{
+				previous_new = new_runner;
+				new_runner = new_runner->next;
+				previous_old = old_runner;
+				old_runner = old_runner->next;
 			}
 		}
 		old_current = old_current->next;
+		new_current = new_current->next;
 	}
 }
 

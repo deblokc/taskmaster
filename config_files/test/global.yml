@@ -1,34 +1,37 @@
 programs:
   shell:
-    command: /bin/bash
+    command: /bin/sh
     env:
       TEST: true
     autorestart: always
 
   should_exit:
-    command: /bin/bash -c "sleep 10"
+    command: /bin/sh -c "sleep 10"
 
   should_fatal:
-    command: /bin/bash -c "echo stdout; echo stderr 1>&2; sleep 5"
+    command: /bin/sh -c "echo stdout; echo stderr 1>&2; sleep 5"
     numprocs: 1
     startretries: 0
     startsecs: 10
 
   exit_w_code:
-    command: /bin/bash -c "sleep 5; exit 42"
+    command: /bin/sh -c "sleep 5; exit 42"
     autorestart: onerror
     exitcodes:
       - 42
 
   keep_restarting:
-    command: /bin/bash -c "sleep 5m"
+    command: /bin/sh -c "sleep 5m"
     startsecs: 10
     autorestart: always
 
   create_file_in_tmp:
-    command: /bin/bash -c "echo JE SUIS DANS $PWD ! > in_tmp.tmp"
+    command: /bin/sh -c "echo JE SUIS DANS $PWD ! > in_tmp.tmp_b"
     startsecs: 0
     workingdir: /tmp
+
+  magnifik:
+    command: /bin/sh
 
   log_number:
     command: /bin/bash -c "for ((i=1;i>0;i+=1));do if ! (($i%2)); then echo $i; else echo $i 1>&2; fi; done"
@@ -44,7 +47,7 @@ programs:
     stderr_logfile_backups: 0
 
   no_autostart:
-    command: bash -c "echo $test and $exist $test"
+    command: sh -c "echo $test and $exist $test and $test $$"
     autostart: false
     startsecs: 0
     env:
@@ -52,20 +55,26 @@ programs:
       exist: also
 
   sig_stop:
-    command: bash -c "trap ls SIGTERM; trap exit SIGUSR1; while [ 1 ]; do sleep 1 ; done"
+    command: sh -c "trap ls SIGTERM; trap exit SIGUSR1; while [ 1 ]; do sleep 1 ; done"
     stopsignal: USR1
+    salut: 1
+
+  newbie:
+    command: /bin/bash -c "echo \"Hello\""
+    stopsignal: TERM
+    startsecs: 0
 
   sig_dont_stop:
-    command: bash -c "trap ls SIGTERM; trap exit SIGUSR1; while [ 1 ]; do sleep 1 ; done"
+    command: sh -c "trap ls SIGTERM; trap exit SIGUSR1; while [ 1 ]; do sleep 1 ; done"
     stopsignal: TERM
 
   user:
     command: whoami
+    numprocs: 5
     startsecs: 0
-    user: tnaton
 
 server:
-  loglevel: DEBUG
+  loglevel: INFO
 
 socket:
   enable: true

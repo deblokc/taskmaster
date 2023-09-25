@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/23 13:35:32 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/09/25 19:49:45 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -402,19 +402,18 @@ int main_routine(struct s_server *server, struct s_report *reporter)
 						program_tree = NULL;
 					}
 				}
-				tmp_tree = server->program_tree;
-				server->program_tree = program_tree;
-				if ((current_numprocs = nb_procs(server)) > MAXNUMPROCS)
+				else if ((current_numprocs = nb_procs(server)) > MAXNUMPROCS)
 				{
 					snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : New configuration requires %d processes, taskmasterd can only handle %d processes, server will continue with current configuration\n", current_numprocs, MAXNUMPROCS);
 					report(reporter, false);
+					tmp_tree = server->program_tree;
+					server->program_tree = program_tree;
 					server->delete_tree(server);
 					server->program_tree = tmp_tree;
 					program_tree = NULL;
 				}
 				else
 				{
-					server->program_tree = tmp_tree;
 					update_configuration(server, program_tree, reporter);
 					program_tree = NULL;
 				}
