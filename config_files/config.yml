@@ -49,6 +49,4 @@ socket:
     enable: true
     socketpath: /tmp/taskmasterd2.sock
     umask: 077
-    user: tnaton
-    password: $s1$0e0810$EaMgvGtd9aXLd2FRpMOOuw==$leHh4Rc0MA+OycYZcwT4WKOLU5avFW+1QkLMwabhskRW+/b12eCUxdF/irUmf13I8cHhbxcwD1pNlphv0DuQ6Q==
 

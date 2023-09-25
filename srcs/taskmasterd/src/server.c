@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/25 14:08:11 by tnaton           ###   ########.fr       */
+/*   Updated: 2023/09/25 14:38:41 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 #include "taskmaster.h"
@@ -274,7 +274,10 @@ void	delete_clients(struct s_client **clients_lst, struct s_report *reporter)
 	{
 		next = client->next;
 		if (client->poll.data.fd > 0)
+		{
+			epoll_ctl(efd, EPOLL_CTL_DEL, client->poll.data.fd, &client->poll);
 			close(client->poll.data.fd);
+		}
 		if (client->log)
 			free(client->log);
 		free(client);
@@ -393,7 +396,7 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 				client = new_client(clients_lst, client_socket, reporter);
 				if (!client)
 					continue ;
-				client->poll.events = EPOLLOUT;
+				client->poll.events = EPOLLOUT | EPOLLIN;
 				if (epoll_ctl(efd, EPOLL_CTL_ADD, client->poll.data.fd, &client->poll) == -1)
 				{
 					strcpy(reporter->buffer, "CRITICAL : Could not add new client to epoll list\n");
@@ -405,6 +408,7 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 					client->auth = false;
 					snprintf(client->buf, PIPE_BUF, "need");
 				} else {
+					printf("NO PASSWORD\n");
 					client->auth = true;
 					snprintf(client->buf, PIPE_BUF, "okay");
 				}
