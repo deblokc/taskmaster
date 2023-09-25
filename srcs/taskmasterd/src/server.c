@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 11:25:17 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/25 20:03:19 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/09/25 20:37:01 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 #include "taskmaster.h"
@@ -404,7 +404,7 @@ void check_server(struct s_server *server, struct epoll_event *events, int nb_ev
 					close(client->poll.data.fd);
 					client->poll.data.fd = -1;
 				}
-				if (server->socket.password) {
+				if (server->socket.password && server->socket.user) {
 					client->auth = false;
 					snprintf(client->buf, PIPE_BUF, "need");
 				} else {
