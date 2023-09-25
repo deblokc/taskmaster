@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/08/08 11:24:49 by bdetune           #+#    #+#             */
-/*   Updated: 2023/09/20 20:57:19 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/09/25 20:48:24 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,7 +22,6 @@ static void	destructor(struct s_socket *self)
 			unlink(self->socketpath);
 		else
 			unlink("/tmp/taskmaster.sock");
-		self->sockfd = -1;
 	}
 	if (self->socketpath)
 		free(self->socketpath);
@@ -35,6 +34,7 @@ static void	destructor(struct s_socket *self)
 	if (self->password)
 		free(self->password);
 	bzero(self, sizeof(*self));
+	self->sockfd = -1;
 	self->enable = false;
 	self->umask = 022;
 	self->destructor = destructor;
@@ -103,9 +103,8 @@ bool	parse_socket(struct s_server *server, yaml_document_t *document, int value_
 				{
 					snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : Error while parsing block 'socket', not enabling it\n");
 					server->socket.destructor(&server->socket);
-					report(reporter, false);
-					ret = false;
-					break ;
+					report(reporter, reporter->critical);
+					return (false);
 				}
 			}
 			else
@@ -114,6 +113,16 @@ bool	parse_socket(struct s_server *server, yaml_document_t *document, int value_
 				report(reporter, false);
 			}
 		}
+	}
+	if (server->socket.password && !server->socket.user)
+	{
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : A password has been specified without a user in socket configuration\n");
+		report(reporter, true);
+	}
+	if (!server->socket.password && server->socket.user)
+	{
+		snprintf(reporter->buffer, PIPE_BUF, "CRITICAL : A user has been specified without a password in socket configuration\n");
+		report(reporter, true);
 	}
 	return (ret);
 }
