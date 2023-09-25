@@ -55,7 +55,7 @@ programs:
       exist: also
 
   sig_stop:
-    command: sh -c "trap ls SIGTERM; trap exit SIGUSR1; while [ 1 ]; do sleep 1 ; done"
+    command: bash -c "trap ls SIGTERM; trap exit SIGUSR1; while [ 1 ]; do sleep 1 ; done"
     stopsignal: USR1
     salut: 1
 
@@ -65,7 +65,7 @@ programs:
     startsecs: 0
 
   sig_dont_stop:
-    command: sh -c "trap ls SIGTERM; trap exit SIGUSR1; while [ 1 ]; do sleep 1 ; done"
+    command: bash -c "trap ls SIGTERM; trap exit SIGUSR1; while [ 1 ]; do sleep 1 ; done"
     stopsignal: TERM
 
   user:

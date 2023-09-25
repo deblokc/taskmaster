@@ -12,5 +12,5 @@ programs:
         priority: 3
 server:
     logfile: logs/taskmaster_inception.log
-    loglevel: DEBUG
+    loglevel: INFO
     umask: 66

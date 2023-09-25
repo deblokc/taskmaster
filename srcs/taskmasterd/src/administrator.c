@@ -6,7 +6,7 @@
 /*   By: tnaton <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/06/16 14:30:47 by tnaton            #+#    #+#             */
-/*   Updated: 2023/09/25 19:14:49 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/09/25 20:20:15 by tnaton           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -272,12 +272,17 @@ int exec(struct s_process *process, int epollfd) {
 }
 
 static bool should_start(struct s_process *process, int *wstatus) {
+	struct s_report reporter;
+	reporter.report_fd = process->log;
+
 	if (process->status == EXITED) {
 		if (process->program->autorestart == ALWAYS) {
 			return true;
 		} else if (process->program->autorestart == ONERROR) {
 			if (WIFEXITED(*wstatus)) {
 				int code = WEXITSTATUS(*wstatus);
+				snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG    : %s has exit code %d\n", process->name, code);
+				report(&reporter, false);
 				if (process->program->exitcodes) {
 					int i = 0;
 					while (process->program->exitcodes[i] != -1) {
@@ -297,8 +302,6 @@ static bool should_start(struct s_process *process, int *wstatus) {
 			return false;
 		}
 	} else if (process->status == BACKOFF) {
-		struct s_report reporter;
-		reporter.report_fd = process->log;
 		if (process->count_restart < process->program->startretries) {
 			process->count_restart++;
 			snprintf(reporter.buffer, PIPE_BUF - 22, "DEBUG    : %s restarting for the %d time\n", process->name, process->count_restart);
