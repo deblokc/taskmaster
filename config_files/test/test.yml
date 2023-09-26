@@ -1,2 +1,6 @@
 server:
   loglevel: INFO
+
+socket:
+  enable: true
+  socketpath: /tmp/sock.sock

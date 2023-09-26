@@ -14,8 +14,7 @@ taskmasterctl/taskmasterctl
 readline.a
 libyaml.a
 libcurl.a
+libscrypt.a
 logs/
-libs/
 curl-8.2.1/
 libscrypt-1.22/
-libscrypt.so
